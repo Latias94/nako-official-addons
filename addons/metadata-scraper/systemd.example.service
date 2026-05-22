@@ -1,0 +1,16 @@
+[Unit]
+Description=Nako Metadata Scraper Addon Sidecar
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment="NAKO_METADATA_SCRAPER_LISTEN_ADDR=0.0.0.0:9100"
+Environment="NAKO_METADATA_SCRAPER_BASE_URL=http://127.0.0.1:9100"
+Environment="NAKO_METADATA_SCRAPER_LANGUAGE=en-US"
+ExecStart=/usr/local/bin/nako-metadata-scraper
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

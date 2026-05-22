@@ -1,0 +1,64 @@
+{
+  "id": "nako.official.metadata-scraper",
+  "name": "Nako Metadata Scraper",
+  "version": "0.1.0",
+  "protocol_version": "2026-05-15",
+  "base_url": "http://nako-metadata-scraper:9100",
+  "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly.",
+  "resources": [
+    {
+      "kind": "metadata",
+      "path": "/metadata",
+      "input_schema": "taru.metadata.request.v1",
+      "output_schema": "taru.metadata.response.v1",
+      "required_scopes": ["item_metadata_read", "item_metadata_suggest"],
+      "timeout_ms": 10000,
+      "max_attempts": 2
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "metadata-diagnostics",
+      "kind": "diagnostics",
+      "label": "Metadata Scraper Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["item_metadata_read"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "Metadata Scraper Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["item_metadata_read"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.metadata-scraper.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "preferred_language": { "type": "string", "default": "en-US" },
+        "providers": {
+          "type": "object",
+          "properties": {
+            "fixture": { "type": "boolean", "default": true },
+            "tmdb": { "type": "boolean", "default": false },
+            "bangumi": { "type": "boolean", "default": false },
+            "douban": { "type": "boolean", "default": false }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "secret_reference_fields": [],
+  "event_subscriptions": [],
+  "tasks": [],
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 2,
+  "scopes": ["item_metadata_read", "item_metadata_suggest"]
+}

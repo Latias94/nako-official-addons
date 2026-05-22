@@ -1,0 +1,20 @@
+services:
+  nako-metadata-scraper:
+    build:
+      # Local path dependency mode expects `nako-official-addons/` and `taru/`
+      # to be sibling directories under the build context parent.
+      context: ../../..
+      dockerfile: nako-official-addons/addons/metadata-scraper/Dockerfile
+    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0
+    restart: unless-stopped
+    environment:
+      NAKO_METADATA_SCRAPER_LISTEN_ADDR: "0.0.0.0:9100"
+      NAKO_METADATA_SCRAPER_BASE_URL: "http://nako-metadata-scraper:9100"
+      NAKO_METADATA_SCRAPER_LANGUAGE: "en-US"
+    ports:
+      - "9100:9100"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9100/manifest.json >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
