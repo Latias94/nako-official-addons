@@ -1,7 +1,7 @@
 services:
   nako-metadata-scraper:
     build:
-      # Local path dependency mode expects `nako-official-addons/` and `taru/`
+      # Local path dependency mode expects `nako-official-addons/` and `nako/`
       # to be sibling directories under the build context parent.
       context: ../../..
       dockerfile: nako-official-addons/addons/metadata-scraper/Dockerfile

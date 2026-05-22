@@ -33,19 +33,19 @@ Endpoints:
 The current workspace depends on the local core checkout:
 
 ```text
-../taru/crates/taru-addon-protocol
+../nako/crates/nako-addon-protocol
 ```
 
 Therefore `compose.example.yml` expects this directory layout:
 
 ```text
 <parent>/
-  taru/
+  nako/
   nako-official-addons/
 ```
 
-After the protocol crate is renamed/published, the Docker context can shrink
-back to this repository only.
+After the protocol crate is published, the Docker context can shrink back to
+this repository only.
 
 ## Current provider strategy
 

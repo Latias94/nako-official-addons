@@ -3,7 +3,7 @@
 FROM rust:1.89-bookworm AS builder
 WORKDIR /src
 COPY nako-official-addons ./nako-official-addons
-COPY taru/crates/taru-addon-protocol ./taru/crates/taru-addon-protocol
+COPY nako/crates/nako-addon-protocol ./nako/crates/nako-addon-protocol
 WORKDIR /src/nako-official-addons
 RUN cargo build --release -p nako-metadata-scraper
 

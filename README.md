@@ -27,11 +27,10 @@ cargo run -p nako-metadata-scraper
 
 Default listen address: `127.0.0.1:9100`.
 
-## Relationship to Taru/Nako Core
+## Relationship to Nako Core
 
-The core project is being rebranded from Taru to Nako. Until the protocol crate
-is renamed and published, this repository depends on the local core checkout at
-`../taru/crates/taru-addon-protocol` and aliases it in code as
+Until the protocol crate is published, this repository depends on the local core
+checkout at `../nako/crates/nako-addon-protocol` and imports it in code as
 `nako_addon_protocol`.
 
 ## Reference Code Policy

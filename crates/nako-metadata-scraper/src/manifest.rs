@@ -23,8 +23,8 @@ pub fn addon_manifest(base_url: impl Into<String>) -> AddonManifest {
         resources: vec![AddonResourceDeclaration {
             kind: AddonResource::Metadata,
             path: "/metadata".to_owned(),
-            input_schema: Some("taru.metadata.request.v1".to_owned()),
-            output_schema: Some("taru.metadata.response.v1".to_owned()),
+            input_schema: Some("nako.metadata.request.v1".to_owned()),
+            output_schema: Some("nako.metadata.response.v1".to_owned()),
             required_scopes: vec![
                 AddonScope::ItemMetadataRead,
                 AddonScope::ItemMetadataSuggest,

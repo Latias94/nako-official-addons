@@ -9,8 +9,8 @@
     {
       "kind": "metadata",
       "path": "/metadata",
-      "input_schema": "taru.metadata.request.v1",
-      "output_schema": "taru.metadata.response.v1",
+      "input_schema": "nako.metadata.request.v1",
+      "output_schema": "nako.metadata.response.v1",
       "required_scopes": ["item_metadata_read", "item_metadata_suggest"],
       "timeout_ms": 10000,
       "max_attempts": 2

@@ -19,4 +19,4 @@ tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "signal"]
 tower-http = { version = "0.6.8", features = ["trace"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
-nako-addon-protocol = { path = "../taru/crates/taru-addon-protocol", package = "taru-addon-protocol" }
+nako-addon-protocol = { path = "../nako/crates/nako-addon-protocol" }
