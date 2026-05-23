@@ -2,6 +2,11 @@
 
 Official metadata scraper Addon Sidecar for Nako.
 
+Current release target: `v0.1.0-alpha.1`.
+
+Main Nako repository: <https://github.com/Latias94/nako>.
+Official addons repository: <https://github.com/Latias94/nako-official-addons>.
+
 This repository is being refactored toward a future-facing metadata addon
 architecture. The current runtime has one installable addon, a fixture adapter
 for smoke tests, plus bounded TMDB movie and Bangumi subject baselines behind
@@ -80,6 +85,31 @@ Therefore `compose.example.yml` expects this directory layout:
 
 After the protocol crate is published, the Docker context can shrink back to
 this repository only.
+
+This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and
+`nako-addon-protocol` Rust crate version `0.1.0-alpha.1`.
+
+The addon manifest has separate version fields: `version` is this sidecar's
+release version, while `protocol_version` is the Nako Addon Protocol wire
+compatibility version used for registration, health checks, and resource calls.
+
+The Dockerfile uses cargo-chef planner/cacher/builder stages so dependency
+layers are reused when only provider or route code changes. `cargo chef cook`
+and the final `cargo build` both run from `/src/nako-official-addons`, which is
+required for the cached `target` directory to remain useful.
+
+The Docker build uses a BuildKit named context for the local Nako checkout.
+The Dockerfile only copies Nako's root `Cargo.toml` and
+`crates/nako-addon-protocol/` from that context so the protocol crate can inherit
+workspace package metadata without sending unrelated code into the image:
+
+```bash
+docker buildx build \
+  --build-context nako-core=../nako \
+  -f addons/metadata-scraper/Dockerfile \
+  -t ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.1 \
+  .
+```
 
 The Dockerfile and examples expose the runtime truth directly: fixture is
 enabled by default, TMDB and Bangumi are disabled by default, and provider

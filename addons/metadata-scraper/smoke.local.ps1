@@ -88,7 +88,7 @@ function New-AdminHeaders {
 Write-Host "[sidecar] Fetching manifest from $SidecarBaseUrl"
 $manifest = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $SidecarBaseUrl '/manifest.json')
 Assert-Equal -Actual $manifest.id -Expected 'nako.official.metadata-scraper' -Name 'manifest.id'
-Assert-Equal -Actual $manifest.protocol_version -Expected '2026-05-15' -Name 'manifest.protocol_version'
+Assert-Equal -Actual $manifest.protocol_version -Expected '0.1.0-alpha.1' -Name 'manifest.protocol_version'
 Assert-MinCount -Items @($manifest.resources) -Minimum 1 -Name 'manifest.resources'
 Write-Host "[sidecar] Manifest OK: $($manifest.id)@$($manifest.version)"
 

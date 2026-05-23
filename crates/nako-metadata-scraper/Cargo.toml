@@ -1,10 +1,15 @@
 [package]
 name = "nako-metadata-scraper"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
+authors.workspace = true
+description = "Official Nako metadata scraper Addon Sidecar."
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 rust-version.workspace = true
+keywords = ["nako", "addon", "metadata", "scraper", "media"]
 
 [dependencies]
 anyhow.workspace = true

@@ -1,8 +1,8 @@
 {
   "id": "nako.official.metadata-scraper",
   "name": "Nako Metadata Scraper",
-  "version": "0.1.0",
-  "protocol_version": "2026-05-15",
+  "version": "0.1.0-alpha.1",
+  "protocol_version": "0.1.0-alpha.1",
   "base_url": "http://nako-metadata-scraper:9100",
   "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly.",
   "resources": [

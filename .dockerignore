@@ -1,0 +1,7 @@
+.git
+.gitignore
+target
+**/target
+docs/workstreams
+repo-ref
+*.log

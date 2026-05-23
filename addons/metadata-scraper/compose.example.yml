@@ -1,11 +1,14 @@
 services:
   nako-metadata-scraper:
     build:
-      # Local path dependency mode expects `nako-official-addons/` and `nako/`
-      # to be sibling directories under the build context parent.
-      context: ../../..
-      dockerfile: nako-official-addons/addons/metadata-scraper/Dockerfile
-    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0
+      # Local path dependency mode uses a BuildKit named context for the Nako
+      # protocol crate instead of sending the whole source-code parent
+      # directory to Docker.
+      context: ../..
+      dockerfile: addons/metadata-scraper/Dockerfile
+      additional_contexts:
+        nako-core: ../../../nako
+    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.1
     restart: unless-stopped
     environment:
       NAKO_METADATA_SCRAPER_LISTEN_ADDR: "0.0.0.0:9100"
@@ -14,7 +17,7 @@ services:
       NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED: "true"
       NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
       NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED: "false"
-      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0 (https://github.com/Latias94/nako-official-addons)"
+      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.1 (https://github.com/Latias94/nako-official-addons)"
       # Set only when enabling TMDB. Keep real tokens in your secret manager.
       # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
       # Optional when enabling Bangumi authenticated visibility.

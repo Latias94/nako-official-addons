@@ -2,6 +2,11 @@
 
 Official Nako-maintained Addon Sidecars.
 
+Current release target: `v0.1.0-alpha.1`.
+
+Main Nako repository: <https://github.com/Latias94/nako>.
+Official addons repository: <https://github.com/Latias94/nako-official-addons>.
+
 This repository intentionally exposes one user-installable metadata addon while
 keeping provider implementations modular inside the codebase:
 
@@ -62,9 +67,31 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
 
 ## Relationship to Nako Core
 
-Until the protocol crate is published, this repository depends on the local core
-checkout at `../nako/crates/nako-addon-protocol` and imports it in code as
-`nako_addon_protocol`.
+This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and the matching
+`nako-addon-protocol` Rust crate version `0.1.0-alpha.1`.
+
+The main Nako repository is <https://github.com/Latias94/nako>. This repository
+contains the official addon sidecars that integrate with that core project.
+
+Until the protocol crate is published, this repository depends on the local
+core checkout at `../nako/crates/nako-addon-protocol` and imports it in code as
+`nako_addon_protocol`. `Cargo.toml` keeps both the sibling path dependency and
+the `0.1.0-alpha.1` version requirement so the release boundary is explicit.
+
+Versioning has three separate layers:
+
+- Addon `version`: this sidecar's own release version.
+- Addon `protocol_version`: the runtime HTTP wire compatibility version that
+  Nako uses for registration, health checks, and resource calls.
+- Rust crate version: the Cargo package version for Rust SDK/dependency users.
+
+## Licensing
+
+This addon workspace is licensed as `AGPL-3.0-or-later`.
+
+The Nako Addon Protocol crate in `../nako/crates/nako-addon-protocol` is
+licensed separately as `Apache-2.0 OR MIT`; this repository consumes that crate
+as a dependency and does not relicense it.
 
 ## Reference Code Policy
 
