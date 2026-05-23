@@ -169,6 +169,7 @@ impl BrowserWorkerExtractResponse {
             },
             facts: ProviderCandidateFacts {
                 title: Some(title),
+                alternate_titles: Vec::new(),
                 release_year: None,
                 language: Some(query.language.clone()),
                 community_score_milli: None,

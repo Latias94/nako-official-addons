@@ -195,6 +195,8 @@ struct BangumiSubject {
     total_episodes: Option<u32>,
     rating: Option<BangumiRating>,
     #[serde(default)]
+    infobox: Vec<BangumiInfoboxItem>,
+    #[serde(default)]
     meta_tags: Vec<String>,
     #[serde(default)]
     tags: Vec<BangumiTag>,
@@ -229,6 +231,13 @@ struct BangumiTag {
     count: Option<u32>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct BangumiInfoboxItem {
+    key: Option<String>,
+    #[serde(default)]
+    value: serde_json::Value,
+}
+
 struct BangumiSubjectCandidate {
     search: BangumiSubject,
     detail: BangumiSubject,
@@ -238,10 +247,23 @@ impl BangumiSubjectCandidate {
     fn into_candidate(self, query: &MetadataQuery) -> ProviderMetadataCandidate {
         let subject_id = self.detail.id;
         let subject_type = self.detail.subject_type.or(self.search.subject_type);
+        let search_name = self.search.name.clone();
+        let search_name_cn = self.search.name_cn.clone();
         let original_title = non_empty(self.detail.name).or_else(|| non_empty(self.search.name));
         let localized_title =
             non_empty(self.detail.name_cn).or_else(|| non_empty(self.search.name_cn));
         let title = selected_title(query, localized_title.as_deref(), original_title.as_deref());
+        let alternate_titles = bangumi_alternate_titles(
+            title.as_deref(),
+            [
+                original_title.as_deref(),
+                localized_title.as_deref(),
+                search_name.as_deref(),
+                search_name_cn.as_deref(),
+            ],
+            &self.detail.infobox,
+            &self.search.infobox,
+        );
         let title_language = localized_title
             .as_ref()
             .filter(|localized| Some(localized.as_str()) == title.as_deref())
@@ -333,6 +355,7 @@ impl BangumiSubjectCandidate {
             },
             facts: ProviderCandidateFacts {
                 title: title.or(original_title).or(localized_title),
+                alternate_titles,
                 release_year: release_year.map(i32::from),
                 language: title_language,
                 community_score_milli: rating.as_ref().and_then(|rating| {
@@ -399,6 +422,87 @@ fn first_non_empty(values: &[Option<&str>]) -> Option<String> {
 
 fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.trim().is_empty())
+}
+
+fn bangumi_alternate_titles<const N: usize>(
+    selected_title: Option<&str>,
+    known_titles: [Option<&str>; N],
+    detail_infobox: &[BangumiInfoboxItem],
+    search_infobox: &[BangumiInfoboxItem],
+) -> Vec<String> {
+    let mut titles = Vec::new();
+    for title in known_titles.into_iter().flatten() {
+        push_unique_title(&mut titles, selected_title, title);
+    }
+    push_infobox_titles(&mut titles, selected_title, detail_infobox);
+    push_infobox_titles(&mut titles, selected_title, search_infobox);
+    titles
+}
+
+fn push_infobox_titles(
+    values: &mut Vec<String>,
+    selected_title: Option<&str>,
+    infobox: &[BangumiInfoboxItem],
+) {
+    for item in infobox
+        .iter()
+        .filter(|item| is_title_like_key(item.key.as_deref()))
+    {
+        push_infobox_value_titles(values, selected_title, &item.value);
+    }
+}
+
+fn push_infobox_value_titles(
+    values: &mut Vec<String>,
+    selected_title: Option<&str>,
+    value: &serde_json::Value,
+) {
+    match value {
+        serde_json::Value::String(value) => push_unique_title(values, selected_title, value),
+        serde_json::Value::Array(items) => {
+            for item in items {
+                push_infobox_value_titles(values, selected_title, item);
+            }
+        }
+        serde_json::Value::Object(object) => {
+            if let Some(value) = object.get("v").and_then(serde_json::Value::as_str) {
+                push_unique_title(values, selected_title, value);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn is_title_like_key(key: Option<&str>) -> bool {
+    let Some(key) = key.map(str::trim).filter(|key| !key.is_empty()) else {
+        return false;
+    };
+    matches!(
+        key,
+        "别名"
+            | "中文名"
+            | "英文名"
+            | "日文名"
+            | "简体中文名"
+            | "繁体中文名"
+            | "原名"
+            | "原作名"
+    ) || key.eq_ignore_ascii_case("alias")
+        || key.eq_ignore_ascii_case("aliases")
+        || key.eq_ignore_ascii_case("title")
+        || key.eq_ignore_ascii_case("original title")
+        || key.eq_ignore_ascii_case("english title")
+}
+
+fn push_unique_title(values: &mut Vec<String>, selected_title: Option<&str>, title: &str) {
+    let title = title.trim();
+    if title.is_empty()
+        || selected_title.is_some_and(|selected| selected == title)
+        || values.iter().any(|value| value == title)
+    {
+        return;
+    }
+    values.push(title.to_owned());
 }
 
 fn release_year(value: Option<&str>) -> Option<u16> {
@@ -483,6 +587,12 @@ mod tests {
                     "eps": 26,
                     "total_episodes": 26,
                     "rating": {"rank": 12, "total": 10000, "score": 8.7},
+                    "infobox": [
+                        {"key": "别名", "value": [
+                            {"v": "EVA"},
+                            {"v": "Neon Genesis Evangelion"}
+                        ]}
+                    ],
                     "meta_tags": ["科幻"],
                     "tags": [{"name": "庵野秀明", "count": 500}]
                 }]
@@ -507,6 +617,14 @@ mod tests {
                 "eps": 26,
                 "total_episodes": 26,
                 "rating": {"rank": 10, "total": 12000, "score": 8.8},
+                "infobox": [
+                    {"key": "别名", "value": [
+                        {"v": "EVA"},
+                        {"v": "Neon Genesis Evangelion"},
+                        "NGE"
+                    ]},
+                    {"key": "中文名", "value": "新世纪福音战士"}
+                ],
                 "meta_tags": ["科幻", "机战"],
                 "tags": [
                     {"name": "庵野秀明", "count": 500},
@@ -590,6 +708,20 @@ mod tests {
             "https://lain.bgm.tv/pic/cover/c/detail.jpg"
         );
         assert_eq!(candidates[0].facts.title.as_deref(), Some("新世纪福音战士"));
+        assert!(
+            candidates[0]
+                .facts
+                .alternate_titles
+                .iter()
+                .any(|title| title == "Neon Genesis Evangelion")
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .alternate_titles
+                .iter()
+                .any(|title| title == "NGE")
+        );
         assert_eq!(candidates[0].facts.release_year, Some(1995));
         assert_eq!(candidates[0].facts.language.as_deref(), Some("zh-CN"));
         assert_eq!(candidates[0].facts.community_score_milli, Some(880));

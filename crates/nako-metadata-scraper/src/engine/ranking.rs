@@ -18,6 +18,7 @@ pub struct ProviderMetadataCandidate {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ProviderCandidateFacts {
     pub title: Option<String>,
+    pub alternate_titles: Vec<String>,
     pub release_year: Option<i32>,
     pub language: Option<String>,
     pub community_score_milli: Option<u16>,
@@ -108,7 +109,11 @@ pub fn rank_candidate(
         delta_milli: 250,
     }];
 
-    let title_match = title_match(query.title.as_str(), &candidate.patch);
+    let title_match = title_match(
+        query.title.as_str(),
+        &candidate.patch,
+        &candidate.facts.alternate_titles,
+    );
     push_reason(&mut reasons, title_reason(title_match));
     score += title_delta(title_match);
 
@@ -164,7 +169,11 @@ fn push_reason(reasons: &mut Vec<CandidateScoreReason>, reason: Option<Candidate
     }
 }
 
-fn title_match(query_title: &str, patch: &AddonMetadataPatch) -> TitleMatchEvidence {
+fn title_match(
+    query_title: &str,
+    patch: &AddonMetadataPatch,
+    alternate_titles: &[String],
+) -> TitleMatchEvidence {
     let candidate_titles = [
         patch.title.as_deref(),
         patch.original_title.as_deref(),
@@ -176,6 +185,7 @@ fn title_match(query_title: &str, patch: &AddonMetadataPatch) -> TitleMatchEvide
     for candidate_title in candidate_titles
         .into_iter()
         .flatten()
+        .chain(alternate_titles.iter().map(String::as_str))
         .filter(|value| !value.trim().is_empty())
     {
         saw_candidate_title = true;
@@ -414,6 +424,7 @@ mod tests {
                 },
                 facts: ProviderCandidateFacts {
                     title: Some("The Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
                     community_score_milli: None,
@@ -461,8 +472,44 @@ mod tests {
                 },
                 facts: ProviderCandidateFacts {
                     title: Some("Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("en-US".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(candidate.confidence_milli, 650);
+        assert_eq!(candidate.evidence.title_match, TitleMatchEvidence::Exact);
+    }
+
+    #[test]
+    fn ranking_evidence_matches_provider_alternate_titles() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "Crouching Tiger Hidden Dragon".to_owned(),
+                year: None,
+                language: "zh-CN".to_owned(),
+                external_ids: Vec::new(),
+            },
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:146".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("卧虎藏龙".to_owned()),
+                    sort_title: Some("卧虎藏龙".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("卧虎藏龙".to_owned()),
+                    alternate_titles: vec!["Crouching Tiger Hidden Dragon".to_owned()],
+                    release_year: None,
+                    language: Some("zh-CN".to_owned()),
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -494,6 +541,7 @@ mod tests {
                 patch: AddonMetadataPatch::default(),
                 facts: ProviderCandidateFacts {
                     title: Some("Other Movie".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: Some(2001),
                     language: Some("ja-JP".to_owned()),
                     community_score_milli: None,
@@ -542,6 +590,7 @@ mod tests {
                 patch: AddonMetadataPatch::default(),
                 facts: ProviderCandidateFacts {
                     title: Some("Hidden Title".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
                     community_score_milli: None,
@@ -581,6 +630,7 @@ mod tests {
                 patch: AddonMetadataPatch::default(),
                 facts: ProviderCandidateFacts {
                     title: Some("The Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("ja-JP".to_owned()),
                     community_score_milli: None,
@@ -600,6 +650,7 @@ mod tests {
                 patch: AddonMetadataPatch::default(),
                 facts: ProviderCandidateFacts {
                     title: Some("The Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("ja-JP".to_owned()),
                     community_score_milli: Some(880),

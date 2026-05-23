@@ -525,6 +525,7 @@ mod tests {
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(self.title.to_owned()),
+                    alternate_titles: Vec::new(),
                     release_year: self.year,
                     language: Some(query.language.clone()),
                     community_score_milli: None,
@@ -590,6 +591,7 @@ mod tests {
                     patch: AddonMetadataPatch::default(),
                     facts: ProviderCandidateFacts {
                         title: Some(format!("Candidate {index}")),
+                        alternate_titles: Vec::new(),
                         release_year: Some(2000 + index as i32),
                         language: Some("en-US".to_owned()),
                         community_score_milli: None,

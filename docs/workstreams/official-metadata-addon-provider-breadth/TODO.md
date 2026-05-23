@@ -22,12 +22,12 @@ Last updated: 2026-05-23
 
 ## M2 — Alias And Localization Proof
 
-- [ ] OMPB-030 [owner=codex] [deps=OMPB-020] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/bangumi.rs]
+- [x] OMPB-030 [owner=codex] [deps=OMPB-020] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/bangumi.rs]
   Goal: Deepen provider-local alias and localized title coverage so TMDB and Bangumi candidates keep matching when the surface title is not the best search key.
   Validation: cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking --no-fail-fast
   Review: review-workstream for workstream compliance and code quality.
   Evidence: crates/nako-metadata-scraper/src/engine/ranking.rs
-  Handoff: Split any broader provider breadth into a follow-on if needed.
+  Handoff: Completed on 2026-05-23. Ranking now consumes provider alternate title facts; TMDB maps alternative titles and Bangumi maps localized names plus title-like infobox aliases.
 
 ## M3 — Closeout
 

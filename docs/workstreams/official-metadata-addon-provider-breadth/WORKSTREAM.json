@@ -7,10 +7,11 @@
   "scope_kind": "execution",
   "problem": "TMDB and Bangumi still leave match quality and artwork selection depth on the table for localized libraries.",
   "task_prefix": "OMPB",
-  "current_task": "OMPB-030",
+  "current_task": "OMPB-040",
   "completed_tasks": [
     "OMPB-010",
-    "OMPB-020"
+    "OMPB-020",
+    "OMPB-030"
   ],
   "authoritative_docs": [
     {

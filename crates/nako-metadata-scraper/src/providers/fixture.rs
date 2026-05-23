@@ -46,6 +46,7 @@ impl MetadataProvider for FixtureProvider {
             },
             facts: ProviderCandidateFacts {
                 title: Some(query.title.clone()),
+                alternate_titles: Vec::new(),
                 release_year: query.year,
                 language: Some(query.language.clone()),
                 community_score_milli: None,

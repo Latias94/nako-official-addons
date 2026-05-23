@@ -213,6 +213,7 @@ impl DoubanDetailFacts {
             },
             facts: ProviderCandidateFacts {
                 title: Some(self.title),
+                alternate_titles: Vec::new(),
                 release_year: self.release_year,
                 language: Some(query.language.clone()),
                 community_score_milli: self.rating_milli,

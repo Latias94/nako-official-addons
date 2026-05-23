@@ -129,11 +129,13 @@ where
         let movie_id = result.id;
         let detail = self.fetch_movie_detail(movie_id).await?;
         let external_ids = self.fetch_movie_external_ids(movie_id).await?;
+        let alternative_titles = self.fetch_movie_alternative_titles(movie_id).await?;
 
         Ok(TmdbMovieCandidate {
             search: result,
             detail,
             external_ids,
+            alternative_titles,
         }
         .into_candidate(query))
     }
@@ -169,6 +171,24 @@ where
             .await?;
 
         TmdbMovieExternalIds::from_value(response.body)
+    }
+
+    async fn fetch_movie_alternative_titles(
+        &self,
+        movie_id: u64,
+    ) -> anyhow::Result<TmdbMovieAlternativeTitles> {
+        let response = self
+            .runtime
+            .get_json(
+                TMDB_PROVIDER_ID,
+                "movie alternative titles",
+                self.endpoint(format!("movie/{movie_id}/alternative_titles")),
+                Vec::new(),
+                self.bearer_headers(),
+            )
+            .await?;
+
+        TmdbMovieAlternativeTitles::from_value(response.body)
     }
 }
 
@@ -259,10 +279,30 @@ impl TmdbMovieExternalIds {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct TmdbMovieAlternativeTitles {
+    #[serde(default)]
+    titles: Vec<TmdbAlternativeTitle>,
+}
+
+impl TmdbMovieAlternativeTitles {
+    fn from_value(value: serde_json::Value) -> anyhow::Result<Self> {
+        serde_json::from_value(value).map_err(|error| {
+            anyhow::anyhow!("failed to parse TMDB movie alternative titles response: {error}")
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct TmdbAlternativeTitle {
+    title: Option<String>,
+}
+
 struct TmdbMovieCandidate {
     search: TmdbMovieSearchResult,
     detail: TmdbMovieDetail,
     external_ids: TmdbMovieExternalIds,
+    alternative_titles: TmdbMovieAlternativeTitles,
 }
 
 impl TmdbMovieCandidate {
@@ -299,6 +339,17 @@ impl TmdbMovieCandidate {
         let vote_average = self.detail.vote_average.or(self.search.vote_average);
         let vote_count = self.detail.vote_count.or(self.search.vote_count);
         let external_ids = self.external_ids.into_external_ids(self.detail.id);
+        let alternate_titles = tmdb_alternate_titles(
+            &title,
+            [
+                original_title.as_deref(),
+                self.detail.title.as_deref(),
+                self.search.title.as_deref(),
+                self.detail.original_title.as_deref(),
+                self.search.original_title.as_deref(),
+            ],
+            self.alternative_titles,
+        );
         let mut tags = vec!["tmdb".to_owned()];
         if let Some(vote_average) = vote_average {
             tags.push(format!("tmdb_vote_average:{vote_average:.1}"));
@@ -340,6 +391,7 @@ impl TmdbMovieCandidate {
             },
             facts: ProviderCandidateFacts {
                 title: Some(title),
+                alternate_titles,
                 release_year: release_year.map(i32::from),
                 language: self
                     .detail
@@ -369,6 +421,33 @@ fn first_non_empty(values: &[Option<&str>]) -> Option<String> {
 
 fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.trim().is_empty())
+}
+
+fn tmdb_alternate_titles<const N: usize>(
+    selected_title: &str,
+    known_titles: [Option<&str>; N],
+    alternative_titles: TmdbMovieAlternativeTitles,
+) -> Vec<String> {
+    let mut titles = Vec::new();
+    for title in known_titles.into_iter().flatten() {
+        push_unique_title(&mut titles, selected_title, title);
+    }
+    for title in alternative_titles
+        .titles
+        .into_iter()
+        .filter_map(|title| title.title)
+    {
+        push_unique_title(&mut titles, selected_title, &title);
+    }
+    titles
+}
+
+fn push_unique_title(values: &mut Vec<String>, selected_title: &str, title: &str) {
+    let title = title.trim();
+    if title.is_empty() || title == selected_title || values.iter().any(|value| value == title) {
+        return;
+    }
+    values.push(title.to_owned());
 }
 
 fn tmdb_artwork_candidate(
@@ -499,6 +578,18 @@ mod tests {
             }"#
             .to_vec(),
         }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "id": 603,
+                "titles": [
+                    {"iso_3166_1": "CN", "title": "黑客帝国", "type": "localized"},
+                    {"iso_3166_1": "US", "title": "The Matrix", "type": "original"}
+                ]
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
                 retry_backoff_ms: 0,
@@ -541,6 +632,13 @@ mod tests {
             Some("Welcome to the Real World.")
         );
         assert_eq!(candidates[0].facts.title.as_deref(), Some("The Matrix"));
+        assert!(
+            candidates[0]
+                .facts
+                .alternate_titles
+                .iter()
+                .any(|title| title == "黑客帝国")
+        );
         assert_eq!(candidates[0].facts.release_year, Some(1999));
         assert_eq!(candidates[0].facts.community_score_milli, Some(870));
         assert_eq!(candidates[0].facts.community_vote_count, Some(23456));
@@ -594,6 +692,10 @@ mod tests {
         assert_eq!(
             requests[2].url,
             "https://tmdb.example/3/movie/603/external_ids"
+        );
+        assert_eq!(
+            requests[3].url,
+            "https://tmdb.example/3/movie/603/alternative_titles"
         );
         assert!(transport.configs()[0].proxy_url.is_none());
     }
