@@ -191,6 +191,7 @@ struct TmdbMovieSearchResult {
     #[serde(default)]
     genre_ids: Vec<u64>,
     vote_average: Option<f64>,
+    vote_count: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -208,6 +209,7 @@ struct TmdbMovieDetail {
     #[serde(default)]
     genres: Vec<TmdbGenre>,
     vote_average: Option<f64>,
+    vote_count: Option<u32>,
 }
 
 impl TmdbMovieDetail {
@@ -291,10 +293,14 @@ impl TmdbMovieCandidate {
             .filter(|genres: &Vec<String>| !genres.is_empty())
         });
         let vote_average = self.detail.vote_average.or(self.search.vote_average);
+        let vote_count = self.detail.vote_count.or(self.search.vote_count);
         let external_ids = self.external_ids.into_external_ids(self.detail.id);
         let mut tags = vec!["tmdb".to_owned()];
         if let Some(vote_average) = vote_average {
             tags.push(format!("tmdb_vote_average:{vote_average:.1}"));
+        }
+        if let Some(vote_count) = vote_count {
+            tags.push(format!("tmdb_vote_count:{vote_count}"));
         }
         if let Some(poster_path) = non_empty(self.detail.poster_path) {
             tags.push(format!("tmdb_poster_path:{poster_path}"));
@@ -324,6 +330,9 @@ impl TmdbMovieCandidate {
                     .detail
                     .original_language
                     .or_else(|| Some(query.language.clone())),
+                community_score_milli: vote_average
+                    .map(|value| (value * 100.0).round().clamp(0.0, 1000.0) as u16),
+                community_vote_count: vote_count,
                 external_ids,
                 provider_note: Some(
                     "TMDB movie candidate enriched with search, detail, and external ID responses."
@@ -411,7 +420,8 @@ mod tests {
                     "overview": "A synthetic test overview.",
                     "release_date": "1999-03-31",
                     "genre_ids": [28, 878],
-                    "vote_average": 8.2
+                    "vote_average": 8.2,
+                    "vote_count": 12345
                 }]
             }"#
             .to_vec(),
@@ -433,7 +443,8 @@ mod tests {
                     {"id": 28, "name": "Action"},
                     {"id": 878, "name": "Science Fiction"}
                 ],
-                "vote_average": 8.7
+                "vote_average": 8.7,
+                "vote_count": 23456
             }"#
             .to_vec(),
         }));
@@ -487,6 +498,8 @@ mod tests {
         );
         assert_eq!(candidates[0].facts.title.as_deref(), Some("The Matrix"));
         assert_eq!(candidates[0].facts.release_year, Some(1999));
+        assert_eq!(candidates[0].facts.community_score_milli, Some(870));
+        assert_eq!(candidates[0].facts.community_vote_count, Some(23456));
         assert_eq!(
             candidates[0].patch.genres.as_ref().unwrap(),
             &vec!["Action".to_owned(), "Science Fiction".to_owned()]

@@ -308,6 +308,12 @@ impl BangumiSubjectCandidate {
                 title: title.or(original_title).or(localized_title),
                 release_year: release_year.map(i32::from),
                 language: title_language,
+                community_score_milli: rating.as_ref().and_then(|rating| {
+                    rating
+                        .score
+                        .map(|score| (score * 100.0).round().clamp(0.0, 1000.0) as u16)
+                }),
+                community_vote_count: rating.as_ref().and_then(|rating| rating.total),
                 external_ids: vec![ProviderExternalId {
                     provider: BANGUMI_PROVIDER_ID.to_owned(),
                     value: subject_id.to_string(),
@@ -528,6 +534,8 @@ mod tests {
         assert_eq!(candidates[0].facts.title.as_deref(), Some("新世纪福音战士"));
         assert_eq!(candidates[0].facts.release_year, Some(1995));
         assert_eq!(candidates[0].facts.language.as_deref(), Some("zh-CN"));
+        assert_eq!(candidates[0].facts.community_score_milli, Some(880));
+        assert_eq!(candidates[0].facts.community_vote_count, Some(12000));
         assert_eq!(candidates[0].facts.external_ids[0].provider, "bangumi");
         assert_eq!(candidates[0].facts.external_ids[0].value, "265");
 

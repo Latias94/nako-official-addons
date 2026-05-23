@@ -48,6 +48,8 @@ impl MetadataProvider for FixtureProvider {
                 title: Some(query.title.clone()),
                 release_year: query.year,
                 language: Some(query.language.clone()),
+                community_score_milli: None,
+                community_vote_count: None,
                 external_ids: Vec::new(),
                 provider_note: Some(
                     "Fixture provider echoes normalized title for smoke testing.".to_owned(),

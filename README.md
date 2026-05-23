@@ -13,6 +13,10 @@ keeping provider implementations modular inside the codebase:
 - users install `nako-metadata-scraper` once;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB and Bangumi baselines behind the same provider seam;
+- runtime candidate shaping deduplicates exact duplicate provider candidates,
+  caps the final result set, and uses shared TMDB/Bangumi community score and
+  vote-count signals as a small generic ranking bonus without changing the
+  protocol contract;
 - future Douban, artwork, subtitle, or local rule providers should be added as
   internal adapters behind the shared configuration, registry, and runtime
   seams;

@@ -116,6 +116,10 @@ authenticated visibility. The baseline maps subject title/original title,
 summary, release date, platform, subject type, episode counts, ratings, tags,
 image URLs, and the Bangumi subject ID into provider-neutral facts.
 
+The runtime then deduplicates exact duplicate candidates, caps the final list,
+and applies a small generic bonus from the shared community score/vote-count
+facts exposed by TMDB and Bangumi. The protocol envelope does not change.
+
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. Douban and any Playwright/crawler runtime are
 explicitly deferred to a separate design lane.

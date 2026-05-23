@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-result-quality",
+  "title": "Official Metadata Addon Result Quality",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The published addon works, but candidate quality can still be improved through runtime dedupe/capping, ranking polish, and provider signal refinement.",
+  "task_prefix": "OMRQ",
+  "current_task": null,
+  "completed_tasks": [
+    "OMRQ-010",
+    "OMRQ-020",
+    "OMRQ-030",
+    "OMRQ-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-result-quality/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-result-quality/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-result-quality/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-result-quality/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-result-quality/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/engine",
+    "crates/nako-metadata-scraper/src/providers"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "Workstream closed. Recommended follow-ons: live Nako Admin-mediated smoke evidence, TMDB provider breadth, Bangumi/Douban adapters, artwork/subtitle lanes, rename planning, and bulk scrape/scoring hardening."
+  }
+}

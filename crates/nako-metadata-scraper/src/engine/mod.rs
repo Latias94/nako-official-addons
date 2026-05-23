@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonArtifact, AddonResourceRequest, AddonResourceResponse,
@@ -8,6 +8,8 @@ use serde::Deserialize;
 use crate::providers::MetadataProvider;
 
 pub mod ranking;
+
+const MAX_CANDIDATES_PER_QUERY: usize = 12;
 
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
@@ -80,6 +82,13 @@ impl MetadataScrapeRuntime {
                 .then_with(|| left.provider.cmp(&right.provider))
                 .then_with(|| left.provider_id.cmp(&right.provider_id))
         });
+        let mut seen = HashSet::new();
+        candidates.retain(|candidate| {
+            seen.insert((candidate.provider.clone(), candidate.provider_id.clone()))
+        });
+        if candidates.len() > MAX_CANDIDATES_PER_QUERY {
+            candidates.truncate(MAX_CANDIDATES_PER_QUERY);
+        }
         candidates
     }
 }
@@ -208,6 +217,8 @@ mod tests {
                     title: Some(self.title.to_owned()),
                     release_year: self.year,
                     language: Some(query.language.clone()),
+                    community_score_milli: None,
+                    community_vote_count: None,
                     external_ids: Vec::new(),
                     provider_note: Some("test candidate".to_owned()),
                 },
@@ -216,6 +227,10 @@ mod tests {
     }
 
     struct FailingProvider;
+
+    struct DuplicateProvider {
+        candidate_count: usize,
+    }
 
     #[async_trait]
     impl MetadataProvider for FailingProvider {
@@ -228,6 +243,43 @@ mod tests {
             _query: &MetadataQuery,
         ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
             anyhow::bail!("synthetic provider failure")
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for DuplicateProvider {
+        fn id(&self) -> ProviderId {
+            ProviderId::Fixture
+        }
+
+        async fn suggest(
+            &self,
+            _query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            let mut candidates = Vec::new();
+            for index in 0..self.candidate_count {
+                let provider_id = if index < 2 {
+                    "fixture:duplicate".to_owned()
+                } else {
+                    format!("fixture:{index}")
+                };
+                candidates.push(ProviderMetadataCandidate {
+                    provider: self.id().as_str().to_owned(),
+                    provider_id,
+                    patch: AddonMetadataPatch::default(),
+                    facts: ProviderCandidateFacts {
+                        title: Some(format!("Candidate {index}")),
+                        release_year: Some(2000 + index as i32),
+                        language: Some("en-US".to_owned()),
+                        community_score_milli: None,
+                        community_vote_count: None,
+                        external_ids: Vec::new(),
+                        provider_note: None,
+                    },
+                });
+            }
+
+            Ok(candidates)
         }
     }
 
@@ -297,6 +349,35 @@ mod tests {
         assert_eq!(candidates.len(), 2);
         assert_eq!(candidates[0]["provider_id"], "fixture:high");
         assert_eq!(candidates[1]["provider_id"], "fixture:low");
+    }
+
+    #[tokio::test]
+    async fn ranking_evidence_runtime_deduplicates_and_caps_candidates() {
+        let runtime = MetadataScrapeRuntime::new(
+            "en-US",
+            vec![Box::new(DuplicateProvider {
+                candidate_count: 14,
+            })],
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"title": "Movie"}),
+            })
+            .await;
+
+        let candidates = response.payload["candidates"].as_array().unwrap();
+        assert_eq!(candidates.len(), MAX_CANDIDATES_PER_QUERY);
+
+        let mut provider_ids = HashSet::new();
+        for candidate in candidates {
+            let provider_id = candidate["provider_id"].as_str().unwrap().to_owned();
+            assert!(provider_ids.insert(provider_id));
+        }
     }
 
     #[test]

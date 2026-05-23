@@ -16,6 +16,8 @@ pub struct ProviderCandidateFacts {
     pub title: Option<String>,
     pub release_year: Option<i32>,
     pub language: Option<String>,
+    pub community_score_milli: Option<u16>,
+    pub community_vote_count: Option<u32>,
     pub external_ids: Vec<ProviderExternalId>,
     pub provider_note: Option<String>,
 }
@@ -117,6 +119,13 @@ pub fn rank_candidate(
         language_match(query.language.as_str(), candidate.facts.language.as_deref());
     push_reason(&mut reasons, language_reason(language_match));
     score += language_delta(language_match);
+
+    let community_score = community_score(
+        candidate.facts.community_score_milli,
+        candidate.facts.community_vote_count,
+    );
+    push_reason(&mut reasons, community_score_reason(community_score));
+    score += community_score;
 
     MetadataCandidate {
         provider: candidate.provider,
@@ -305,6 +314,36 @@ fn language_reason(value: LanguageMatchEvidence) -> Option<CandidateScoreReason>
     }
 }
 
+fn community_score(score_milli: Option<u16>, vote_count: Option<u32>) -> i16 {
+    let Some(score_milli) = score_milli else {
+        return 0;
+    };
+    let Some(vote_count) = vote_count else {
+        return 0;
+    };
+    if vote_count < 25 {
+        return 0;
+    }
+
+    let score_bonus = ((score_milli.saturating_sub(650)) / 25).min(10) as i16;
+    let count_bonus = match vote_count {
+        0..=99 => 0,
+        100..=999 => 2,
+        1000..=9999 => 4,
+        _ => 6,
+    };
+
+    score_bonus + count_bonus
+}
+
+fn community_score_reason(delta_milli: i16) -> Option<CandidateScoreReason> {
+    (delta_milli > 0).then_some(CandidateScoreReason {
+        kind: "community_score",
+        outcome: "boost",
+        delta_milli,
+    })
+}
+
 fn normalize_title(value: &str) -> String {
     value
         .chars()
@@ -342,6 +381,8 @@ mod tests {
                     title: Some("The Matrix".to_owned()),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
                         provider: "tmdb".to_owned(),
                         value: "603".to_owned(),
@@ -384,6 +425,8 @@ mod tests {
                     title: Some("Other Movie".to_owned()),
                     release_year: Some(2001),
                     language: Some("ja-JP".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
                         provider: "tmdb".to_owned(),
                         value: "1".to_owned(),
@@ -426,6 +469,8 @@ mod tests {
                     title: Some("Hidden Title".to_owned()),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
                         provider: "tmdb".to_owned(),
                         value: "secret-external-id".to_owned(),
@@ -441,5 +486,60 @@ mod tests {
         assert!(!text.contains("secret-external-id"));
         assert!(!text.contains("Bearer"));
         assert!(text.contains("external_id"));
+    }
+
+    #[test]
+    fn ranking_evidence_rewards_community_score_bonus() {
+        let query = MetadataQuery {
+            title: "The Matrix".to_owned(),
+            year: None,
+            language: "en-US".to_owned(),
+            external_ids: Vec::new(),
+        };
+
+        let baseline = rank_candidate(
+            &query,
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:baseline".to_owned(),
+                patch: AddonMetadataPatch::default(),
+                facts: ProviderCandidateFacts {
+                    title: Some("The Matrix".to_owned()),
+                    release_year: None,
+                    language: Some("ja-JP".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+            },
+        );
+
+        let boosted = rank_candidate(
+            &query,
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:boosted".to_owned(),
+                patch: AddonMetadataPatch::default(),
+                facts: ProviderCandidateFacts {
+                    title: Some("The Matrix".to_owned()),
+                    release_year: None,
+                    language: Some("ja-JP".to_owned()),
+                    community_score_milli: Some(880),
+                    community_vote_count: Some(12_000),
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+            },
+        );
+
+        assert!(boosted.confidence_milli > baseline.confidence_milli);
+        assert!(
+            boosted
+                .evidence
+                .score_reasons
+                .iter()
+                .any(|reason| reason.kind == "community_score")
+        );
     }
 }

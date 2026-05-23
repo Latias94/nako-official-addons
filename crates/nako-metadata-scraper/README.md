@@ -16,6 +16,10 @@ Current alpha provider defaults:
 - `bangumi`: disabled by default; public subject search works without a token
   and requires a compliant User-Agent.
 
+Runtime candidate shaping deduplicates exact duplicate provider candidates,
+caps the final result set, and uses shared community score/vote-count facts
+from TMDB and Bangumi as a small generic ranking bonus.
+
 Version `0.1.0-alpha.1` targets Nako Addon Protocol `0.1.0-alpha.1` and
 `nako-addon-protocol` Rust crate `0.1.0-alpha.1`.
 
