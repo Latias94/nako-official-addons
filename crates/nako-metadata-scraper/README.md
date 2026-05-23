@@ -13,8 +13,10 @@ Current alpha provider defaults:
 
 - `fixture`: enabled by default for smoke tests.
 - `tmdb`: disabled by default; requires a TMDB read access token when enabled.
+  It also accepts `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` for proxied access.
 - `bangumi`: disabled by default; public subject search works without a token
-  and requires a compliant User-Agent.
+  and requires a compliant User-Agent. It also accepts
+  `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` for proxied access.
 - `browser_worker`: disabled by default; uses the companion browser worker for
   rendered-page extraction when an external browser-worker URL is supplied.
 - `douban`: disabled by default; calls the companion browser worker for rendered
@@ -23,6 +25,9 @@ Current alpha provider defaults:
 Runtime candidate shaping deduplicates exact duplicate provider candidates,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
+
+The `/health` diagnostics report whether TMDB and Bangumi proxy policy is
+configured without exposing the proxy URL itself.
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side

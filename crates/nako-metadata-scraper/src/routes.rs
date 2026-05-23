@@ -12,6 +12,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::{
     Config,
+    config::ProviderId,
     engine::MetadataScrapeRuntime,
     manifest::{ADDON_ID, ADDON_VERSION, addon_manifest},
     nako_runtime::NakoRuntimeClient,
@@ -80,7 +81,11 @@ async fn health(
             "providers": state.provider_diagnostics.supported,
             "enabled_providers": state.provider_diagnostics.enabled,
             "disabled_providers": state.provider_diagnostics.disabled,
-            "unavailable_providers": state.provider_diagnostics.unavailable
+            "unavailable_providers": state.provider_diagnostics.unavailable,
+            "network_policy": {
+                "tmdb_proxy_configured": state.config.provider_proxy_configured(ProviderId::Tmdb),
+                "bangumi_proxy_configured": state.config.provider_proxy_configured(ProviderId::Bangumi)
+            }
         }),
     })
 }
@@ -101,6 +106,10 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         .map(|provider| provider.id)
         .collect::<Vec<_>>();
     let supported_providers = provider_list_label(&supported_provider_ids);
+    let tmdb_proxy_configured =
+        yes_no_label(state.config.provider_proxy_configured(ProviderId::Tmdb));
+    let bangumi_proxy_configured =
+        yes_no_label(state.config.provider_proxy_configured(ProviderId::Bangumi));
     Html(format!(
         r#"<!doctype html>
 <html lang="en">
@@ -110,6 +119,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Base URL: {}</p>
   <p>Supported providers: {supported_providers}</p>
   <p>Enabled providers: {enabled_providers}</p>
+  <p>TMDB proxy configured: {tmdb_proxy_configured}</p>
+  <p>Bangumi proxy configured: {bangumi_proxy_configured}</p>
   <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
 </body>
 </html>"#,
@@ -123,6 +134,10 @@ fn provider_list_label(providers: &[&str]) -> String {
     } else {
         providers.join(", ")
     }
+}
+
+const fn yes_no_label(value: bool) -> &'static str {
+    if value { "yes" } else { "no" }
 }
 
 #[cfg(test)]
@@ -291,5 +306,61 @@ mod tests {
             payload.diagnostics["unavailable_providers"],
             serde_json::json!([])
         );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["tmdb_proxy_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["bangumi_proxy_configured"],
+            false
+        );
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_reports_proxy_policy_without_leaking_urls() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: 1,
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_TMDB_PROXY_URL" => {
+                Some("http://user:pass@proxy.example:8080".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL" => {
+                Some("http://proxy.example:8080".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            payload.diagnostics["network_policy"]["tmdb_proxy_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["bangumi_proxy_configured"],
+            true
+        );
+        let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
+        assert!(!diagnostics.contains("proxy.example"));
+        assert!(!diagnostics.contains("user:pass"));
     }
 }

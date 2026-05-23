@@ -384,6 +384,7 @@ mod tests {
                         api_base_url: "https://tmdb.example/3".to_owned(),
                         language: "en-US".to_owned(),
                         include_adult: false,
+                        proxy_url: None,
                     }),
                     bangumi: None,
                     browser_worker: None,

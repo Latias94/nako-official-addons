@@ -32,6 +32,7 @@ impl BangumiMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: BangumiProviderConfig) -> ProviderHttpResult<Self> {
         let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
             user_agent: config.user_agent.clone(),
+            proxy_url: config.proxy_url.clone(),
             ..ProviderHttpRuntimeConfig::default()
         })?;
         Ok(Self { config, runtime })
@@ -530,6 +531,7 @@ mod tests {
                 user_agent: "Latias94/test-addon/0.1.0".to_owned(),
                 include_nsfw: false,
                 subject_types: vec![2],
+                proxy_url: None,
             },
             runtime,
         );
@@ -598,6 +600,7 @@ mod tests {
         let requests = transport.requests();
         let configs = transport.configs();
         assert_eq!(configs[0].user_agent, "Latias94/test-addon/0.1.0");
+        assert!(configs[0].proxy_url.is_none());
         assert_eq!(requests[0].method, ProviderHttpMethod::Post);
         assert_eq!(
             requests[0].url,
@@ -625,6 +628,24 @@ mod tests {
         assert_eq!(body["filter"]["nsfw"], false);
         assert_eq!(requests[1].method, ProviderHttpMethod::Get);
         assert_eq!(requests[1].url, "https://bangumi.example/v0/subjects/265");
+    }
+
+    #[tokio::test]
+    async fn bangumi_provider_new_uses_proxy_url_from_config() {
+        let provider = BangumiMetadataProvider::new(BangumiProviderConfig {
+            access_token: Some("bangumi-token".to_owned()),
+            api_base_url: "https://bangumi.example".to_owned(),
+            user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+            include_nsfw: false,
+            subject_types: vec![2],
+            proxy_url: Some("http://proxy.example:8080".to_owned()),
+        })
+        .unwrap();
+
+        assert_eq!(
+            provider.runtime.config().proxy_url.as_deref(),
+            Some("http://proxy.example:8080")
+        );
     }
 
     #[derive(Clone, Default)]

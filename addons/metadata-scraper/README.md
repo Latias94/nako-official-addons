@@ -194,6 +194,8 @@ Today that means fixture by default and optional TMDB movie metadata when
 `NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` is configured. TMDB currently
 uses movie search plus bounded detail and external-ID enrichment for runtime,
 tagline, genres, selected IDs, and typed poster/backdrop artwork candidates.
+Set `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` when TMDB traffic must use an
+operator-managed proxy.
 
 Bangumi metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED=true`. Public subject search
@@ -204,6 +206,12 @@ authenticated visibility. The baseline maps subject title/original title,
 summary, release date, platform, subject type, episode counts, ratings, tags,
 typed poster artwork candidates, and the Bangumi subject ID into
 provider-neutral facts.
+Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
+operator-managed proxy.
+
+The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB and
+Bangumi proxy policy is configured. They intentionally expose only boolean
+policy state, not proxy URLs or credentials.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker

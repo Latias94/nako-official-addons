@@ -31,7 +31,10 @@ where
 
 impl TmdbMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: TmdbProviderConfig) -> ProviderHttpResult<Self> {
-        let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig::default())?;
+        let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
+            proxy_url: config.proxy_url.clone(),
+            ..ProviderHttpRuntimeConfig::default()
+        })?;
         Ok(Self { config, runtime })
     }
 }
@@ -442,7 +445,7 @@ mod tests {
     };
 
     use crate::providers::http_runtime::{
-        ProviderHttpRequest, ProviderHttpResponse, ProviderHttpRuntimeConfig,
+        ProviderHttpRequest, ProviderHttpResponse, ProviderHttpRuntimeConfig, ProviderHttpTransport,
     };
 
     use super::*;
@@ -509,6 +512,7 @@ mod tests {
                 api_base_url: "https://tmdb.example/3".to_owned(),
                 language: "en-US".to_owned(),
                 include_adult: false,
+                proxy_url: None,
             },
             runtime,
         );
@@ -591,12 +595,31 @@ mod tests {
             requests[2].url,
             "https://tmdb.example/3/movie/603/external_ids"
         );
+        assert!(transport.configs()[0].proxy_url.is_none());
+    }
+
+    #[tokio::test]
+    async fn tmdb_provider_new_uses_proxy_url_from_config() {
+        let provider = TmdbMetadataProvider::new(TmdbProviderConfig {
+            read_access_token: Some("tmdb-token".to_owned()),
+            api_base_url: "https://tmdb.example/3".to_owned(),
+            language: "en-US".to_owned(),
+            include_adult: false,
+            proxy_url: Some("http://proxy.example:8080".to_owned()),
+        })
+        .unwrap();
+
+        assert_eq!(
+            provider.runtime.config().proxy_url.as_deref(),
+            Some("http://proxy.example:8080")
+        );
     }
 
     #[derive(Clone, Default)]
     struct FakeTransport {
         responses: Arc<Mutex<VecDeque<ProviderHttpResult<ProviderHttpResponse>>>>,
         requests: Arc<Mutex<Vec<ProviderHttpRequest>>>,
+        configs: Arc<Mutex<Vec<ProviderHttpRuntimeConfig>>>,
     }
 
     impl FakeTransport {
@@ -607,6 +630,10 @@ mod tests {
         fn requests(&self) -> Vec<ProviderHttpRequest> {
             self.requests.lock().unwrap().clone()
         }
+
+        fn configs(&self) -> Vec<ProviderHttpRuntimeConfig> {
+            self.configs.lock().unwrap().clone()
+        }
     }
 
     #[async_trait]
@@ -614,9 +641,10 @@ mod tests {
         async fn send(
             &self,
             request: ProviderHttpRequest,
-            _config: ProviderHttpRuntimeConfig,
+            config: ProviderHttpRuntimeConfig,
         ) -> ProviderHttpResult<ProviderHttpResponse> {
             self.requests.lock().unwrap().push(request);
+            self.configs.lock().unwrap().push(config);
             self.responses
                 .lock()
                 .unwrap()

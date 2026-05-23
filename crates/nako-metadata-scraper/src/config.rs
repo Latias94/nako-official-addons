@@ -131,6 +131,7 @@ pub struct TmdbProviderConfig {
     pub api_base_url: String,
     pub language: String,
     pub include_adult: bool,
+    pub proxy_url: Option<String>,
 }
 
 impl TmdbProviderConfig {
@@ -146,6 +147,7 @@ impl TmdbProviderConfig {
             include_adult: lookup("NAKO_METADATA_SCRAPER_TMDB_INCLUDE_ADULT")
                 .and_then(|value| parse_bool(&value))
                 .unwrap_or(false),
+            proxy_url: lookup("NAKO_METADATA_SCRAPER_TMDB_PROXY_URL").and_then(non_empty_trimmed),
         }
     }
 
@@ -162,6 +164,7 @@ pub struct BangumiProviderConfig {
     pub user_agent: String,
     pub include_nsfw: bool,
     pub subject_types: Vec<u8>,
+    pub proxy_url: Option<String>,
 }
 
 impl BangumiProviderConfig {
@@ -181,6 +184,8 @@ impl BangumiProviderConfig {
             subject_types: lookup("NAKO_METADATA_SCRAPER_BANGUMI_SUBJECT_TYPES")
                 .and_then(|value| parse_bangumi_subject_types(&value))
                 .unwrap_or_else(|| vec![2]),
+            proxy_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL")
+                .and_then(non_empty_trimmed),
         }
     }
 
@@ -318,6 +323,27 @@ impl Config {
             .iter()
             .find(|provider| provider.id == provider_id)
     }
+
+    #[must_use]
+    pub fn provider_proxy_configured(&self, provider_id: ProviderId) -> bool {
+        let Some(provider) = self.provider_config(provider_id) else {
+            return false;
+        };
+
+        match provider_id {
+            ProviderId::Tmdb => provider
+                .tmdb
+                .as_ref()
+                .and_then(|config| config.proxy_url.as_ref())
+                .is_some(),
+            ProviderId::Bangumi => provider
+                .bangumi
+                .as_ref()
+                .and_then(|config| config.proxy_url.as_ref())
+                .is_some(),
+            ProviderId::Fixture | ProviderId::BrowserWorker | ProviderId::Douban => false,
+        }
+    }
 }
 
 impl Default for Config {
@@ -389,12 +415,21 @@ mod tests {
             config.providers[1].tmdb.as_ref().unwrap().api_base_url,
             "https://api.themoviedb.org/3"
         );
+        assert!(
+            config.providers[1]
+                .tmdb
+                .as_ref()
+                .unwrap()
+                .proxy_url
+                .is_none()
+        );
         assert_eq!(config.providers[2].id, ProviderId::Bangumi);
         assert!(!config.providers[2].enabled);
         let bangumi = config.providers[2].bangumi.as_ref().unwrap();
         assert_eq!(bangumi.api_base_url, "https://api.bgm.tv");
         assert_eq!(bangumi.subject_types, vec![2]);
         assert!(!bangumi.include_nsfw);
+        assert!(bangumi.proxy_url.is_none());
         assert_eq!(config.providers[3].id, ProviderId::BrowserWorker);
         assert!(!config.providers[3].enabled);
         let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
@@ -419,6 +454,8 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Bangumi));
         assert!(!config.provider_enabled(ProviderId::BrowserWorker));
         assert!(!config.provider_enabled(ProviderId::Douban));
+        assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
+        assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
     }
 
     #[test]
@@ -440,6 +477,9 @@ mod tests {
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_INCLUDE_ADULT" => Some("yes".to_owned()),
+            "NAKO_METADATA_SCRAPER_TMDB_PROXY_URL" => {
+                Some(" http://proxy.example:8080 ".to_owned())
+            }
             "NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN" => Some("bangumi-token".to_owned()),
             "NAKO_METADATA_SCRAPER_BANGUMI_API_BASE_URL" => {
                 Some("https://bangumi.example".to_owned())
@@ -449,6 +489,9 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BANGUMI_INCLUDE_NSFW" => Some("yes".to_owned()),
             "NAKO_METADATA_SCRAPER_BANGUMI_SUBJECT_TYPES" => Some("2,6".to_owned()),
+            "NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL" => {
+                Some(" http://proxy.example:8080 ".to_owned())
+            }
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL" => {
                 Some("http://browser-worker.example:3000".to_owned())
             }
@@ -487,12 +530,19 @@ mod tests {
         assert_eq!(tmdb.api_base_url, "https://tmdb.example/3");
         assert_eq!(tmdb.language, "ja-JP");
         assert!(tmdb.include_adult);
+        assert_eq!(tmdb.proxy_url.as_deref(), Some("http://proxy.example:8080"));
         let bangumi = config.providers[2].bangumi.as_ref().unwrap();
         assert_eq!(bangumi.access_token.as_deref(), Some("bangumi-token"));
         assert_eq!(bangumi.api_base_url, "https://bangumi.example");
         assert_eq!(bangumi.user_agent, "Latias94/test-addon/0.1.0");
         assert!(bangumi.include_nsfw);
         assert_eq!(bangumi.subject_types, vec![2, 6]);
+        assert_eq!(
+            bangumi.proxy_url.as_deref(),
+            Some("http://proxy.example:8080")
+        );
+        assert!(config.provider_proxy_configured(ProviderId::Tmdb));
+        assert!(config.provider_proxy_configured(ProviderId::Bangumi));
         assert!(config.provider_enabled(ProviderId::BrowserWorker));
         let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
         assert_eq!(
