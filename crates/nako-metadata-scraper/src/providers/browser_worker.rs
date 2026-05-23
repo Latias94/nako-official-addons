@@ -122,8 +122,7 @@ struct BrowserWorkerExtractRequest {
 struct BrowserWorkerExtractResponse {
     #[serde(default)]
     status: Option<String>,
-    #[serde(rename = "url")]
-    _url: String,
+    url: Option<String>,
     title: Option<String>,
     rendered_text: Option<String>,
     excerpt: Option<String>,
@@ -137,6 +136,10 @@ impl BrowserWorkerExtractResponse {
     }
 
     fn into_candidate(self, query: &MetadataQuery, source_url: &str) -> ProviderMetadataCandidate {
+        let rendered_url = self
+            .url
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| source_url.to_owned());
         let title = self
             .title
             .filter(|value| !value.trim().is_empty())
@@ -172,7 +175,7 @@ impl BrowserWorkerExtractResponse {
                 community_vote_count: None,
                 external_ids: vec![ProviderExternalId {
                     provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
-                    value: source_url.to_owned(),
+                    value: rendered_url,
                 }],
                 provider_note: Some(
                     "Browser worker rendered a page and returned normalized text.".to_owned(),
@@ -209,7 +212,7 @@ mod tests {
             status: 200,
             body: serde_json::json!({
                 "status": "ok",
-                "url": "http://browser-worker.example/extract",
+                "url": "http://browser-worker.example/final-page",
                 "title": "Rendered Fixture",
                 "rendered_text": "Browser worker fixture rendered by JavaScript",
                 "excerpt": "Browser worker fixture rendered by JavaScript"
@@ -262,7 +265,7 @@ mod tests {
         );
         assert_eq!(
             candidates[0].facts.external_ids[0].value,
-            "http://fixture.example/page"
+            "http://browser-worker.example/final-page"
         );
 
         let requests = transport.requests();

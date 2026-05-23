@@ -5,6 +5,8 @@ Last updated: 2026-05-23
 
 ## M0 - Scope And Evidence Freeze
 
+Status: Done on 2026-05-23.
+
 Exit criteria:
 
 - Problem and target state are explicit.
@@ -19,6 +21,8 @@ Primary evidence:
 
 ## M1 - Browser Worker First Proof
 
+Status: Done on 2026-05-23.
+
 Exit criteria:
 
 - The worker service exists.
@@ -28,8 +32,12 @@ Exit criteria:
 Primary gates:
 
 - worker-specific smoke command
+- `npm test`
+- `npm run smoke`
 
 ## M2 - Metadata Scraper Integration
+
+Status: Done on 2026-05-23.
 
 Exit criteria:
 
@@ -43,6 +51,8 @@ Primary gates:
 - `docker compose -f addons/metadata-scraper/compose.example.yml config`
 
 ## M3 - Douban Browser-Backed Baseline
+
+Status: Pending.
 
 Exit criteria:
 

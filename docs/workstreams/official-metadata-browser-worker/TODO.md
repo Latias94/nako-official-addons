@@ -7,29 +7,29 @@ Task IDs use the `OMBW` prefix.
 
 ## M0 - Scope And Evidence Freeze
 
-- [ ] OMBW-010 [owner=planner] [deps=none] [scope=docs/workstreams/official-metadata-browser-worker]
+- [x] OMBW-010 [owner=planner] [deps=none] [scope=docs/workstreams/official-metadata-browser-worker]
   Goal: Freeze the browser worker lane, its public/private boundary, and the first proof target.
   Validation: DESIGN.md, MILESTONES.md, EVIDENCE_AND_GATES.md, WORKSTREAM.json, HANDOFF.md exist and agree.
   Evidence: `docs/workstreams/official-metadata-browser-worker/DESIGN.md`
-  Handoff: Planner owns this before implementation starts.
+  Handoff: DONE on 2026-05-23. Lane target state and public/private boundary are captured in DESIGN.md.
 
 ## M1 - Browser Worker First Proof
 
-- [ ] OMBW-020 [owner=unassigned] [deps=OMBW-010] [scope=addons/browser-worker]
+- [x] OMBW-020 [owner=codex] [deps=OMBW-010] [scope=addons/browser-worker]
   Goal: Scaffold the browser worker service with a health endpoint and a deterministic local rendered-page extraction proof.
   Validation: worker-specific smoke command and local fixture extraction test.
   Review: `review-workstream` before accepting completion.
   Evidence: worker service files, fixture test, smoke notes.
-  Handoff: Keep the proof isolated from Douban until the worker contract is stable.
+  Handoff: DONE on 2026-05-23. `npm test` and `npm run smoke` prove the local fixture text is changed by JavaScript before extraction.
 
 ## M2 - Metadata Scraper Integration
 
-- [ ] OMBW-030 [owner=unassigned] [deps=OMBW-020] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/compose.example.yml,addons/metadata-scraper/README.md]
+- [x] OMBW-030 [owner=codex] [deps=OMBW-020] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/compose.example.yml,addons/metadata-scraper/README.md]
   Goal: Add a browser-worker client adapter and wire the compose topology so the metadata scraper can call the worker.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `docker compose -f addons/metadata-scraper/compose.example.yml config`; direct sidecar smoke still passes.
   Review: The public addon must remain suggestion-only and must not embed Playwright.
   Evidence: provider adapter tests, compose example, README updates.
-  Handoff: Split follow-on work if the worker contract needs to grow.
+  Handoff: DONE on 2026-05-23. Rust provider, manifest/config diagnostics, compose topology, and direct sidecar smoke are verified.
 
 ## M3 - Douban Browser-Backed Baseline
 
