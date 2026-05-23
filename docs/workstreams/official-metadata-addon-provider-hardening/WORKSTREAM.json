@@ -2,15 +2,17 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-provider-hardening",
   "title": "Official Metadata Addon Provider Hardening",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-23",
   "scope_kind": "execution",
   "problem": "The addon needs a first-class provider network policy seam and deeper TMDB/Bangumi candidate quality before bulk or browser automation work moves forward.",
   "task_prefix": "OMPH",
-  "current_task": "OMPH-030",
+  "current_task": null,
   "completed_tasks": [
     "OMPH-010",
-    "OMPH-020"
+    "OMPH-020",
+    "OMPH-030",
+    "OMPH-040"
   ],
   "authoritative_docs": [
     {
@@ -36,9 +38,11 @@
     "crates/nako-metadata-scraper/src/providers/http_runtime.rs",
     "crates/nako-metadata-scraper/src/providers/tmdb.rs",
     "crates/nako-metadata-scraper/src/providers/bangumi.rs",
+    "crates/nako-metadata-scraper/src/engine/ranking.rs",
     "crates/nako-metadata-scraper/src/routes.rs",
     "crates/nako-metadata-scraper/README.md",
     "addons/metadata-scraper/README.md",
+    "docs/workstreams/official-metadata-addon-provider-hardening/JOURNAL/2026-05-23-omph-040-closeout.md",
     "docs/workstreams/official-metadata-addon-provider-hardening/JOURNAL/2026-05-23-omph-020.md"
   ],
   "adr_refs": [
@@ -46,7 +50,8 @@
     "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "notes": "Continue this lane while provider network policy and provider quality remain the active objective. Split browser-worker, Douban, or bulk-task work into separate follow-on lanes if they reappear."
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "Workstream complete. Recommended follow-ons: TMDB/Bangumi provider breadth, localized title and alias coverage, artwork selection nuance, and other provider-quality deepening. Keep browser-worker, Douban, and bulk-task work in separate lanes."
   }
 }

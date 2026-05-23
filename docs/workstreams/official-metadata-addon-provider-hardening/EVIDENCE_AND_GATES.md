@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Hardening — Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## Smallest Current Repro
@@ -52,7 +52,7 @@ missing gates, and residual risks here or link to the review note.
 
 Record what each gate proves. Do not list commands without explaining the behavior they cover.
 
-## 2026-05-23 Verification
+## 2026-05-23 Closeout Verification
 
 Review result:
 
@@ -66,6 +66,9 @@ Review result:
   localized coverage, or artwork-selection nuance can still be split into a
   follow-on if needed.
 
+Closeout result: PASS. The lane can be closed and breadth follow-on work can be
+split separately.
+
 Fresh gates:
 
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS, 57 tests
@@ -75,5 +78,7 @@ Fresh gates:
 - `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable for the
   current workspace.
 - `git diff --check`: PASS. Proves the current diff has no whitespace errors.
+
+Fresh closeout re-run on 2026-05-23 matched the same gate results above.
 
 Fresh verification is required before marking a task, Codex goal, or lane complete.

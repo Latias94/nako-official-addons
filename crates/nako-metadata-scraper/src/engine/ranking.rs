@@ -108,7 +108,7 @@ pub fn rank_candidate(
         delta_milli: 250,
     }];
 
-    let title_match = title_match(query.title.as_str(), candidate.facts.title.as_deref());
+    let title_match = title_match(query.title.as_str(), &candidate.patch);
     push_reason(&mut reasons, title_reason(title_match));
     score += title_delta(title_match);
 
@@ -164,17 +164,37 @@ fn push_reason(reasons: &mut Vec<CandidateScoreReason>, reason: Option<Candidate
     }
 }
 
-fn title_match(query_title: &str, candidate_title: Option<&str>) -> TitleMatchEvidence {
-    let Some(candidate_title) = candidate_title.filter(|value| !value.trim().is_empty()) else {
-        return TitleMatchEvidence::MissingCandidate;
-    };
+fn title_match(query_title: &str, patch: &AddonMetadataPatch) -> TitleMatchEvidence {
+    let candidate_titles = [
+        patch.title.as_deref(),
+        patch.original_title.as_deref(),
+        patch.sort_title.as_deref(),
+    ];
+    let mut saw_candidate_title = false;
+    let mut saw_normalized_match = false;
 
-    if query_title == candidate_title {
-        TitleMatchEvidence::Exact
-    } else if normalize_title(query_title) == normalize_title(candidate_title) {
+    for candidate_title in candidate_titles
+        .into_iter()
+        .flatten()
+        .filter(|value| !value.trim().is_empty())
+    {
+        saw_candidate_title = true;
+
+        if query_title == candidate_title {
+            return TitleMatchEvidence::Exact;
+        }
+
+        if normalize_title(query_title) == normalize_title(candidate_title) {
+            saw_normalized_match = true;
+        }
+    }
+
+    if saw_normalized_match {
         TitleMatchEvidence::Normalized
-    } else {
+    } else if saw_candidate_title {
         TitleMatchEvidence::Mismatch
+    } else {
+        TitleMatchEvidence::MissingCandidate
     }
 }
 
@@ -422,6 +442,41 @@ mod tests {
     }
 
     #[test]
+    fn ranking_evidence_matches_original_and_sort_title_variants() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "The Matrix".to_owned(),
+                year: None,
+                language: "en-US".to_owned(),
+                external_ids: Vec::new(),
+            },
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:603".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("Matrix".to_owned()),
+                    original_title: Some("The Matrix".to_owned()),
+                    sort_title: Some("The Matrix".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("Matrix".to_owned()),
+                    release_year: None,
+                    language: Some("en-US".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(candidate.confidence_milli, 650);
+        assert_eq!(candidate.evidence.title_match, TitleMatchEvidence::Exact);
+    }
+
+    #[test]
     fn ranking_evidence_penalizes_title_year_and_external_id_mismatch() {
         let candidate = rank_candidate(
             &MetadataQuery {
@@ -453,8 +508,11 @@ mod tests {
             },
         );
 
-        assert_eq!(candidate.confidence_milli, 0);
-        assert_eq!(candidate.evidence.title_match, TitleMatchEvidence::Mismatch);
+        assert_eq!(candidate.confidence_milli, 30);
+        assert_eq!(
+            candidate.evidence.title_match,
+            TitleMatchEvidence::MissingCandidate
+        );
         assert_eq!(candidate.evidence.year_match, YearMatchEvidence::Mismatch);
         assert_eq!(
             candidate.evidence.external_id_match,

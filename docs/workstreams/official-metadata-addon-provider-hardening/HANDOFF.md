@@ -1,15 +1,14 @@
 # Official Metadata Addon Provider Hardening — Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## Current State
 
-The lane is opened and scoped. Two proof slices are done: TMDB and Bangumi now
-accept proxy-aware provider config, health diagnostics report that policy
-without leaking proxy URLs, and ranking now uses original/sort title variants
-when the primary surface title differs. The lane is ready for closeout review
-or a narrower provider-quality follow-on.
+The lane is closed. Two proof slices landed: TMDB and Bangumi now accept
+proxy-aware provider config, health diagnostics report that policy without
+leaking proxy URLs, and ranking now uses original/sort title variants when the
+primary surface title differs.
 
 ## Active Task
 
@@ -17,8 +16,8 @@ or a narrower provider-quality follow-on.
 - Owner: planner
 - Files: `docs/workstreams/official-metadata-addon-provider-hardening`
 - Validation: `verify-rust-workstream` and `review-workstream`
-- Status: NEEDS_CONTEXT
-- Review: Pending
+- Status: COMPLETE
+- Review: Passed
 - Evidence: `docs/workstreams/official-metadata-addon-provider-hardening/EVIDENCE_AND_GATES.md`
 
 ## Decisions Since Last Update
@@ -35,5 +34,11 @@ or a narrower provider-quality follow-on.
 
 ## Next Recommended Action
 
-- Run closeout review and verification, then either close the lane or split any
-  remaining provider-quality breadth into a narrower follow-on.
+- Split follow-on work for provider breadth, localized coverage, or artwork
+  selection nuance if those remain worth pursuing.
+
+## Follow-ons
+
+- TMDB/Bangumi provider breadth and localization
+- artwork selection nuance
+- alias expansion and broader title matching
