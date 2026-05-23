@@ -1,26 +1,21 @@
 use async_trait::async_trait;
 
-use crate::engine::{CandidateEvidence, MetadataCandidate, MetadataQuery};
+use crate::config::ProviderId;
+use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
 
 pub mod fixture;
+pub mod http_runtime;
+mod registry;
+pub mod tmdb;
+
+pub use registry::{ProviderDescriptor, ProviderDiagnostics, ProviderRegistry, ProviderStatus};
 
 #[async_trait]
 pub trait MetadataProvider: Send + Sync {
-    fn id(&self) -> &'static str;
+    fn id(&self) -> ProviderId;
 
-    async fn suggest(&self, query: &MetadataQuery) -> anyhow::Result<Vec<MetadataCandidate>>;
-}
-
-#[must_use]
-pub fn default_providers() -> Vec<Box<dyn MetadataProvider>> {
-    vec![Box::new(fixture::FixtureProvider)]
-}
-
-#[must_use]
-pub fn evidence(note: impl Into<String>, matched_year: bool) -> CandidateEvidence {
-    CandidateEvidence {
-        matched_title: true,
-        matched_year,
-        note: note.into(),
-    }
+    async fn suggest(
+        &self,
+        query: &MetadataQuery,
+    ) -> anyhow::Result<Vec<ProviderMetadataCandidate>>;
 }

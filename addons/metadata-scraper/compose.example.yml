@@ -11,6 +11,10 @@ services:
       NAKO_METADATA_SCRAPER_LISTEN_ADDR: "0.0.0.0:9100"
       NAKO_METADATA_SCRAPER_BASE_URL: "http://nako-metadata-scraper:9100"
       NAKO_METADATA_SCRAPER_LANGUAGE: "en-US"
+      NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED: "true"
+      NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
+      # Set only when enabling TMDB. Keep real tokens in your secret manager.
+      # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
     ports:
       - "9100:9100"
     healthcheck:

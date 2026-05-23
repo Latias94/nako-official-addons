@@ -1,7 +1,13 @@
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration,
     AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest, AddonResource,
-    AddonResourceDeclaration, AddonScope,
+    AddonResourceDeclaration, AddonScope, AddonSecretReferenceFieldDeclaration,
+};
+use serde_json::json;
+
+use crate::{
+    Config,
+    config::{ProviderId, TmdbProviderConfig},
 };
 
 pub const ADDON_ID: &str = "nako.official.metadata-scraper";
@@ -9,13 +15,13 @@ pub const ADDON_NAME: &str = "Nako Metadata Scraper";
 pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[must_use]
-pub fn addon_manifest(base_url: impl Into<String>) -> AddonManifest {
+pub fn addon_manifest(config: &Config) -> AddonManifest {
     AddonManifest {
         id: ADDON_ID.to_owned(),
         name: ADDON_NAME.to_owned(),
         version: ADDON_VERSION.to_owned(),
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-        base_url: base_url.into(),
+        base_url: config.base_url.clone(),
         description: Some(
             "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly."
                 .to_owned(),
@@ -46,30 +52,8 @@ pub fn addon_manifest(base_url: impl Into<String>) -> AddonManifest {
             path: "/ui/diagnostics".to_owned(),
             required_scopes: vec![AddonScope::ItemMetadataRead],
         }],
-        configuration_schema: Some(AddonConfigurationSchema {
-            schema_id: "nako.official.metadata-scraper.config.v1".to_owned(),
-            schema: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "preferred_language": {
-                        "type": "string",
-                        "default": "en-US"
-                    },
-                    "providers": {
-                        "type": "object",
-                        "properties": {
-                            "fixture": { "type": "boolean", "default": true },
-                            "tmdb": { "type": "boolean", "default": false },
-                            "bangumi": { "type": "boolean", "default": false },
-                            "douban": { "type": "boolean", "default": false }
-                        },
-                        "additionalProperties": false
-                    }
-                },
-                "additionalProperties": false
-            }),
-        }),
-        secret_reference_fields: vec![],
+        configuration_schema: Some(configuration_schema(config)),
+        secret_reference_fields: secret_reference_fields(config),
         event_subscriptions: vec![],
         tasks: vec![],
         auth: AddonAuth::None,
@@ -82,18 +66,125 @@ pub fn addon_manifest(base_url: impl Into<String>) -> AddonManifest {
     }
 }
 
+#[must_use]
+fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDeclaration> {
+    if config.provider_enabled(ProviderId::Tmdb) {
+        vec![AddonSecretReferenceFieldDeclaration::new(
+            TmdbProviderConfig::secret_field_id(),
+            "TMDB Read Access Token",
+            Some(
+                "Secret Reference for a TMDB API Read Access Token. The sidecar resolves it from NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN."
+                    .to_owned(),
+            ),
+            true,
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
+#[must_use]
+fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
+    let mut provider_properties = serde_json::Map::new();
+    for provider in &config.providers {
+        provider_properties.insert(
+            provider.id.as_str().to_owned(),
+            json!({
+                "type": "boolean",
+                "default": provider.enabled
+            }),
+        );
+    }
+
+    AddonConfigurationSchema {
+        schema_id: "nako.official.metadata-scraper.config.v1".to_owned(),
+        schema: json!({
+            "type": "object",
+            "properties": {
+                "preferred_language": {
+                    "type": "string",
+                    "default": config.preferred_language
+                },
+                "providers": {
+                    "type": "object",
+                    "properties": provider_properties,
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use nako_addon_protocol::validate_manifest;
 
     use super::*;
+    use crate::config::ProviderConfig;
 
     #[test]
     fn addon_manifest_is_valid() {
-        let manifest = addon_manifest("http://127.0.0.1:9100");
+        let manifest = addon_manifest(&Config::default());
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
         assert_eq!(manifest.resources[0].path, "/metadata");
+    }
+
+    #[test]
+    fn addon_manifest_configuration_schema_declares_only_runtime_supported_providers() {
+        let manifest = addon_manifest(&Config::default());
+        let schema = &manifest.configuration_schema.unwrap().schema;
+        let provider_properties = &schema["properties"]["providers"]["properties"];
+
+        assert_eq!(provider_properties["fixture"]["default"], true);
+        assert_eq!(provider_properties["tmdb"]["default"], false);
+        assert!(provider_properties.get("bangumi").is_none());
+        assert!(provider_properties.get("douban").is_none());
+        assert!(manifest.secret_reference_fields.is_empty());
+    }
+
+    #[test]
+    fn addon_manifest_configuration_schema_reflects_configured_provider_defaults() {
+        let config = Config::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED" => Some("false".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED" => Some("true".to_owned()),
+            _ => None,
+        });
+        let manifest = addon_manifest(&config);
+        let schema = &manifest.configuration_schema.unwrap().schema;
+
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["fixture"]["default"],
+            false
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["tmdb"]["default"],
+            true
+        );
+        assert_eq!(manifest.secret_reference_fields.len(), 1);
+        assert_eq!(
+            manifest.secret_reference_fields[0].id,
+            TmdbProviderConfig::secret_field_id()
+        );
+    }
+
+    #[test]
+    fn checked_in_example_manifest_matches_runtime_manifest() {
+        let example_manifest: AddonManifest = serde_json::from_str(include_str!(
+            "../../../addons/metadata-scraper/manifest.example.json"
+        ))
+        .unwrap();
+        let runtime_manifest = addon_manifest(&Config {
+            base_url: "http://nako-metadata-scraper:9100".to_owned(),
+            providers: vec![
+                ProviderConfig::enabled(ProviderId::Fixture),
+                ProviderConfig::disabled(ProviderId::Tmdb),
+            ],
+            ..Config::default()
+        });
+
+        assert_eq!(example_manifest, runtime_manifest);
     }
 }

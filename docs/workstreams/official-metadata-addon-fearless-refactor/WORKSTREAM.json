@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-fearless-refactor",
+  "title": "Official Metadata Addon Fearless Refactor",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The official metadata Addon Sidecar is still a fixture-first skeleton whose manifest, runtime configuration, provider seam, diagnostics, and Nako end-to-end smoke are not deep enough for real provider breadth.",
+  "task_prefix": "OMAFR",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAFR-010",
+    "OMAFR-020",
+    "OMAFR-030",
+    "OMAFR-040",
+    "OMAFR-050",
+    "OMAFR-060",
+    "OMAFR-070",
+    "OMAFR-080",
+    "OMAFR-090"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-fearless-refactor/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-fearless-refactor/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-fearless-refactor/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-fearless-refactor/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-fearless-refactor/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/config.rs",
+    "crates/nako-metadata-scraper/src/manifest.rs",
+    "crates/nako-metadata-scraper/src/routes.rs",
+    "crates/nako-metadata-scraper/src/engine/mod.rs",
+    "crates/nako-metadata-scraper/src/providers/mod.rs",
+    "crates/nako-metadata-scraper/src/providers/fixture.rs",
+    "../nako/CONTEXT.md",
+    "../nako/docs/GOALS.md",
+    "../nako/docs/workstreams/addon-architecture-deepening",
+    "../nako/docs/workstreams/admin-addon-operations-mvp",
+    "../nako/docs/workstreams/addon-runtime-and-distribution"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "Workstream closed. Recommended follow-ons: live Nako Admin-mediated smoke evidence, TMDB provider breadth, Bangumi/Douban adapters, artwork/subtitle lanes, rename/NFO planning, and bulk scrape/scoring hardening."
+  }
+}

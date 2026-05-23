@@ -6,8 +6,11 @@ This repository intentionally exposes one user-installable metadata addon while
 keeping provider implementations modular inside the codebase:
 
 - users install `nako-metadata-scraper` once;
-- the addon can enable multiple providers such as TMDB, Bangumi, Douban, or
-  local rule providers through configuration;
+- the current runtime supports the fixture provider by default and includes a
+  default-disabled TMDB movie baseline behind the same provider seam;
+- future Bangumi, Douban, artwork, subtitle, or local rule providers should be
+  added as internal adapters behind the shared configuration, registry, and
+  runtime seams;
 - provider modules may later become internal crates, but the install artifact
   should remain one addon unless a provider has a different trust, license, or
   deployment boundary.
@@ -21,11 +24,30 @@ keeping provider implementations modular inside the codebase:
 
 ```bash
 cargo fmt --all
-cargo test --workspace
+cargo nextest run --workspace --no-fail-fast
 cargo run -p nako-metadata-scraper
 ```
 
 Default listen address: `127.0.0.1:9100`.
+
+Local sidecar smoke:
+
+```powershell
+pwsh -File addons/metadata-scraper/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9100
+```
+
+Optional Nako Admin-mediated smoke:
+
+```powershell
+$env:NAKO_ADMIN_TOKEN = '<admin bearer token>'
+pwsh -File addons/metadata-scraper/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9100 `
+  -NakoBaseUrl http://127.0.0.1:3000 `
+  -RegisterInNako `
+  -Enable `
+  -RunResourceCall
+```
 
 ## Relationship to Nako Core
 

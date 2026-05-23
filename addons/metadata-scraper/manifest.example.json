@@ -44,9 +44,7 @@
           "type": "object",
           "properties": {
             "fixture": { "type": "boolean", "default": true },
-            "tmdb": { "type": "boolean", "default": false },
-            "bangumi": { "type": "boolean", "default": false },
-            "douban": { "type": "boolean", "default": false }
+            "tmdb": { "type": "boolean", "default": false }
           },
           "additionalProperties": false
         }
