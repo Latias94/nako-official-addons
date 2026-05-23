@@ -8,8 +8,8 @@ Last updated: 2026-05-23
 - Current branch: `main`, ahead of origin by two commits before release prep.
 - Current head before release prep: `6e1beaa feat(metadata-scraper): add bangumi provider baseline`.
 - Nako core metadata source: `../nako/Cargo.toml`.
-- Protocol crate metadata source:
-  `../nako/crates/nako-addon-protocol/Cargo.toml`.
+- Protocol crate source: published `nako-addon-protocol` crate
+  `0.1.0-alpha.1`.
 - cargo-chef reference source: `../nako/repo-ref/cargo-chef`.
 
 ## Gates
@@ -40,8 +40,7 @@ Evidence:
   `Mingzhen Zhuang <superfrankie621@gmail.com>`, readme `README.md`,
   homepage `https://github.com/Latias94/nako`, repository
   `https://github.com/Latias94/nako-official-addons`, rust-version `1.95`,
-  and a local path dependency on `../nako/crates/nako-addon-protocol`
-  constrained to `^0.1.0-alpha.1`.
+  and a registry dependency on `nako-addon-protocol` `^0.1.0-alpha.1`.
 - `cargo nextest run -p nako-metadata-scraper manifest --no-fail-fast` passed:
   5 tests passed, 29 skipped.
 
@@ -71,13 +70,12 @@ Evidence:
 
 - `addons/metadata-scraper/Dockerfile` uses cargo-chef `chef`, `planner`,
   `cacher`, `builder`, and `runtime` stages.
-- Docker build command passed:
-  `docker buildx build --build-context nako-core=../nako -f
-  addons/metadata-scraper/Dockerfile -t
+- Docker build command passed after the protocol crate was published:
+  `docker buildx build -f addons/metadata-scraper/Dockerfile -t
   nako-metadata-scraper:0.1.0-alpha.1-release-prep --load .`.
 - Built image:
-  `sha256:83eacfdcf3b8a668c76e3f988b21222323754182d8998cbcb4a7b4240f330e21`
-  size `91440391` bytes.
+  `sha256:c7967e6da7bdad644427474e10e95c74c7dd15a67774d9fef4d422509a7c6888`
+  size `91440447` bytes.
 - Container smoke passed against a temporary container on `127.0.0.1:19101`:
   `/manifest.json` returned id `nako.official.metadata-scraper`, version
   `0.1.0-alpha.1`, protocol version `0.1.0-alpha.1`.
@@ -96,6 +94,13 @@ Final gates:
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed:
   34 tests passed.
 - `cargo nextest run --workspace --no-fail-fast` passed: 34 tests passed.
+- `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty`
+  passed: packaged 18 files and verified the crate against crates.io
+  dependencies.
+- `docker buildx build -f addons/metadata-scraper/Dockerfile -t
+  nako-metadata-scraper:0.1.0-alpha.1-release-prep --load .` passed.
+- Temporary Docker container `/manifest.json` smoke passed with version
+  `0.1.0-alpha.1` and protocol version `0.1.0-alpha.1`.
 - `git diff --check` passed with only the existing `Cargo.lock` LF/CRLF warning.
 
 Follow-ons:

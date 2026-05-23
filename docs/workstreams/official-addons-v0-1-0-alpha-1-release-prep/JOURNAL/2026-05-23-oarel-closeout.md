@@ -10,8 +10,8 @@ Prepared the official addons repository for `v0.1.0-alpha.1`:
 - Documented Addon Protocol `0.1.0-alpha.1` and protocol crate
   `0.1.0-alpha.1`.
 - Updated manifest, compose, systemd, and User-Agent examples to alpha.1.
-- Converted the metadata scraper Dockerfile to cargo-chef stages with BuildKit
-  named context `nako-core=../nako`.
+- Converted the metadata scraper Dockerfile to cargo-chef stages using this
+  repository as the build context.
 - Removed runtime `curl` dependency after Debian mirror failures showed it was
   unnecessary for the sidecar image.
 
@@ -23,11 +23,11 @@ Prepared the official addons repository for `v0.1.0-alpha.1`:
 - `cargo fmt --all -- --check`: passed.
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: 34 passed.
 - `cargo nextest run --workspace --no-fail-fast`: 34 passed.
-- `docker buildx build --build-context nako-core=../nako -f
-  addons/metadata-scraper/Dockerfile -t
-  nako-metadata-scraper:0.1.0-alpha.1-release-prep --load .`: passed.
-- Temporary container `/manifest.json` smoke: returned version
-  `0.1.0-alpha.1` and protocol version `0.1.0-alpha.1`.
+- After the protocol crate was published, `cargo publish -p
+  nako-metadata-scraper --locked --dry-run --allow-dirty` passed against
+  crates.io dependencies.
+- Docker build and temporary container `/manifest.json` smoke passed after the
+  switch to the published crates.io protocol dependency.
 - `git diff --check`: passed with only the existing `Cargo.lock` LF/CRLF
   warning.
 

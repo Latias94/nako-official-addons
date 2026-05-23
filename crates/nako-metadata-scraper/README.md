@@ -17,9 +17,7 @@ Current alpha provider defaults:
   and requires a compliant User-Agent.
 
 Version `0.1.0-alpha.1` targets Nako Addon Protocol `0.1.0-alpha.1` and
-`nako-addon-protocol` Rust crate `0.1.0-alpha.1`. The workspace currently keeps
-`nako-addon-protocol` as a sibling path dependency at
-`../nako/crates/nako-addon-protocol` for local development.
+`nako-addon-protocol` Rust crate `0.1.0-alpha.1`.
 
 Run locally:
 

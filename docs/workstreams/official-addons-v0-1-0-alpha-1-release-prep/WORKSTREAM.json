@@ -46,7 +46,7 @@
   ],
   "evidence": [
     "../nako/Cargo.toml",
-    "../nako/crates/nako-addon-protocol/Cargo.toml",
+    "nako-addon-protocol 0.1.0-alpha.1 on crates.io",
     "../nako/repo-ref/cargo-chef",
     "Cargo.toml",
     "addons/metadata-scraper/Dockerfile"

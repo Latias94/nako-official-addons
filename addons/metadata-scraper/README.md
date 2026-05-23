@@ -67,24 +67,7 @@ provider secrets.
 5. Run Addon Health Check.
 6. Configure future token/grant flow and enable the Addon.
 
-## Docker example while the protocol crate is local
-
-The current workspace depends on the local core checkout:
-
-```text
-../nako/crates/nako-addon-protocol
-```
-
-Therefore `compose.example.yml` expects this directory layout:
-
-```text
-<parent>/
-  nako/
-  nako-official-addons/
-```
-
-After the protocol crate is published, the Docker context can shrink back to
-this repository only.
+## Docker example
 
 This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and
 `nako-addon-protocol` Rust crate version `0.1.0-alpha.1`.
@@ -98,14 +81,11 @@ layers are reused when only provider or route code changes. `cargo chef cook`
 and the final `cargo build` both run from `/src/nako-official-addons`, which is
 required for the cached `target` directory to remain useful.
 
-The Docker build uses a BuildKit named context for the local Nako checkout.
-The Dockerfile only copies Nako's root `Cargo.toml` and
-`crates/nako-addon-protocol/` from that context so the protocol crate can inherit
-workspace package metadata without sending unrelated code into the image:
+The Docker build uses this repository as its build context because
+`nako-addon-protocol` is consumed from crates.io:
 
 ```bash
 docker buildx build \
-  --build-context nako-core=../nako \
   -f addons/metadata-scraper/Dockerfile \
   -t ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.1 \
   .

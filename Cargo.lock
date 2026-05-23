@@ -558,6 +558,8 @@ dependencies = [
 [[package]]
 name = "nako-addon-protocol"
 version = "0.1.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31e08353692e50690db5af9246a8afb9504d6a4d0119a89510133aef2ac1dbec"
 dependencies = [
  "serde",
  "serde_json",

@@ -10,23 +10,17 @@ RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_VERSION}
 
 FROM chef AS planner
 COPY . ./nako-official-addons
-COPY --from=nako-core Cargo.toml ./nako/Cargo.toml
-COPY --from=nako-core crates/nako-addon-protocol ./nako/crates/nako-addon-protocol
 WORKDIR /src/nako-official-addons
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS cacher
 WORKDIR /src/nako-official-addons
-COPY --from=nako-core Cargo.toml /src/nako/Cargo.toml
-COPY --from=nako-core crates/nako-addon-protocol /src/nako/crates/nako-addon-protocol
 COPY --from=planner /src/nako-official-addons/recipe.json recipe.json
 RUN cargo chef cook --release --locked --package nako-metadata-scraper --recipe-path recipe.json
 
 FROM chef AS builder
 WORKDIR /src
 COPY . ./nako-official-addons
-COPY --from=nako-core Cargo.toml ./nako/Cargo.toml
-COPY --from=nako-core crates/nako-addon-protocol ./nako/crates/nako-addon-protocol
 WORKDIR /src/nako-official-addons
 COPY --from=cacher /src/nako-official-addons/target ./target
 COPY --from=cacher /usr/local/cargo/registry /usr/local/cargo/registry

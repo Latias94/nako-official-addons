@@ -73,10 +73,8 @@ This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and the matching
 The main Nako repository is <https://github.com/Latias94/nako>. This repository
 contains the official addon sidecars that integrate with that core project.
 
-Until the protocol crate is published, this repository depends on the local
-core checkout at `../nako/crates/nako-addon-protocol` and imports it in code as
-`nako_addon_protocol`. `Cargo.toml` keeps both the sibling path dependency and
-the `0.1.0-alpha.1` version requirement so the release boundary is explicit.
+The Rust implementation depends on the published `nako-addon-protocol`
+`0.1.0-alpha.1` crate and imports it in code as `nako_addon_protocol`.
 
 Versioning has three separate layers:
 
@@ -89,9 +87,8 @@ Versioning has three separate layers:
 
 This addon workspace is licensed as `AGPL-3.0-or-later`.
 
-The Nako Addon Protocol crate in `../nako/crates/nako-addon-protocol` is
-licensed separately as `Apache-2.0 OR MIT`; this repository consumes that crate
-as a dependency and does not relicense it.
+The Nako Addon Protocol crate is licensed separately as `Apache-2.0 OR MIT`;
+this repository consumes that crate as a dependency and does not relicense it.
 
 ## Reference Code Policy
 

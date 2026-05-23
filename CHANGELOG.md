@@ -26,15 +26,13 @@ builds.
 ### Changed
 
 - Workspace and crate metadata now align with Nako `0.1.0-alpha.1`.
-- The `nako-addon-protocol` dependency remains a sibling path dependency for
-  local development while being constrained to `0.1.0-alpha.1`.
+- The `nako-addon-protocol` dependency uses the published crates.io
+  `0.1.0-alpha.1` crate.
 - Operator examples, image tags, systemd sample, compose sample, and provider
   User-Agent examples now use `0.1.0-alpha.1`.
 
 ### Known Gaps
 
-- The protocol crate is still consumed from `../nako/crates/nako-addon-protocol`
-  and is not treated as a published crates.io dependency in this release.
 - Live Nako Admin-mediated smoke requires a running local Nako server and
   `NAKO_ADMIN_TOKEN`; direct sidecar and Docker container smoke are covered.
 - TMDB and Bangumi are baseline provider adapters, not exhaustive scraper

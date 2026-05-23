@@ -20,8 +20,7 @@ Task IDs use the `OAREL` prefix.
   Goal: Set workspace/crate release metadata for `0.1.0-alpha.1`, add readme
   metadata, constrain `nako-addon-protocol`, and add crate README.
   Validation: `cargo metadata --format-version 1 --no-deps`; `cargo nextest run -p nako-metadata-scraper manifest --no-fail-fast`.
-  Review: Keep local path dependency for development; do not claim crates.io
-  publish readiness while protocol remains local/private.
+  Review: Keep the protocol dependency pinned to the published alpha.1 crate.
   Evidence: Cargo metadata and manifest tests.
   Result: DONE 2026-05-23.
   Evidence: `cargo metadata --format-version 1 --no-deps`;

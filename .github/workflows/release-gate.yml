@@ -25,12 +25,6 @@ jobs:
         with:
           path: nako-official-addons
 
-      - name: Checkout Nako core
-        uses: actions/checkout@v6
-        with:
-          repository: Latias94/nako
-          path: nako
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -75,12 +69,6 @@ jobs:
         with:
           path: nako-official-addons
 
-      - name: Checkout Nako core
-        uses: actions/checkout@v6
-        with:
-          repository: Latias94/nako
-          path: nako
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -88,7 +76,6 @@ jobs:
         working-directory: nako-official-addons
         run: |
           docker buildx build \
-            --build-context nako-core=../nako \
             -f addons/metadata-scraper/Dockerfile \
             -t "$ADDON_IMAGE" \
             --load .

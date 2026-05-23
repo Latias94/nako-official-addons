@@ -1,0 +1,64 @@
+name: crates-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish nako-metadata-scraper to crates.io after dry-run succeeds"
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  RUST_VERSION: "1.95"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  dry-run:
+    name: crates.io dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check publish readiness
+        run: cargo publish -p nako-metadata-scraper --locked --dry-run
+
+  publish:
+    name: crates.io publish
+    runs-on: ubuntu-latest
+    needs: dry-run
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+    environment: crates-io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Publish crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p nako-metadata-scraper --locked
