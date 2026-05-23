@@ -13,12 +13,12 @@ Last updated: 2026-05-23
 
 ## M1 — Artwork Selection Proof
 
-- [ ] OMPB-020 [owner=codex] [deps=OMPB-010] [scope=crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/mod.rs]
+- [x] OMPB-020 [owner=codex] [deps=OMPB-010] [scope=crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/mod.rs]
   Goal: Make artwork candidate selection choose the best poster or backdrop across all providers rather than the first matching candidate.
   Validation: cargo nextest run -p nako-metadata-scraper artwork --no-fail-fast
   Review: review-workstream before accepting completion.
   Evidence: crates/nako-metadata-scraper/src/engine/artwork.rs
-  Handoff: Keep artwork selection typed and provider-local; do not leak selection policy into routes.
+  Handoff: Completed on 2026-05-23. Provider-local artwork selection now prefers higher-confidence and higher-resolution candidates.
 
 ## M2 — Alias And Localization Proof
 

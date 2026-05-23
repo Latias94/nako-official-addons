@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use nako_addon_protocol::{
     AddonArtworkIntent, AddonArtworkKind, AddonArtworkSourceKind, AddonArtworkSourcePayload,
     AddonArtworkWritePayload,
@@ -103,12 +105,27 @@ pub fn select_artwork_candidate<'a>(
     candidates: &'a [MetadataCandidate],
     kind: AddonArtworkKind,
 ) -> Option<&'a ArtworkCandidate> {
-    candidates.iter().find_map(|candidate| {
-        candidate
-            .artwork_candidates
-            .iter()
-            .find(|artwork_candidate| artwork_candidate.artwork.kind == kind)
-    })
+    candidates
+        .iter()
+        .flat_map(|candidate| candidate.artwork_candidates.iter())
+        .filter(|artwork_candidate| artwork_candidate.artwork.kind == kind)
+        .max_by(|left, right| compare_artwork_candidates(*left, *right))
+}
+
+fn compare_artwork_candidates(left: &ArtworkCandidate, right: &ArtworkCandidate) -> Ordering {
+    left.confidence_milli
+        .cmp(&right.confidence_milli)
+        .then_with(|| artwork_area(&left.artwork).cmp(&artwork_area(&right.artwork)))
+        .then_with(|| left.provider.cmp(&right.provider))
+        .then_with(|| left.provider_id.cmp(&right.provider_id))
+        .then_with(|| left.artwork.source.url.cmp(&right.artwork.source.url))
+}
+
+fn artwork_area(artwork: &AddonArtworkWritePayload) -> u64 {
+    match (artwork.width, artwork.height) {
+        (Some(width), Some(height)) => u64::from(width) * u64::from(height),
+        _ => 0,
+    }
 }
 
 #[must_use]
@@ -158,6 +175,50 @@ pub fn artwork_write_summary(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::ranking::{
+        ExternalIdMatchEvidence, LanguageMatchEvidence, TitleMatchEvidence, YearMatchEvidence,
+    };
+    use crate::engine::{CandidateEvidence, MetadataCandidate};
+
+    fn candidate(
+        provider: &str,
+        provider_id: &str,
+        confidence_milli: u16,
+        source_url: &str,
+        width: Option<u32>,
+        height: Option<u32>,
+    ) -> MetadataCandidate {
+        MetadataCandidate {
+            provider: provider.to_owned(),
+            provider_id: provider_id.to_owned(),
+            confidence_milli,
+            patch: nako_addon_protocol::AddonMetadataPatch::default(),
+            artwork_candidates: vec![ArtworkCandidate {
+                provider: provider.to_owned(),
+                provider_id: provider_id.to_owned(),
+                confidence_milli,
+                artwork: AddonArtworkWritePayload {
+                    intent: AddonArtworkIntent::ProposeArtwork,
+                    kind: AddonArtworkKind::Poster,
+                    source: AddonArtworkSourcePayload {
+                        kind: AddonArtworkSourceKind::RemoteUrl,
+                        url: source_url.to_owned(),
+                    },
+                    language: Some("en".to_owned()),
+                    width,
+                    height,
+                },
+            }],
+            evidence: CandidateEvidence {
+                title_match: TitleMatchEvidence::MissingCandidate,
+                year_match: YearMatchEvidence::QueryMissing,
+                language_match: LanguageMatchEvidence::Exact,
+                external_id_match: ExternalIdMatchEvidence::QueryMissing,
+                score_reasons: Vec::new(),
+                provider_note: None,
+            },
+        }
+    }
 
     #[test]
     fn provider_artwork_candidate_facts_map_to_artwork_payload() {
@@ -210,5 +271,65 @@ mod tests {
             kind: NakoSideEffectTargetKind::MediaSource,
             id: "source-1".to_owned(),
         }));
+    }
+
+    #[test]
+    fn select_artwork_candidate_prefers_higher_confidence_candidate() {
+        let candidates = vec![
+            candidate(
+                "tmdb",
+                "tmdb:poster:1",
+                600,
+                "https://example.test/low.jpg",
+                Some(1000),
+                Some(1500),
+            ),
+            candidate(
+                "bangumi",
+                "bangumi:poster:2",
+                850,
+                "https://example.test/high.jpg",
+                Some(900),
+                Some(1350),
+            ),
+        ];
+
+        let selected = select_artwork_candidate(&candidates, AddonArtworkKind::Poster)
+            .expect("expected a poster candidate");
+
+        assert_eq!(selected.provider, "bangumi");
+        assert_eq!(selected.provider_id, "bangumi:poster:2");
+        assert_eq!(selected.artwork.source.url, "https://example.test/high.jpg");
+    }
+
+    #[test]
+    fn select_artwork_candidate_uses_resolution_as_tiebreaker() {
+        let candidates = vec![
+            candidate(
+                "tmdb",
+                "tmdb:poster:1",
+                750,
+                "https://example.test/small.jpg",
+                Some(1000),
+                Some(1500),
+            ),
+            candidate(
+                "bangumi",
+                "bangumi:poster:2",
+                750,
+                "https://example.test/large.jpg",
+                Some(1200),
+                Some(1800),
+            ),
+        ];
+
+        let selected = select_artwork_candidate(&candidates, AddonArtworkKind::Poster)
+            .expect("expected a poster candidate");
+
+        assert_eq!(selected.provider, "bangumi");
+        assert_eq!(
+            selected.artwork.source.url,
+            "https://example.test/large.jpg"
+        );
     }
 }
