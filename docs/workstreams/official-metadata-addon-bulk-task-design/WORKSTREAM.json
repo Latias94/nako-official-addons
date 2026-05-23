@@ -2,14 +2,18 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-bulk-task-design",
   "title": "Official Metadata Addon Bulk Task Design",
-  "status": "active",
-  "updated": "2026-05-23",
+  "status": "complete",
+  "updated": "2026-05-24",
   "scope_kind": "design",
   "problem": "Bulk Metadata Scrape needs a Nako-owned Addon Task runtime before the official Addon can safely declare or implement a task endpoint.",
   "task_prefix": "OMAB",
-  "current_task": "OMAB-020",
+  "current_task": null,
   "completed_tasks": [
-    "OMAB-010"
+    "OMAB-010",
+    "OMAB-020",
+    "OMAB-030",
+    "OMAB-040",
+    "OMAB-050"
   ],
   "authoritative_docs": [
     {
@@ -53,8 +57,8 @@
     "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "next_task": "OMAB-020",
-    "notes": "Host task declarations/routing plans exist, but the generic Addon Task scheduler/invoker is deferred. Do not add bulk scrape to the manifest until OMAB-020 resolves the host contract."
+    "default_action": "open_external_host_workstream_when_prioritized",
+    "next_task": null,
+    "notes": "Current addon release is complete with bulk task deferred. Continue in ../nako by implementing the generic Addon Task runtime before reopening addon manifest or endpoint work."
   }
 }

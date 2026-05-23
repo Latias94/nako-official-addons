@@ -1,7 +1,7 @@
 # Official Metadata Addon Bulk Task Design - Evidence And Gates
 
-Status: Active
-Last updated: 2026-05-23
+Status: Complete
+Last updated: 2026-05-24
 
 ## Gates
 
@@ -18,6 +18,21 @@ workstream before OMAB-030 or later implementation work starts.
 | Date | Task | Evidence | Result |
 | --- | --- | --- | --- |
 | 2026-05-23 | OMAB-010 | Opened design line after OMASE-050 host assessment; added manifest test that keeps `tasks` empty until host execution exists; `cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast`; `python -m json.tool docs/workstreams/official-metadata-addon-bulk-task-design/WORKSTREAM.json`; `cargo nextest run --workspace --no-fail-fast`; `git diff --check` | Pass. |
+| 2026-05-24 | OMAB-020/030/040/050 | Closed current addon-side bulk task lane as host-runtime-blocked/deferred. The official addon must keep `tasks: []` until `../nako` owns generic Addon Task invocation, durable records, cancellation, retry, progress, and redaction-safe outcomes. | Pass for current-release boundary; future implementation deferred by design. |
+
+## 2026-05-24 Closeout Evidence
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast`: PASS, 6 tests passed
+  and 64 skipped. Proves the runtime manifest and checked-in example manifest keep `tasks: []`
+  until host task execution exists.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS, 70 tests passed. Proves the
+  package-level metadata scraper surface after bulk-task closeout.
+- `cargo nextest run --workspace --no-fail-fast`: PASS, 70 tests passed. Proves the full workspace
+  test suite remains green for the current release scope.
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
+- `git diff --check`: PASS. Proves the final diff has no whitespace errors.
 
 ## Host Assessment
 

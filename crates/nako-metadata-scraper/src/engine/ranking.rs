@@ -4,6 +4,7 @@ use serde::Serialize;
 use super::{
     MetadataQuery, QueryExternalId,
     artwork::{ArtworkCandidate, ProviderArtworkCandidate},
+    title::normalize_title,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -387,14 +388,6 @@ fn community_score_reason(delta_milli: i16) -> Option<CandidateScoreReason> {
         outcome: "boost",
         delta_milli,
     })
-}
-
-fn normalize_title(value: &str) -> String {
-    value
-        .chars()
-        .filter(|character| character.is_alphanumeric())
-        .flat_map(char::to_lowercase)
-        .collect()
 }
 
 #[cfg(test)]

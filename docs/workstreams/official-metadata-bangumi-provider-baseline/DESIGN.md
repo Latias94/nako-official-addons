@@ -1,6 +1,6 @@
 # Official Metadata Bangumi Provider Baseline
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## Problem

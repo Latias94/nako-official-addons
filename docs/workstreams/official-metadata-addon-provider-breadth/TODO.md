@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Breadth and Localization — TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## M0 — Scope And Evidence Freeze
@@ -22,18 +22,19 @@ Last updated: 2026-05-23
 
 ## M2 — Alias And Localization Proof
 
-- [x] OMPB-030 [owner=codex] [deps=OMPB-020] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/bangumi.rs]
+- [x] OMPB-030 [owner=codex] [deps=OMPB-020] [scope=crates/nako-metadata-scraper/src/engine/title.rs,crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/bangumi.rs]
   Goal: Deepen provider-local alias and localized title coverage so TMDB and Bangumi candidates keep matching when the surface title is not the best search key.
   Validation: cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking --no-fail-fast
   Review: review-workstream for workstream compliance and code quality.
-  Evidence: crates/nako-metadata-scraper/src/engine/ranking.rs
-  Handoff: Completed on 2026-05-23. Ranking now consumes provider alternate title facts; TMDB maps alternative titles and Bangumi maps localized names plus title-like infobox aliases.
+  Evidence: crates/nako-metadata-scraper/src/engine/title.rs, crates/nako-metadata-scraper/src/engine/ranking.rs
+  Handoff: Completed on 2026-05-23. Ranking now consumes provider alternate title facts; TMDB maps alternative titles, Bangumi maps localized names plus title-like infobox aliases, and both providers retry a normalized search key when the raw title search is empty.
 
 ## M3 — Closeout
 
-- [ ] OMPB-040 [owner=planner] [deps=OMPB-030] [scope=docs/workstreams/official-metadata-addon-provider-breadth]
+- [x] OMPB-040 [owner=planner] [deps=OMPB-030] [scope=docs/workstreams/official-metadata-addon-provider-breadth]
   Goal: Close the lane or create a narrower follow-on.
   Validation: verify-rust-workstream records fresh final gate evidence.
   Review: review-workstream has no blocking findings.
   Evidence: EVIDENCE_AND_GATES.md, WORKSTREAM.json
-  Handoff: Summarize remaining risks in HANDOFF.md.
+  Handoff: Completed on 2026-05-23. Lane closed with fresh metadata scraper gates and residual
+  localization/search breadth recorded as follow-on scope.

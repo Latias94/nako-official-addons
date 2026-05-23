@@ -1,6 +1,6 @@
 # Official Metadata Addon Result Quality - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 Task IDs use the `OMRQ` prefix.

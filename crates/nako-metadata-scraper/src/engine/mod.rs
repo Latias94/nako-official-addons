@@ -14,6 +14,7 @@ use crate::providers::MetadataProvider;
 
 pub mod artwork;
 pub mod ranking;
+pub mod title;
 
 const MAX_CANDIDATES_PER_QUERY: usize = 12;
 
@@ -398,7 +399,7 @@ impl MetadataQuery {
             .or_else(|| payload.get("name").and_then(serde_json::Value::as_str))
             .unwrap_or("Unknown Title")
             .trim();
-        let title = normalize_title(raw_title);
+        let title = normalize_query_title(raw_title);
         let year = payload
             .get("year")
             .and_then(serde_json::Value::as_i64)
@@ -421,6 +422,11 @@ impl MetadataQuery {
             external_ids,
         }
     }
+
+    #[must_use]
+    pub fn search_title_variants(&self) -> Vec<String> {
+        title::search_title_variants(&self.title)
+    }
 }
 
 impl MetadataWritebackInput {
@@ -439,7 +445,7 @@ impl MetadataWritebackInput {
     }
 }
 
-fn normalize_title(title: &str) -> String {
+fn normalize_query_title(title: &str) -> String {
     title.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 

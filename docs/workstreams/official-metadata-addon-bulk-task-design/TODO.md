@@ -1,7 +1,7 @@
 # Official Metadata Addon Bulk Task Design - TODO
 
-Status: Active
-Last updated: 2026-05-23
+Status: Complete
+Last updated: 2026-05-24
 
 Task IDs use the `OMAB` prefix.
 
@@ -20,39 +20,47 @@ Task IDs use the `OMAB` prefix.
 
 ## M1 - Host Task Runtime Contract
 
-- [ ] OMAB-020 [owner=planner/core] [deps=OMAB-010] [scope=../nako/docs,../nako/crates/nako-addon-protocol,../nako/crates/nako-server]
+- [x] OMAB-020 [owner=planner/core] [deps=OMAB-010] [scope=../nako/docs,../nako/crates/nako-addon-protocol,../nako/crates/nako-server]
   Goal: Define or implement the Nako-owned Addon Task runtime contract:
   request/response envelope, invocation route, durable job ownership,
   cancellation, retry, progress, and redaction-safe diagnostics.
   Validation: host workstream evidence and focused Nako tests.
   Review: The official Addon must not own scheduler state.
-  Handoff: Continue with OMAB-030 only after the host contract is executable.
+  Result: DEFERRED 2026-05-24.
+  Handoff: Host runtime work is outside this repository and must continue in
+  `../nako` before addon task declaration or endpoint implementation resumes.
 
 ## M2 - Manifest Declaration
 
-- [ ] OMAB-030 [owner=codex] [deps=OMAB-020] [scope=crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/manifest.example.json]
+- [x] OMAB-030 [owner=codex] [deps=OMAB-020] [scope=crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/manifest.example.json]
   Goal: Add `bulk-metadata-scrape` to the official Addon manifest after the
   host executor can actually invoke Addon Tasks.
   Validation: manifest tests and checked-in example manifest parity.
   Review: Required scopes must be declared at manifest level and remain
   bounded to the task.
-  Handoff: Continue with OMAB-040.
+  Result: DEFERRED 2026-05-24.
+  Handoff: Correct current-release behavior is to keep `tasks: []`; reopen a
+  new implementation lane after the host task runtime is executable.
 
 ## M3 - Task Endpoint And Batch Planner
 
-- [ ] OMAB-040 [owner=codex] [deps=OMAB-020,OMAB-030] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/routes.rs,crates/nako-metadata-scraper/src/providers]
+- [x] OMAB-040 [owner=codex] [deps=OMAB-020,OMAB-030] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/routes.rs,crates/nako-metadata-scraper/src/providers]
   Goal: Implement the Addon task endpoint and batch planner using provider
   suggestions plus explicit `metadata_write` and `artwork_write` side effects.
   Validation: fake transport tests for bounded batches, idempotency, failure
   summaries, and no hidden background work.
   Review: Bulk scrape must be cancellable and resumable by Nako, not by local
   sidecar state.
-  Handoff: Continue with OMAB-050.
+  Result: DEFERRED 2026-05-24.
+  Handoff: Do not add a hidden sidecar scheduler. Implement only after host
+  task invocation/progress/outcome ownership exists.
 
 ## M4 - Closeout
 
-- [ ] OMAB-050 [owner=planner] [deps=OMAB-040] [scope=docs/workstreams/official-metadata-addon-bulk-task-design,README.md,addons/metadata-scraper]
+- [x] OMAB-050 [owner=planner] [deps=OMAB-040] [scope=docs/workstreams/official-metadata-addon-bulk-task-design,README.md,addons/metadata-scraper]
   Goal: Update operator docs, run final gates, and close or split follow-ons.
   Validation: `cargo fmt --all -- --check`; `cargo nextest run --workspace --no-fail-fast`; `git diff --check`.
   Review: Use verify-rust-workstream before marking this lane complete.
-  Handoff: Summarize host/runtime follow-ons.
+  Result: DONE 2026-05-24.
+  Handoff: Lane closed for the current release with bulk task implementation
+  explicitly deferred to a future host-runtime-backed workstream.

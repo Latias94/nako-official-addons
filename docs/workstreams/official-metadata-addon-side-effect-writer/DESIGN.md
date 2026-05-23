@@ -1,6 +1,6 @@
 # Official Metadata Addon Side Effect Writer - Design
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## Problem

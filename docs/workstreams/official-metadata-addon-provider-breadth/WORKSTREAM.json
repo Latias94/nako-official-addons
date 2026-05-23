@@ -2,16 +2,17 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-provider-breadth",
   "title": "Official Metadata Addon Provider Breadth and Localization",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-23",
   "scope_kind": "execution",
   "problem": "TMDB and Bangumi still leave match quality and artwork selection depth on the table for localized libraries.",
   "task_prefix": "OMPB",
-  "current_task": "OMPB-040",
+  "current_task": null,
   "completed_tasks": [
     "OMPB-010",
     "OMPB-020",
-    "OMPB-030"
+    "OMPB-030",
+    "OMPB-040"
   ],
   "authoritative_docs": [
     {
@@ -44,6 +45,7 @@
   ],
   "evidence": [
     "crates/nako-metadata-scraper/src/engine/mod.rs",
+    "crates/nako-metadata-scraper/src/engine/title.rs",
     "crates/nako-metadata-scraper/src/engine/artwork.rs",
     "crates/nako-metadata-scraper/src/engine/ranking.rs",
     "crates/nako-metadata-scraper/src/providers/tmdb.rs",
@@ -58,8 +60,8 @@
     "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
+    "default_action": "open_follow_on_when_prioritized",
     "next_task": null,
-    "notes": "Continue this lane while provider alias/localization breadth and artwork nuance remain the active objective. Split browser-worker, Douban, or bulk-task work into separate follow-on lanes if they reappear."
+    "notes": "Lane closed on 2026-05-23. Open separate follow-on lanes for provider-specific transliteration, non-empty multi-search merging, browser-worker/Douban work, or host task orchestration."
   }
 }

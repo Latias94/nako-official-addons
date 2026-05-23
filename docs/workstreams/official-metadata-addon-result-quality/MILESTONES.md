@@ -1,6 +1,6 @@
 # Official Metadata Addon Result Quality - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## M0 - Workstream Opened

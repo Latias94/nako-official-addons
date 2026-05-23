@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use async_trait::async_trait;
 use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 use serde::{Deserialize, Serialize};
@@ -79,8 +81,49 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        let mut search_subjects = Vec::new();
+        let mut seen_subject_ids = HashSet::new();
+
+        for search_title in query.search_title_variants() {
+            let search = self.search_subjects(&search_title).await?;
+            for subject in search.data {
+                if seen_subject_ids.insert(subject.id) {
+                    search_subjects.push(subject);
+                }
+                if search_subjects.len() >= BANGUMI_DETAIL_ENRICHMENT_LIMIT {
+                    break;
+                }
+            }
+            if search_subjects.len() >= BANGUMI_DETAIL_ENRICHMENT_LIMIT {
+                break;
+            }
+        }
+
+        let mut candidates = Vec::new();
+        for subject in search_subjects {
+            match self.enrich_subject_candidate(query, subject.clone()).await {
+                Ok(candidate) => candidates.push(candidate),
+                Err(error) => {
+                    tracing::warn!(provider = BANGUMI_PROVIDER_ID, %error, "returning degraded Bangumi candidate after enrichment failure");
+                    candidates.push(subject.into_degraded_candidate(query));
+                }
+            }
+        }
+
+        Ok(candidates)
+    }
+}
+
+impl<T> BangumiMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    async fn search_subjects(
+        &self,
+        search_title: &str,
+    ) -> anyhow::Result<BangumiSubjectSearchResponse> {
         let search_body = BangumiSubjectSearchRequest {
-            keyword: query.title.clone(),
+            keyword: search_title.to_owned(),
             sort: "match",
             filter: BangumiSubjectSearchFilter {
                 subject_type: self.config.subject_types.clone(),
@@ -104,25 +147,10 @@ where
                 &search_body,
             )
             .await?;
-        let search = BangumiSubjectSearchResponse::from_value(response.body)?;
-        let mut candidates = Vec::new();
 
-        for subject in search
-            .data
-            .into_iter()
-            .take(BANGUMI_DETAIL_ENRICHMENT_LIMIT)
-        {
-            candidates.push(self.enrich_subject_candidate(query, subject).await?);
-        }
-
-        Ok(candidates)
+        BangumiSubjectSearchResponse::from_value(response.body)
     }
-}
 
-impl<T> BangumiMetadataProvider<T>
-where
-    T: ProviderHttpTransport,
-{
     async fn enrich_subject_candidate(
         &self,
         query: &MetadataQuery,
@@ -132,6 +160,7 @@ where
         Ok(BangumiSubjectCandidate {
             search: search_subject,
             detail,
+            degraded: false,
         }
         .into_candidate(query))
     }
@@ -207,6 +236,15 @@ impl BangumiSubject {
         serde_json::from_value(value)
             .map_err(|error| anyhow::anyhow!("failed to parse Bangumi subject response: {error}"))
     }
+
+    fn into_degraded_candidate(self, query: &MetadataQuery) -> ProviderMetadataCandidate {
+        BangumiSubjectCandidate {
+            search: self.clone(),
+            detail: self,
+            degraded: true,
+        }
+        .into_candidate(query)
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -241,6 +279,7 @@ struct BangumiInfoboxItem {
 struct BangumiSubjectCandidate {
     search: BangumiSubject,
     detail: BangumiSubject,
+    degraded: bool,
 }
 
 impl BangumiSubjectCandidate {
@@ -280,6 +319,9 @@ impl BangumiSubjectCandidate {
         let total_episodes = self.detail.total_episodes.or(self.search.total_episodes);
 
         let mut tags = vec!["bangumi".to_owned()];
+        if self.degraded {
+            tags.push("bangumi_degraded".to_owned());
+        }
         if let Some(subject_type) = subject_type {
             tags.push(format!("bangumi_subject_type:{subject_type}"));
         }
@@ -369,8 +411,12 @@ impl BangumiSubjectCandidate {
                     value: subject_id.to_string(),
                 }],
                 provider_note: Some(
-                    "Bangumi subject candidate enriched with search and detail responses."
-                        .to_owned(),
+                    if self.degraded {
+                        "Bangumi subject candidate degraded from search response after enrichment failure."
+                    } else {
+                        "Bangumi subject candidate enriched with search and detail responses."
+                    }
+                    .to_owned(),
                 ),
             },
             artwork_candidates,
@@ -778,6 +824,437 @@ mod tests {
             provider.runtime.config().proxy_url.as_deref(),
             Some("http://proxy.example:8080")
         );
+    }
+
+    #[tokio::test]
+    async fn bangumi_provider_falls_back_to_normalized_search_title_when_raw_search_is_empty() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: br#"{"data": []}"#.to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "data": [{
+                    "id": 265,
+                    "type": 2,
+                    "name": "新世紀エヴァンゲリオン",
+                    "name_cn": "新世纪福音战士",
+                    "summary": "Search summary.",
+                    "date": "1995-10-04",
+                    "platform": "TV",
+                    "images": {},
+                    "eps": 26,
+                    "total_episodes": 26,
+                    "rating": {"rank": 12, "total": 10000, "score": 8.7},
+                    "infobox": [],
+                    "meta_tags": [],
+                    "tags": []
+                }]
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "id": 265,
+                "type": 2,
+                "name": "新世紀エヴァンゲリオン",
+                "name_cn": "新世纪福音战士",
+                "summary": "Detail summary.",
+                "date": "1995-10-04",
+                "platform": "TV",
+                "images": {},
+                "eps": 26,
+                "total_episodes": 26,
+                "rating": {"rank": 10, "total": 12000, "score": 8.8},
+                "infobox": [],
+                "meta_tags": [],
+                "tags": []
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = BangumiMetadataProvider::with_runtime(
+            BangumiProviderConfig {
+                access_token: None,
+                api_base_url: "https://bangumi.example".to_owned(),
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                include_nsfw: false,
+                subject_types: vec![2],
+                proxy_url: None,
+            },
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Neon Genesis Evangelion: TV".to_owned(),
+                year: Some(1995),
+                language: "zh-CN".to_owned(),
+                external_ids: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "bangumi:subject:265");
+
+        let requests = transport.requests();
+        assert_eq!(requests[0].method, ProviderHttpMethod::Post);
+        let raw_body: serde_json::Value =
+            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(raw_body["keyword"], "Neon Genesis Evangelion: TV");
+        assert_eq!(requests[1].method, ProviderHttpMethod::Post);
+        let fallback_body: serde_json::Value =
+            serde_json::from_slice(requests[1].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(fallback_body["keyword"], "neon genesis evangelion tv");
+        assert_eq!(requests[2].method, ProviderHttpMethod::Get);
+        assert_eq!(requests[2].url, "https://bangumi.example/v0/subjects/265");
+    }
+
+    #[tokio::test]
+    async fn bangumi_provider_merges_search_title_variants_with_deduped_enrichment_budget() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "data": [
+                    {
+                        "id": 1,
+                        "type": 2,
+                        "name": "Subject One",
+                        "name_cn": "条目一",
+                        "summary": "Raw result one.",
+                        "date": "2021-01-01",
+                        "platform": "TV",
+                        "images": {},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 10, "total": 1000, "score": 8.0},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    },
+                    {
+                        "id": 2,
+                        "type": 2,
+                        "name": "Subject Two",
+                        "name_cn": "条目二",
+                        "summary": "Raw result two.",
+                        "date": "2021-01-02",
+                        "platform": "TV",
+                        "images": {},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 20, "total": 900, "score": 7.9},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    }
+                ]
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "data": [
+                    {
+                        "id": 2,
+                        "type": 2,
+                        "name": "Subject Two",
+                        "name_cn": "条目二",
+                        "summary": "Duplicate normalized result.",
+                        "date": "2021-01-02",
+                        "platform": "TV",
+                        "images": {},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 20, "total": 900, "score": 7.9},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    },
+                    {
+                        "id": 3,
+                        "type": 2,
+                        "name": "Subject Three",
+                        "name_cn": "条目三",
+                        "summary": "Normalized-only result.",
+                        "date": "2021-01-03",
+                        "platform": "TV",
+                        "images": {},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 30, "total": 800, "score": 7.8},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    }
+                ]
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        for subject_id in [1, 2, 3] {
+            transport.push(Ok(ProviderHttpResponse {
+                status: 200,
+                body: format!(
+                    r#"{{
+                        "id": {subject_id},
+                        "type": 2,
+                        "name": "Subject {subject_id}",
+                        "name_cn": "条目{subject_id}",
+                        "summary": "Detail {subject_id}.",
+                        "date": "2021-01-0{subject_id}",
+                        "platform": "TV",
+                        "images": {{}},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {{"rank": {subject_id}, "total": 1000, "score": 8.0}},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    }}"#
+                )
+                .into_bytes(),
+            }));
+        }
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = BangumiMetadataProvider::with_runtime(
+            BangumiProviderConfig {
+                access_token: None,
+                api_base_url: "https://bangumi.example".to_owned(),
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                include_nsfw: false,
+                subject_types: vec![2],
+                proxy_url: None,
+            },
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Subject: Merge".to_owned(),
+                year: Some(2021),
+                language: "zh-CN".to_owned(),
+                external_ids: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.provider_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "bangumi:subject:1",
+                "bangumi:subject:2",
+                "bangumi:subject:3"
+            ]
+        );
+
+        let requests = transport.requests();
+        assert_eq!(requests[0].method, ProviderHttpMethod::Post);
+        assert_eq!(requests[1].method, ProviderHttpMethod::Post);
+        let fallback_body: serde_json::Value =
+            serde_json::from_slice(requests[1].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(fallback_body["keyword"], "subject merge");
+        let detail_urls = requests
+            .iter()
+            .filter(|request| request.method == ProviderHttpMethod::Get)
+            .map(|request| request.url.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            detail_urls,
+            vec![
+                "https://bangumi.example/v0/subjects/1",
+                "https://bangumi.example/v0/subjects/2",
+                "https://bangumi.example/v0/subjects/3"
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn bangumi_provider_returns_degraded_candidate_after_failed_enrichment() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "data": [
+                    {
+                        "id": 1,
+                        "type": 2,
+                        "name": "Broken Subject",
+                        "name_cn": "失败条目",
+                        "summary": "Search result one.",
+                        "date": "2021-01-01",
+                        "platform": "TV",
+                        "images": {
+                            "large": "https://lain.bgm.tv/pic/cover/l/broken.jpg"
+                        },
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 10, "total": 1000, "score": 8.0},
+                        "infobox": [
+                            {"key": "别名", "value": [{"v": "Broken Alias"}]}
+                        ],
+                        "meta_tags": ["科幻"],
+                        "tags": [{"name": "测试", "count": 10}]
+                    },
+                    {
+                        "id": 2,
+                        "type": 2,
+                        "name": "Usable Subject",
+                        "name_cn": "可用条目",
+                        "summary": "Search result two.",
+                        "date": "2021-01-02",
+                        "platform": "TV",
+                        "images": {},
+                        "eps": 12,
+                        "total_episodes": 12,
+                        "rating": {"rank": 20, "total": 900, "score": 7.9},
+                        "infobox": [],
+                        "meta_tags": [],
+                        "tags": []
+                    }
+                ]
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 503,
+            body: br#"temporarily unavailable"#.to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "id": 2,
+                "type": 2,
+                "name": "Usable Subject",
+                "name_cn": "可用条目",
+                "summary": "Detail two.",
+                "date": "2021-01-02",
+                "platform": "TV",
+                "images": {},
+                "eps": 12,
+                "total_episodes": 12,
+                "rating": {"rank": 20, "total": 900, "score": 7.9},
+                "infobox": [],
+                "meta_tags": [],
+                "tags": []
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                max_attempts: 1,
+                retry_backoff_ms: 0,
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = BangumiMetadataProvider::with_runtime(
+            BangumiProviderConfig {
+                access_token: None,
+                api_base_url: "https://bangumi.example".to_owned(),
+                user_agent: "Latias94/test-addon/0.1.0".to_owned(),
+                include_nsfw: false,
+                subject_types: vec![2],
+                proxy_url: None,
+            },
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Subject".to_owned(),
+                year: Some(2021),
+                language: "zh-CN".to_owned(),
+                external_ids: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(candidates[0].provider_id, "bangumi:subject:1");
+        assert_eq!(candidates[0].patch.title.as_deref(), Some("失败条目"));
+        assert_eq!(
+            candidates[0].patch.original_title.as_deref(),
+            Some("Broken Subject")
+        );
+        assert_eq!(
+            candidates[0].patch.overview.as_deref(),
+            Some("Search result one.")
+        );
+        assert_eq!(
+            candidates[0].patch.release_date.as_deref(),
+            Some("2021-01-01")
+        );
+        assert_eq!(candidates[0].patch.tagline.as_deref(), Some("TV"));
+        assert_eq!(
+            candidates[0].patch.genres.as_ref().unwrap(),
+            &vec!["科幻".to_owned(), "测试".to_owned()]
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .alternate_titles
+                .iter()
+                .any(|title| title == "Broken Alias")
+        );
+        assert_eq!(candidates[0].facts.release_year, Some(2021));
+        assert_eq!(candidates[0].facts.language.as_deref(), Some("zh-CN"));
+        assert_eq!(candidates[0].facts.community_score_milli, Some(800));
+        assert_eq!(candidates[0].facts.community_vote_count, Some(1000));
+        assert!(
+            candidates[0]
+                .facts
+                .external_ids
+                .iter()
+                .any(|id| id.provider == "bangumi" && id.value == "1")
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .provider_note
+                .as_deref()
+                .is_some_and(|note| note.contains("degraded"))
+        );
+        assert!(
+            candidates[0]
+                .artwork_candidates
+                .iter()
+                .any(|candidate| candidate.facts.source_url
+                    == "https://lain.bgm.tv/pic/cover/l/broken.jpg")
+        );
+        assert_eq!(candidates[1].provider_id, "bangumi:subject:2");
+        let requests = transport.requests();
+        assert_eq!(requests[1].url, "https://bangumi.example/v0/subjects/1");
+        assert_eq!(requests[2].url, "https://bangumi.example/v0/subjects/2");
     }
 
     #[derive(Clone, Default)]

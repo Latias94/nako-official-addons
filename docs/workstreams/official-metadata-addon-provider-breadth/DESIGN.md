@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Breadth and Localization
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## Why This Lane Exists
@@ -100,3 +100,15 @@ This lane can close when:
 - evidence gates pass,
 - docs reflect the shipped behavior,
 - and any remaining breadth is either deferred or split into a narrower lane.
+
+## Closeout Summary
+
+Closed on 2026-05-23.
+
+- Artwork selection now chooses stronger provider candidates instead of relying on first-match
+  order.
+- TMDB and Bangumi provide richer alternate-title evidence to ranking.
+- Shared title normalization supports provider search fallback when the raw title returns no
+  candidates.
+- Browser automation, Douban-specific crawling, host task orchestration, transliteration, and
+  non-empty multi-search merging remain follow-on scope.

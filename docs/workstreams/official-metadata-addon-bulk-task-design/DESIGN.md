@@ -1,7 +1,7 @@
 # Official Metadata Addon Bulk Task Design - Design
 
-Status: Active
-Last updated: 2026-05-23
+Status: Complete
+Last updated: 2026-05-24
 
 ## Problem
 
@@ -70,3 +70,11 @@ mutation, artwork ingest, retries, cancellation, and operator-visible state.
 - `../nako/docs/workstreams/addon-runtime-and-distribution/`
 - `../nako/crates/nako-addon-protocol/src/lib.rs`
 - `../nako/crates/nako-server/src/app/addons.rs`
+
+## Closeout Summary
+
+Closed for the current official metadata addon release on 2026-05-24. The addon-side design is
+complete: `bulk-metadata-scrape` must remain undeclared until Nako owns a generic Addon Task
+scheduler/invoker, durable task records, cancellation, retry, progress, and redaction-safe outcome
+reporting. Implementation of the host runtime belongs in `../nako`; this repository intentionally
+keeps the official addon manifest task-free.

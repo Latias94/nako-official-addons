@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Breadth and Localization — Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-23
 
 ## M0 — Scope And Evidence Freeze
@@ -48,3 +48,6 @@ Exit criteria:
 - Gate set is recorded.
 - Remaining work is either completed, deferred, or split into a follow-on.
 - `WORKSTREAM.json` status is updated.
+
+Status: Complete on 2026-05-23. Residual provider breadth is deferred into follow-on scope rather
+than silently widening this lane.
