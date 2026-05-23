@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-breadth",
+  "title": "Official Metadata Addon Provider Breadth and Localization",
+  "status": "active",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "TMDB and Bangumi still leave match quality and artwork selection depth on the table for localized libraries.",
+  "task_prefix": "OMPB",
+  "current_task": "OMPB-020",
+  "completed_tasks": [
+    "OMPB-010"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-breadth/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-breadth/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-provider-breadth/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-breadth/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-breadth/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper artwork --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/engine/mod.rs",
+    "crates/nako-metadata-scraper/src/engine/artwork.rs",
+    "crates/nako-metadata-scraper/src/engine/ranking.rs",
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs",
+    "../repo-ref/nako-scraper/CheckTMDB/README.md",
+    "../repo-ref/nako-scraper/tinyMediaManager/README.md",
+    "../repo-ref/nako-scraper/javinizer-go/README.md",
+    "../repo-ref/nako-scraper/mdcx/README.md"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "next_task": null,
+    "notes": "Continue this lane while provider alias/localization breadth and artwork nuance remain the active objective. Split browser-worker, Douban, or bulk-task work into separate follow-on lanes if they reappear."
+  }
+}
