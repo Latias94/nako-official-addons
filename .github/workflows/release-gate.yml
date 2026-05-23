@@ -13,6 +13,7 @@ permissions:
 env:
   RUST_VERSION: "1.95"
   ADDON_IMAGE: nako-metadata-scraper:ci
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   rust:
@@ -20,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout official addons
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: nako-official-addons
 
       - name: Checkout Nako core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Latias94/nako
           path: nako
@@ -70,18 +71,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout official addons
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: nako-official-addons
 
       - name: Checkout Nako core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Latias94/nako
           path: nako
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build metadata scraper image
         working-directory: nako-official-addons
