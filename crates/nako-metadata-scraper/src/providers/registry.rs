@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::config::ProviderId;
 use crate::{Config, providers::MetadataProvider};
 
-use super::{fixture, tmdb::TmdbMetadataProvider};
+use super::{bangumi::BangumiMetadataProvider, fixture, tmdb::TmdbMetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProviderDescriptor {
@@ -147,13 +147,29 @@ fn default_catalog() -> Vec<ProviderCatalogEntry> {
                 }
             },
         },
+        ProviderCatalogEntry {
+            id: ProviderId::Bangumi,
+            capabilities: &["metadata_suggestion", "subject_search", "anime_search"],
+            build: |config| {
+                let Some(bangumi_config) = config
+                    .provider_config(ProviderId::Bangumi)
+                    .and_then(|provider| provider.bangumi.clone())
+                else {
+                    return ProviderBuildStatus::Unavailable;
+                };
+                match BangumiMetadataProvider::new(bangumi_config) {
+                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+                    Err(_) => ProviderBuildStatus::Unavailable,
+                }
+            },
+        },
     ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ProviderConfig, TmdbProviderConfig};
+    use crate::config::{BangumiProviderConfig, ProviderConfig, TmdbProviderConfig};
 
     #[test]
     fn registry_builds_enabled_available_providers() {
@@ -182,7 +198,7 @@ mod tests {
         let diagnostics = registry.diagnostics();
 
         assert_eq!(diagnostics.enabled, vec!["fixture"]);
-        assert_eq!(diagnostics.disabled, vec!["tmdb"]);
+        assert_eq!(diagnostics.disabled, vec!["tmdb", "bangumi"]);
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(
             diagnostics.supported[0],
@@ -204,6 +220,16 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[2],
+            ProviderDescriptor {
+                id: "bangumi",
+                enabled: false,
+                available: false,
+                capabilities: vec!["metadata_suggestion", "subject_search", "anime_search"],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -216,7 +242,7 @@ mod tests {
         let diagnostics = registry.diagnostics();
 
         assert!(diagnostics.enabled.is_empty());
-        assert_eq!(diagnostics.disabled, vec!["fixture", "tmdb"]);
+        assert_eq!(diagnostics.disabled, vec!["fixture", "tmdb", "bangumi"]);
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(diagnostics.supported[0].status, ProviderStatus::Disabled);
     }
@@ -254,6 +280,7 @@ mod tests {
                     id: ProviderId::Tmdb,
                     enabled: true,
                     tmdb: Some(TmdbProviderConfig::from_env_lookup(|_| None)),
+                    bangumi: None,
                 },
             ],
             ..Config::default()
@@ -263,7 +290,7 @@ mod tests {
 
         assert!(registry.providers().is_empty());
         assert!(diagnostics.enabled.is_empty());
-        assert_eq!(diagnostics.disabled, vec!["fixture"]);
+        assert_eq!(diagnostics.disabled, vec!["fixture", "bangumi"]);
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);
     }
@@ -282,6 +309,7 @@ mod tests {
                         language: "en-US".to_owned(),
                         include_adult: false,
                     }),
+                    bangumi: None,
                 },
             ],
             ..Config::default()
@@ -293,6 +321,31 @@ mod tests {
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].id(), ProviderId::Tmdb);
         assert_eq!(diagnostics.enabled, vec!["tmdb"]);
+        assert!(diagnostics.unavailable.is_empty());
+    }
+
+    #[test]
+    fn registry_builds_enabled_bangumi_without_token() {
+        let registry = ProviderRegistry::from_config(Config {
+            providers: vec![
+                ProviderConfig::disabled(ProviderId::Fixture),
+                ProviderConfig::disabled(ProviderId::Tmdb),
+                ProviderConfig {
+                    id: ProviderId::Bangumi,
+                    enabled: true,
+                    bangumi: Some(BangumiProviderConfig::from_env_lookup(|_| None)),
+                    tmdb: None,
+                },
+            ],
+            ..Config::default()
+        });
+
+        let providers = registry.providers();
+        let diagnostics = registry.diagnostics();
+
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].id(), ProviderId::Bangumi);
+        assert_eq!(diagnostics.enabled, vec!["bangumi"]);
         assert!(diagnostics.unavailable.is_empty());
     }
 }

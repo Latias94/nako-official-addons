@@ -13,8 +13,12 @@ services:
       NAKO_METADATA_SCRAPER_LANGUAGE: "en-US"
       NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED: "true"
       NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0 (https://github.com/Latias94/nako-official-addons)"
       # Set only when enabling TMDB. Keep real tokens in your secret manager.
       # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
+      # Optional when enabling Bangumi authenticated visibility.
+      # NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN: "${BANGUMI_ACCESS_TOKEN}"
     ports:
       - "9100:9100"
     healthcheck:

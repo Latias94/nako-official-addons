@@ -7,7 +7,7 @@ use serde_json::json;
 
 use crate::{
     Config,
-    config::{ProviderId, TmdbProviderConfig},
+    config::{BangumiProviderConfig, ProviderId, TmdbProviderConfig},
 };
 
 pub const ADDON_ID: &str = "nako.official.metadata-scraper";
@@ -68,8 +68,9 @@ pub fn addon_manifest(config: &Config) -> AddonManifest {
 
 #[must_use]
 fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDeclaration> {
+    let mut fields = Vec::new();
     if config.provider_enabled(ProviderId::Tmdb) {
-        vec![AddonSecretReferenceFieldDeclaration::new(
+        fields.push(AddonSecretReferenceFieldDeclaration::new(
             TmdbProviderConfig::secret_field_id(),
             "TMDB Read Access Token",
             Some(
@@ -77,10 +78,21 @@ fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDecl
                     .to_owned(),
             ),
             true,
-        )]
-    } else {
-        Vec::new()
+        ));
     }
+    if config.provider_enabled(ProviderId::Bangumi) {
+        fields.push(AddonSecretReferenceFieldDeclaration::new(
+            BangumiProviderConfig::secret_field_id(),
+            "Bangumi Access Token",
+            Some(
+                "Optional Secret Reference for a Bangumi access token. Public read APIs work without it, but authenticated access may reveal user-permitted sensitive results."
+                    .to_owned(),
+            ),
+            false,
+        ));
+    }
+
+    fields
 }
 
 #[must_use]
@@ -140,7 +152,7 @@ mod tests {
 
         assert_eq!(provider_properties["fixture"]["default"], true);
         assert_eq!(provider_properties["tmdb"]["default"], false);
-        assert!(provider_properties.get("bangumi").is_none());
+        assert_eq!(provider_properties["bangumi"]["default"], false);
         assert!(provider_properties.get("douban").is_none());
         assert!(manifest.secret_reference_fields.is_empty());
     }
@@ -150,6 +162,7 @@ mod tests {
         let config = Config::from_env_lookup(|name| match name {
             "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED" => Some("false".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -163,11 +176,21 @@ mod tests {
             schema["properties"]["providers"]["properties"]["tmdb"]["default"],
             true
         );
-        assert_eq!(manifest.secret_reference_fields.len(), 1);
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["bangumi"]["default"],
+            true
+        );
+        assert_eq!(manifest.secret_reference_fields.len(), 2);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
             TmdbProviderConfig::secret_field_id()
         );
+        assert!(manifest.secret_reference_fields[0].required);
+        assert_eq!(
+            manifest.secret_reference_fields[1].id,
+            BangumiProviderConfig::secret_field_id()
+        );
+        assert!(!manifest.secret_reference_fields[1].required);
     }
 
     #[test]
@@ -181,6 +204,7 @@ mod tests {
             providers: vec![
                 ProviderConfig::enabled(ProviderId::Fixture),
                 ProviderConfig::disabled(ProviderId::Tmdb),
+                ProviderConfig::disabled(ProviderId::Bangumi),
             ],
             ..Config::default()
         });

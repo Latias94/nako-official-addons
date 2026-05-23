@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-bangumi-provider-baseline",
+  "title": "Official Metadata Bangumi Provider Baseline",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The metadata scraper has provider runtime foundations, but Bangumi is not yet a runtime-supported metadata provider for anime and ACG metadata.",
+  "task_prefix": "OMBGM",
+  "current_task": null,
+  "completed_tasks": [
+    "OMBGM-010",
+    "OMBGM-020",
+    "OMBGM-030",
+    "OMBGM-040",
+    "OMBGM-050"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-bangumi-provider-baseline/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-bangumi-provider-baseline/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-bangumi-provider-baseline/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-bangumi-provider-baseline/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-bangumi-provider-baseline/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "docs/workstreams/official-metadata-addon-production-baseline",
+    "crates/nako-metadata-scraper/src/config.rs",
+    "crates/nako-metadata-scraper/src/providers/registry.rs",
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "Workstream closed. Recommended follow-ons: live Bangumi provider QA, Douban/crawler runtime with possible Playwright, episode metadata, and artwork/image materialization."
+  }
+}

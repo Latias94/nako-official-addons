@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use crate::config::ProviderId;
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
 
+pub mod bangumi;
 pub mod fixture;
 pub mod http_runtime;
 mod registry;

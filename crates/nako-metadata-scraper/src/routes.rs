@@ -152,9 +152,13 @@ mod tests {
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
         assert_eq!(manifest.resources[0].kind, AddonResource::Metadata);
+        let schema = &manifest.configuration_schema.as_ref().unwrap().schema;
         assert_eq!(
-            manifest.configuration_schema.unwrap().schema["properties"]["providers"]["properties"]
-                ["tmdb"]["default"],
+            schema["properties"]["providers"]["properties"]["tmdb"]["default"],
+            false
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["bangumi"]["default"],
             false
         );
         assert_eq!(
@@ -273,7 +277,7 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["disabled_providers"],
-            serde_json::json!(["fixture", "tmdb"])
+            serde_json::json!(["fixture", "tmdb", "bangumi"])
         );
         assert_eq!(
             payload.diagnostics["unavailable_providers"],

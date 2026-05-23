@@ -4,8 +4,8 @@ Official metadata scraper Addon Sidecar for Nako.
 
 This repository is being refactored toward a future-facing metadata addon
 architecture. The current runtime has one installable addon, a fixture adapter
-for smoke tests, and a bounded TMDB movie baseline behind the shared provider
-registry, ranking model, and HTTP runtime.
+for smoke tests, plus bounded TMDB movie and Bangumi subject baselines behind
+the shared provider registry, ranking model, and HTTP runtime.
 
 ## Run locally
 
@@ -82,9 +82,9 @@ After the protocol crate is published, the Docker context can shrink back to
 this repository only.
 
 The Dockerfile and examples expose the runtime truth directly: fixture is
-enabled by default, TMDB is disabled by default, and enabling TMDB requires
-`NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` to be supplied by the operator's
-secret manager or environment policy.
+enabled by default, TMDB and Bangumi are disabled by default, and provider
+secrets should be supplied by the operator's secret manager or environment
+policy.
 
 ## Current provider strategy
 
@@ -95,6 +95,17 @@ Today that means fixture by default and optional TMDB movie metadata when
 `NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED=true` and
 `NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` is configured. TMDB currently
 uses movie search plus bounded detail and external-ID enrichment for runtime,
-tagline, genres, selected IDs, and safe image-path metadata. Future provider
-breadth will come through the runtime seam, not by turning each provider into
-its own addon.
+tagline, genres, selected IDs, and safe image-path metadata.
+
+Bangumi metadata is available when
+`NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED=true`. Public subject search
+and detail enrichment work without a token. Set
+`NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT` to a Bangumi-compliant developer/app
+identifier and optionally set `NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN` for
+authenticated visibility. The baseline maps subject title/original title,
+summary, release date, platform, subject type, episode counts, ratings, tags,
+image URLs, and the Bangumi subject ID into provider-neutral facts.
+
+Future provider breadth will come through the runtime seam, not by turning each
+provider into its own addon. Douban and any Playwright/crawler runtime are
+explicitly deferred to a separate design lane.
