@@ -4,6 +4,7 @@ use crate::config::ProviderId;
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
 
 pub mod bangumi;
+pub mod browser_worker;
 pub mod fixture;
 pub mod http_runtime;
 mod registry;

@@ -17,7 +17,9 @@ keeping provider implementations modular inside the codebase:
   caps the final result set, and uses shared TMDB/Bangumi community score and
   vote-count signals as a small generic ranking bonus without changing the
   protocol contract;
-- future Douban, artwork, subtitle, or local rule providers should be added as
+- provider image facts are surfaced as typed artwork candidates, and explicit
+  metadata/artwork writeback goes through Nako-owned Addon Side Effects;
+- future Douban, subtitle, or local rule providers should be added as
   internal adapters behind the shared configuration, registry, and runtime
   seams;
 - provider modules may later become internal crates, but the install artifact
@@ -49,6 +51,13 @@ Provider defaults:
   developer/app/version and an optional
   `NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN` can be supplied for
   authenticated visibility.
+- `browser_worker`: disabled by default; used for rendered-page extraction
+  through the companion browser worker service.
+
+Bulk Metadata Scrape is tracked in
+`docs/workstreams/official-metadata-addon-bulk-task-design/` and remains
+deferred until Nako owns generic Addon Task execution. The current manifest
+keeps `tasks: []`.
 
 Local sidecar smoke:
 

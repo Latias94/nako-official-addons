@@ -14,6 +14,8 @@ use crate::{
     Config,
     engine::MetadataScrapeRuntime,
     manifest::{ADDON_ID, ADDON_VERSION, addon_manifest},
+    nako_runtime::NakoRuntimeClient,
+    nako_runtime::NakoRuntimeClientConfig,
     providers::{ProviderDiagnostics, ProviderRegistry},
 };
 
@@ -29,8 +31,14 @@ pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
     let provider_diagnostics = registry.diagnostics();
     let providers = registry.providers();
+    let nako_runtime = NakoRuntimeClientConfig::from_runtime_config(&config.nako_runtime)
+        .map(NakoRuntimeClient::new);
     let state = AppState {
-        metadata_runtime: MetadataScrapeRuntime::new(config.preferred_language.clone(), providers),
+        metadata_runtime: MetadataScrapeRuntime::new(
+            config.preferred_language.clone(),
+            providers,
+            nako_runtime,
+        ),
         provider_diagnostics,
         config,
     };
@@ -277,7 +285,7 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["disabled_providers"],
-            serde_json::json!(["fixture", "tmdb", "bangumi"])
+            serde_json::json!(["fixture", "tmdb", "bangumi", "browser_worker"])
         );
         assert_eq!(
             payload.diagnostics["unavailable_providers"],

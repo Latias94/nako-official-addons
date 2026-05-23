@@ -6,9 +6,14 @@ param(
     [switch]$RegisterInNako,
     [switch]$Enable,
     [switch]$RunResourceCall,
+    [switch]$RunWriteback,
     [switch]$IssueAddonToken,
     [switch]$RequireNako,
-    [switch]$NoAdminAuth
+    [switch]$NoAdminAuth,
+    [string]$MetadataWritebackLibraryId = $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_LIBRARY_ID,
+    [string]$MetadataWritebackTargetKind = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_KIND) { $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_KIND } else { 'media_source' }),
+    [string]$MetadataWritebackTargetId = $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_ID,
+    [string]$MetadataWritebackIdempotencyKey = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY) { $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY } else { "local-smoke-metadata-writeback-$([guid]::NewGuid())" })
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,6 +75,42 @@ function Assert-MinCount {
     }
 }
 
+function New-MetadataWritebackPayload {
+    param(
+        [Parameter(Mandatory = $true)][switch]$Enabled,
+        [string]$LibraryId,
+        [string]$TargetKind,
+        [string]$TargetId,
+        [string]$IdempotencyKey
+    )
+
+    if (-not $Enabled) {
+        return $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($LibraryId)) {
+        throw '-RunWriteback requires -MetadataWritebackLibraryId or NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_LIBRARY_ID.'
+    }
+    if ([string]::IsNullOrWhiteSpace($TargetKind)) {
+        throw '-RunWriteback requires -MetadataWritebackTargetKind or NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_KIND.'
+    }
+    if ([string]::IsNullOrWhiteSpace($TargetId)) {
+        throw '-RunWriteback requires -MetadataWritebackTargetId or NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_ID.'
+    }
+    if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
+        throw '-RunWriteback requires -MetadataWritebackIdempotencyKey or NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY.'
+    }
+
+    return [ordered]@{
+        library_id = $LibraryId
+        target = [ordered]@{
+            kind = $TargetKind
+            id = $TargetId
+        }
+        idempotency_key = $IdempotencyKey
+    }
+}
+
 function New-AdminHeaders {
     if ($NoAdminAuth) {
         return @{ Accept = 'application/json' }
@@ -115,12 +156,28 @@ $metadataRequest = [ordered]@{
         language = 'en-US'
     }
 }
+$metadataWriteback = New-MetadataWritebackPayload `
+    -Enabled:$RunWriteback `
+    -LibraryId $MetadataWritebackLibraryId `
+    -TargetKind $MetadataWritebackTargetKind `
+    -TargetId $MetadataWritebackTargetId `
+    -IdempotencyKey $MetadataWritebackIdempotencyKey
+if ($null -ne $metadataWriteback) {
+    $metadataRequest.payload['writeback'] = $metadataWriteback
+}
 $metadata = Invoke-Json -Method 'POST' -Url (Join-HttpUrl $SidecarBaseUrl '/metadata') -Body $metadataRequest
 Assert-Equal -Actual $metadata.addon_id -Expected $manifest.id -Name 'metadata.addon_id'
 Assert-Equal -Actual $metadata.resource -Expected 'metadata' -Name 'metadata.resource'
 Assert-MinCount -Items @($metadata.payload.candidates) -Minimum 1 -Name 'metadata.payload.candidates'
 Assert-MinCount -Items @($metadata.artifacts) -Minimum 1 -Name 'metadata.artifacts'
 Write-Host "[sidecar] Metadata resource OK; candidates=$(@($metadata.payload.candidates).Count), artifacts=$(@($metadata.artifacts).Count)"
+if ($RunWriteback) {
+    if ($null -eq $metadata.payload.writeback) {
+        throw 'metadata response did not include a writeback summary.'
+    }
+
+    Write-Host "[sidecar] Writeback status: $($metadata.payload.writeback.status)"
+}
 
 if (-not $RegisterInNako) {
     if ($RequireNako) {

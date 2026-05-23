@@ -1,7 +1,10 @@
 use nako_addon_protocol::AddonMetadataPatch;
 use serde::Serialize;
 
-use super::{MetadataQuery, QueryExternalId};
+use super::{
+    MetadataQuery, QueryExternalId,
+    artwork::{ArtworkCandidate, ProviderArtworkCandidate},
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProviderMetadataCandidate {
@@ -9,6 +12,7 @@ pub struct ProviderMetadataCandidate {
     pub provider_id: String,
     pub patch: AddonMetadataPatch,
     pub facts: ProviderCandidateFacts,
+    pub artwork_candidates: Vec<ProviderArtworkCandidate>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -34,6 +38,7 @@ pub struct MetadataCandidate {
     pub provider_id: String,
     pub confidence_milli: u16,
     pub patch: AddonMetadataPatch,
+    pub artwork_candidates: Vec<ArtworkCandidate>,
     pub evidence: CandidateEvidence,
 }
 
@@ -132,6 +137,16 @@ pub fn rank_candidate(
         provider_id: candidate.provider_id,
         confidence_milli: score.clamp(0, 1000) as u16,
         patch: candidate.patch,
+        artwork_candidates: candidate
+            .artwork_candidates
+            .into_iter()
+            .map(|artwork_candidate| ArtworkCandidate {
+                provider: artwork_candidate.provider,
+                provider_id: artwork_candidate.provider_id,
+                confidence_milli: score.clamp(0, 1000) as u16,
+                artwork: artwork_candidate.facts.into_artwork(),
+            })
+            .collect(),
         evidence: CandidateEvidence {
             title_match,
             year_match,
@@ -389,6 +404,7 @@ mod tests {
                     }],
                     provider_note: Some("synthetic test candidate".to_owned()),
                 },
+                artwork_candidates: Vec::new(),
             },
         );
 
@@ -433,6 +449,7 @@ mod tests {
                     }],
                     provider_note: None,
                 },
+                artwork_candidates: Vec::new(),
             },
         );
 
@@ -477,6 +494,7 @@ mod tests {
                     }],
                     provider_note: Some("safe note".to_owned()),
                 },
+                artwork_candidates: Vec::new(),
             },
         );
 
@@ -512,6 +530,7 @@ mod tests {
                     external_ids: Vec::new(),
                     provider_note: None,
                 },
+                artwork_candidates: Vec::new(),
             },
         );
 
@@ -530,6 +549,7 @@ mod tests {
                     external_ids: Vec::new(),
                     provider_note: None,
                 },
+                artwork_candidates: Vec::new(),
             },
         );
 

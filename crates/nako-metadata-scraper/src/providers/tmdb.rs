@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use nako_addon_protocol::AddonMetadataPatch;
+use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 use serde::Deserialize;
 
 use crate::{
@@ -17,6 +17,7 @@ use crate::{
 };
 
 pub const TMDB_PROVIDER_ID: &str = "tmdb";
+const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/original";
 const TMDB_DETAIL_ENRICHMENT_LIMIT: usize = 3;
 
 #[derive(Clone, Debug)]
@@ -302,11 +303,22 @@ impl TmdbMovieCandidate {
         if let Some(vote_count) = vote_count {
             tags.push(format!("tmdb_vote_count:{vote_count}"));
         }
+        let mut artwork_candidates = Vec::new();
         if let Some(poster_path) = non_empty(self.detail.poster_path) {
-            tags.push(format!("tmdb_poster_path:{poster_path}"));
+            artwork_candidates.push(tmdb_artwork_candidate(
+                TMDB_PROVIDER_ID,
+                self.detail.id,
+                AddonArtworkKind::Poster,
+                tmdb_image_url(&poster_path),
+            ));
         }
         if let Some(backdrop_path) = non_empty(self.detail.backdrop_path) {
-            tags.push(format!("tmdb_backdrop_path:{backdrop_path}"));
+            artwork_candidates.push(tmdb_artwork_candidate(
+                TMDB_PROVIDER_ID,
+                self.detail.id,
+                AddonArtworkKind::Backdrop,
+                tmdb_image_url(&backdrop_path),
+            ));
         }
 
         ProviderMetadataCandidate {
@@ -339,6 +351,7 @@ impl TmdbMovieCandidate {
                         .to_owned(),
                 ),
             },
+            artwork_candidates,
         }
     }
 }
@@ -353,6 +366,33 @@ fn first_non_empty(values: &[Option<&str>]) -> Option<String> {
 
 fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.trim().is_empty())
+}
+
+fn tmdb_artwork_candidate(
+    provider: &str,
+    movie_id: u64,
+    kind: AddonArtworkKind,
+    source_url: String,
+) -> crate::engine::ProviderArtworkCandidate {
+    crate::engine::ProviderArtworkCandidate {
+        provider: provider.to_owned(),
+        provider_id: format!("tmdb:movie:{movie_id}"),
+        facts: crate::engine::ProviderArtworkCandidateFacts {
+            kind,
+            source_url,
+            language: None,
+            width: None,
+            height: None,
+        },
+    }
+}
+
+fn tmdb_image_url(path: &str) -> String {
+    format!(
+        "{}/{}",
+        TMDB_IMAGE_BASE_URL.trim_end_matches('/'),
+        path.trim_start_matches('/')
+    )
 }
 
 fn push_external_id(ids: &mut Vec<ProviderExternalId>, provider: &str, value: Option<String>) {
@@ -514,11 +554,21 @@ mod tests {
         );
         assert!(
             candidates[0]
-                .patch
-                .tags
-                .as_ref()
-                .unwrap()
-                .contains(&"tmdb_poster_path:/poster.jpg".to_owned())
+                .artwork_candidates
+                .iter()
+                .any(|candidate| candidate.facts.kind == AddonArtworkKind::Poster
+                    && candidate.facts.source_url
+                        == "https://image.tmdb.org/t/p/original/poster.jpg")
+        );
+        assert!(
+            candidates[0]
+                .artwork_candidates
+                .iter()
+                .any(
+                    |candidate| candidate.facts.kind == AddonArtworkKind::Backdrop
+                        && candidate.facts.source_url
+                            == "https://image.tmdb.org/t/p/original/backdrop.jpg"
+                )
         );
 
         let requests = transport.requests();

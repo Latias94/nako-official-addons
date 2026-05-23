@@ -4,7 +4,7 @@
   "version": "0.1.0-alpha.1",
   "protocol_version": "0.1.0-alpha.1",
   "base_url": "http://nako-metadata-scraper:9100",
-  "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly.",
+  "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and can submit explicit Nako-owned metadata/artwork side effects when configured.",
   "resources": [
     {
       "kind": "metadata",
@@ -42,11 +42,12 @@
         "preferred_language": { "type": "string", "default": "en-US" },
         "providers": {
           "type": "object",
-          "properties": {
-            "fixture": { "type": "boolean", "default": true },
-            "tmdb": { "type": "boolean", "default": false },
-            "bangumi": { "type": "boolean", "default": false }
-          },
+        "properties": {
+          "fixture": { "type": "boolean", "default": true },
+          "tmdb": { "type": "boolean", "default": false },
+          "bangumi": { "type": "boolean", "default": false },
+          "browser_worker": { "type": "boolean", "default": false }
+        },
           "additionalProperties": false
         }
       },

@@ -23,7 +23,7 @@ pub fn addon_manifest(config: &Config) -> AddonManifest {
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
         base_url: config.base_url.clone(),
         description: Some(
-            "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly."
+            "Official Nako metadata scraper sidecar. It returns metadata suggestions and can submit explicit Nako-owned metadata/artwork side effects when configured."
                 .to_owned(),
         ),
         resources: vec![AddonResourceDeclaration {
@@ -145,6 +145,13 @@ mod tests {
     }
 
     #[test]
+    fn addon_manifest_defers_bulk_metadata_task_until_host_runtime_exists() {
+        let manifest = addon_manifest(&Config::default());
+
+        assert!(manifest.tasks.is_empty());
+    }
+
+    #[test]
     fn addon_manifest_configuration_schema_declares_only_runtime_supported_providers() {
         let manifest = addon_manifest(&Config::default());
         let schema = &manifest.configuration_schema.unwrap().schema;
@@ -153,6 +160,7 @@ mod tests {
         assert_eq!(provider_properties["fixture"]["default"], true);
         assert_eq!(provider_properties["tmdb"]["default"], false);
         assert_eq!(provider_properties["bangumi"]["default"], false);
+        assert_eq!(provider_properties["browser_worker"]["default"], false);
         assert!(provider_properties.get("douban").is_none());
         assert!(manifest.secret_reference_fields.is_empty());
     }
@@ -163,6 +171,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED" => Some("false".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -178,6 +187,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["bangumi"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["browser_worker"]["default"],
             true
         );
         assert_eq!(manifest.secret_reference_fields.len(), 2);
@@ -205,6 +218,7 @@ mod tests {
                 ProviderConfig::enabled(ProviderId::Fixture),
                 ProviderConfig::disabled(ProviderId::Tmdb),
                 ProviderConfig::disabled(ProviderId::Bangumi),
+                ProviderConfig::disabled(ProviderId::BrowserWorker),
             ],
             ..Config::default()
         });

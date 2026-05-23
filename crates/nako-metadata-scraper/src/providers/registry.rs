@@ -3,7 +3,10 @@ use serde::Serialize;
 use crate::config::ProviderId;
 use crate::{Config, providers::MetadataProvider};
 
-use super::{bangumi::BangumiMetadataProvider, fixture, tmdb::TmdbMetadataProvider};
+use super::{
+    bangumi::BangumiMetadataProvider, browser_worker::BrowserWorkerMetadataProvider, fixture,
+    tmdb::TmdbMetadataProvider,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProviderDescriptor {
@@ -163,13 +166,31 @@ fn default_catalog() -> Vec<ProviderCatalogEntry> {
                 }
             },
         },
+        ProviderCatalogEntry {
+            id: ProviderId::BrowserWorker,
+            capabilities: &["metadata_suggestion", "rendered_page_extraction"],
+            build: |config| {
+                let Some(browser_worker_config) = config
+                    .provider_config(ProviderId::BrowserWorker)
+                    .and_then(|provider| provider.browser_worker.clone())
+                else {
+                    return ProviderBuildStatus::Unavailable;
+                };
+                match BrowserWorkerMetadataProvider::new(browser_worker_config) {
+                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+                    Err(_) => ProviderBuildStatus::Unavailable,
+                }
+            },
+        },
     ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{BangumiProviderConfig, ProviderConfig, TmdbProviderConfig};
+    use crate::config::{
+        BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig, TmdbProviderConfig,
+    };
 
     #[test]
     fn registry_builds_enabled_available_providers() {
@@ -198,7 +219,10 @@ mod tests {
         let diagnostics = registry.diagnostics();
 
         assert_eq!(diagnostics.enabled, vec!["fixture"]);
-        assert_eq!(diagnostics.disabled, vec!["tmdb", "bangumi"]);
+        assert_eq!(
+            diagnostics.disabled,
+            vec!["tmdb", "bangumi", "browser_worker"]
+        );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(
             diagnostics.supported[0],
@@ -230,6 +254,16 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[3],
+            ProviderDescriptor {
+                id: "browser_worker",
+                enabled: false,
+                available: false,
+                capabilities: vec!["metadata_suggestion", "rendered_page_extraction"],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -242,7 +276,10 @@ mod tests {
         let diagnostics = registry.diagnostics();
 
         assert!(diagnostics.enabled.is_empty());
-        assert_eq!(diagnostics.disabled, vec!["fixture", "tmdb", "bangumi"]);
+        assert_eq!(
+            diagnostics.disabled,
+            vec!["fixture", "tmdb", "bangumi", "browser_worker"]
+        );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(diagnostics.supported[0].status, ProviderStatus::Disabled);
     }
@@ -281,6 +318,7 @@ mod tests {
                     enabled: true,
                     tmdb: Some(TmdbProviderConfig::from_env_lookup(|_| None)),
                     bangumi: None,
+                    browser_worker: None,
                 },
             ],
             ..Config::default()
@@ -290,7 +328,10 @@ mod tests {
 
         assert!(registry.providers().is_empty());
         assert!(diagnostics.enabled.is_empty());
-        assert_eq!(diagnostics.disabled, vec!["fixture", "bangumi"]);
+        assert_eq!(
+            diagnostics.disabled,
+            vec!["fixture", "bangumi", "browser_worker"]
+        );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);
     }
@@ -310,6 +351,7 @@ mod tests {
                         include_adult: false,
                     }),
                     bangumi: None,
+                    browser_worker: None,
                 },
             ],
             ..Config::default()
@@ -335,6 +377,7 @@ mod tests {
                     enabled: true,
                     bangumi: Some(BangumiProviderConfig::from_env_lookup(|_| None)),
                     tmdb: None,
+                    browser_worker: None,
                 },
             ],
             ..Config::default()
@@ -346,6 +389,33 @@ mod tests {
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].id(), ProviderId::Bangumi);
         assert_eq!(diagnostics.enabled, vec!["bangumi"]);
+        assert!(diagnostics.unavailable.is_empty());
+    }
+
+    #[test]
+    fn registry_reports_enabled_browser_worker_without_base_url_as_unavailable() {
+        let registry = ProviderRegistry::from_config(Config {
+            providers: vec![
+                ProviderConfig::disabled(ProviderId::Fixture),
+                ProviderConfig::disabled(ProviderId::Tmdb),
+                ProviderConfig::disabled(ProviderId::Bangumi),
+                ProviderConfig {
+                    id: ProviderId::BrowserWorker,
+                    enabled: true,
+                    tmdb: None,
+                    bangumi: None,
+                    browser_worker: Some(BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
+                },
+            ],
+            ..Config::default()
+        });
+
+        let providers = registry.providers();
+        let diagnostics = registry.diagnostics();
+
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].id(), ProviderId::BrowserWorker);
+        assert_eq!(diagnostics.enabled, vec!["browser_worker"]);
         assert!(diagnostics.unavailable.is_empty());
     }
 }

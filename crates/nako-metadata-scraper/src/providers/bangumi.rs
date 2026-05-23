@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use nako_addon_protocol::AddonMetadataPatch;
+use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -280,12 +280,38 @@ impl BangumiSubjectCandidate {
                 tags.push(format!("bangumi_score:{score:.1}"));
             }
         }
+        let mut artwork_candidates = Vec::new();
         if let Some(images) = images {
-            push_image_tag(&mut tags, "large", images.large);
-            push_image_tag(&mut tags, "common", images.common);
-            push_image_tag(&mut tags, "medium", images.medium);
-            push_image_tag(&mut tags, "small", images.small);
-            push_image_tag(&mut tags, "grid", images.grid);
+            push_bangumi_artwork_candidate(
+                &mut artwork_candidates,
+                subject_id,
+                "large",
+                images.large,
+            );
+            push_bangumi_artwork_candidate(
+                &mut artwork_candidates,
+                subject_id,
+                "common",
+                images.common,
+            );
+            push_bangumi_artwork_candidate(
+                &mut artwork_candidates,
+                subject_id,
+                "medium",
+                images.medium,
+            );
+            push_bangumi_artwork_candidate(
+                &mut artwork_candidates,
+                subject_id,
+                "small",
+                images.small,
+            );
+            push_bangumi_artwork_candidate(
+                &mut artwork_candidates,
+                subject_id,
+                "grid",
+                images.grid,
+            );
         }
 
         ProviderMetadataCandidate {
@@ -323,6 +349,7 @@ impl BangumiSubjectCandidate {
                         .to_owned(),
                 ),
             },
+            artwork_candidates,
         }
     }
 }
@@ -401,9 +428,24 @@ fn push_unique_non_empty(values: &mut Vec<String>, value: String) {
     values.push(value);
 }
 
-fn push_image_tag(tags: &mut Vec<String>, kind: &str, value: Option<String>) {
+fn push_bangumi_artwork_candidate(
+    candidates: &mut Vec<crate::engine::ProviderArtworkCandidate>,
+    subject_id: u64,
+    variant: &str,
+    value: Option<String>,
+) {
     if let Some(value) = non_empty(value) {
-        tags.push(format!("bangumi_image_{kind}:{value}"));
+        candidates.push(crate::engine::ProviderArtworkCandidate {
+            provider: BANGUMI_PROVIDER_ID.to_owned(),
+            provider_id: format!("bangumi:subject:{subject_id}:image:{variant}"),
+            facts: crate::engine::ProviderArtworkCandidateFacts {
+                kind: AddonArtworkKind::Poster,
+                source_url: value,
+                language: None,
+                width: None,
+                height: None,
+            },
+        });
     }
 }
 
@@ -528,9 +570,23 @@ mod tests {
                 "GAINAX".to_owned()
             ]
         );
-        assert!(candidates[0].patch.tags.as_ref().unwrap().contains(
-            &"bangumi_image_large:https://lain.bgm.tv/pic/cover/l/detail.jpg".to_owned()
-        ));
+        assert_eq!(candidates[0].artwork_candidates.len(), 2);
+        assert_eq!(
+            candidates[0].artwork_candidates[0].facts.kind,
+            AddonArtworkKind::Poster
+        );
+        assert_eq!(
+            candidates[0].artwork_candidates[0].facts.source_url,
+            "https://lain.bgm.tv/pic/cover/l/detail.jpg"
+        );
+        assert_eq!(
+            candidates[0].artwork_candidates[1].facts.kind,
+            AddonArtworkKind::Poster
+        );
+        assert_eq!(
+            candidates[0].artwork_candidates[1].facts.source_url,
+            "https://lain.bgm.tv/pic/cover/c/detail.jpg"
+        );
         assert_eq!(candidates[0].facts.title.as_deref(), Some("新世纪福音战士"));
         assert_eq!(candidates[0].facts.release_year, Some(1995));
         assert_eq!(candidates[0].facts.language.as_deref(), Some("zh-CN"));

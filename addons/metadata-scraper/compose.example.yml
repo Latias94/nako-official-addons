@@ -12,6 +12,8 @@ services:
       NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED: "true"
       NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
       NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED: "true"
+      NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL: "http://nako-browser-worker:3000"
       NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.1 (https://github.com/Latias94/nako-official-addons)"
       # Set only when enabling TMDB. Keep real tokens in your secret manager.
       # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
@@ -19,3 +21,14 @@ services:
       # NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN: "${BANGUMI_ACCESS_TOKEN}"
     ports:
       - "9100:9100"
+
+  nako-browser-worker:
+    build:
+      context: ../browser-worker
+    image: ghcr.io/latias94/nako-browser-worker:0.1.0-alpha.1
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3000"
+    expose:
+      - "3000"

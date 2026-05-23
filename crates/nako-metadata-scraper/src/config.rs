@@ -1,12 +1,60 @@
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NakoRuntimeConfig {
+    pub base_url: Option<String>,
+    pub addon_token: Option<String>,
+    pub side_effects_enabled: bool,
+    pub timeout_ms: u64,
+}
+
+impl NakoRuntimeConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            base_url: lookup("NAKO_METADATA_SCRAPER_NAKO_BASE_URL").and_then(non_empty_trimmed),
+            addon_token: lookup("NAKO_METADATA_SCRAPER_ADDON_TOKEN").and_then(non_empty_trimmed),
+            side_effects_enabled: lookup("NAKO_METADATA_SCRAPER_SIDE_EFFECTS_ENABLED")
+                .and_then(|value| parse_bool(&value))
+                .unwrap_or(false),
+            timeout_ms: lookup("NAKO_METADATA_SCRAPER_NAKO_TIMEOUT_MS")
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        }
+    }
+
+    #[must_use]
+    pub fn disabled() -> Self {
+        Self {
+            base_url: None,
+            addon_token: None,
+            side_effects_enabled: false,
+            timeout_ms: Self::DEFAULT_TIMEOUT_MS,
+        }
+    }
+
+    #[must_use]
+    pub fn can_submit_side_effects(&self) -> bool {
+        self.side_effects_enabled && self.base_url.is_some() && self.addon_token.is_some()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderId {
     Fixture,
     Tmdb,
     Bangumi,
+    BrowserWorker,
 }
 
 impl ProviderId {
-    pub const ALL: [Self; 3] = [Self::Fixture, Self::Tmdb, Self::Bangumi];
+    pub const ALL: [Self; 4] = [
+        Self::Fixture,
+        Self::Tmdb,
+        Self::Bangumi,
+        Self::BrowserWorker,
+    ];
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -14,6 +62,7 @@ impl ProviderId {
             Self::Fixture => "fixture",
             Self::Tmdb => "tmdb",
             Self::Bangumi => "bangumi",
+            Self::BrowserWorker => "browser_worker",
         }
     }
 
@@ -23,6 +72,7 @@ impl ProviderId {
             Self::Fixture => "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED",
             Self::Tmdb => "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
             Self::Bangumi => "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED",
+            Self::BrowserWorker => "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED",
         }
     }
 
@@ -30,7 +80,7 @@ impl ProviderId {
     pub const fn default_enabled(self) -> bool {
         match self {
             Self::Fixture => true,
-            Self::Tmdb | Self::Bangumi => false,
+            Self::Tmdb | Self::Bangumi | Self::BrowserWorker => false,
         }
     }
 }
@@ -41,6 +91,7 @@ pub struct ProviderConfig {
     pub enabled: bool,
     pub tmdb: Option<TmdbProviderConfig>,
     pub bangumi: Option<BangumiProviderConfig>,
+    pub browser_worker: Option<BrowserWorkerProviderConfig>,
 }
 
 impl ProviderConfig {
@@ -51,6 +102,7 @@ impl ProviderConfig {
             enabled: true,
             tmdb: None,
             bangumi: None,
+            browser_worker: None,
         }
     }
 
@@ -61,6 +113,7 @@ impl ProviderConfig {
             enabled: false,
             tmdb: None,
             bangumi: None,
+            browser_worker: None,
         }
     }
 }
@@ -139,11 +192,38 @@ impl BangumiProviderConfig {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BrowserWorkerProviderConfig {
+    pub base_url: String,
+    pub extract_path: String,
+    pub timeout_ms: u64,
+}
+
+impl BrowserWorkerProviderConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
+            extract_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "/extract".to_owned()),
+            timeout_ms: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config {
     pub listen_addr: String,
     pub base_url: String,
     pub preferred_language: String,
     pub providers: Vec<ProviderConfig>,
+    pub nako_runtime: NakoRuntimeConfig,
 }
 
 impl Config {
@@ -174,9 +254,13 @@ impl Config {
                             .then(|| TmdbProviderConfig::from_env_lookup(|name| lookup(name))),
                         bangumi: (id == ProviderId::Bangumi)
                             .then(|| BangumiProviderConfig::from_env_lookup(|name| lookup(name))),
+                        browser_worker: (id == ProviderId::BrowserWorker).then(|| {
+                            BrowserWorkerProviderConfig::from_env_lookup(|name| lookup(name))
+                        }),
                     }
                 })
                 .collect(),
+            nako_runtime: NakoRuntimeConfig::from_env_lookup(|name| lookup(name)),
         }
     }
 
@@ -210,8 +294,11 @@ impl Default for Config {
                         .then(|| TmdbProviderConfig::from_env_lookup(|_| None)),
                     bangumi: (id == ProviderId::Bangumi)
                         .then(|| BangumiProviderConfig::from_env_lookup(|_| None)),
+                    browser_worker: (id == ProviderId::BrowserWorker)
+                        .then(|| BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
                 })
                 .collect(),
+            nako_runtime: NakoRuntimeConfig::disabled(),
         }
     }
 }
@@ -222,6 +309,11 @@ fn parse_bool(value: &str) -> Option<bool> {
         "0" | "false" | "no" | "off" => Some(false),
         _ => None,
     }
+}
+
+fn non_empty_trimmed(value: String) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.to_owned())
 }
 
 fn parse_bangumi_subject_types(value: &str) -> Option<Vec<u8>> {
@@ -260,9 +352,16 @@ mod tests {
         assert_eq!(bangumi.api_base_url, "https://api.bgm.tv");
         assert_eq!(bangumi.subject_types, vec![2]);
         assert!(!bangumi.include_nsfw);
+        assert_eq!(config.providers[3].id, ProviderId::BrowserWorker);
+        assert!(!config.providers[3].enabled);
+        let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
+        assert_eq!(browser_worker.base_url, "http://nako-browser-worker:3000");
+        assert_eq!(browser_worker.extract_path, "/extract");
+        assert_eq!(browser_worker.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
+        assert!(!config.provider_enabled(ProviderId::BrowserWorker));
     }
 
     #[test]
@@ -271,9 +370,14 @@ mod tests {
             "NAKO_METADATA_SCRAPER_LISTEN_ADDR" => Some("0.0.0.0:9200".to_owned()),
             "NAKO_METADATA_SCRAPER_BASE_URL" => Some("https://addon.example".to_owned()),
             "NAKO_METADATA_SCRAPER_LANGUAGE" => Some("zh-CN".to_owned()),
+            "NAKO_METADATA_SCRAPER_NAKO_BASE_URL" => Some("https://nako.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_ADDON_TOKEN" => Some(" addon-token ".to_owned()),
+            "NAKO_METADATA_SCRAPER_SIDE_EFFECTS_ENABLED" => Some("yes".to_owned()),
+            "NAKO_METADATA_SCRAPER_NAKO_TIMEOUT_MS" => Some("2500".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED" => Some("false".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -287,12 +391,27 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BANGUMI_INCLUDE_NSFW" => Some("yes".to_owned()),
             "NAKO_METADATA_SCRAPER_BANGUMI_SUBJECT_TYPES" => Some("2,6".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL" => {
+                Some("http://browser-worker.example:3000".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH" => Some("/extract".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS" => Some("7500".to_owned()),
             _ => None,
         });
 
         assert_eq!(config.listen_addr, "0.0.0.0:9200");
         assert_eq!(config.base_url, "https://addon.example");
         assert_eq!(config.preferred_language, "zh-CN");
+        assert_eq!(
+            config.nako_runtime,
+            NakoRuntimeConfig {
+                base_url: Some("https://nako.example".to_owned()),
+                addon_token: Some("addon-token".to_owned()),
+                side_effects_enabled: true,
+                timeout_ms: 2500,
+            }
+        );
+        assert!(config.nako_runtime.can_submit_side_effects());
         assert_eq!(
             config.providers[0],
             ProviderConfig::disabled(ProviderId::Fixture)
@@ -311,6 +430,14 @@ mod tests {
         assert_eq!(bangumi.user_agent, "Latias94/test-addon/0.1.0");
         assert!(bangumi.include_nsfw);
         assert_eq!(bangumi.subject_types, vec![2, 6]);
+        assert!(config.provider_enabled(ProviderId::BrowserWorker));
+        let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
+        assert_eq!(
+            browser_worker.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(browser_worker.extract_path, "/extract");
+        assert_eq!(browser_worker.timeout_ms, 7500);
     }
 
     #[test]
@@ -324,5 +451,21 @@ mod tests {
             config.providers[2].bangumi.as_ref().unwrap().subject_types,
             vec![2]
         );
+        assert_eq!(
+            config.providers[3]
+                .browser_worker
+                .as_ref()
+                .unwrap()
+                .extract_path,
+            "/extract"
+        );
+    }
+
+    #[test]
+    fn nako_runtime_defaults_to_no_side_effect_authority() {
+        let config = Config::default();
+
+        assert_eq!(config.nako_runtime, NakoRuntimeConfig::disabled());
+        assert!(!config.nako_runtime.can_submit_side_effects());
     }
 }

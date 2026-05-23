@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-bulk-task-design",
+  "title": "Official Metadata Addon Bulk Task Design",
+  "status": "active",
+  "updated": "2026-05-23",
+  "scope_kind": "design",
+  "problem": "Bulk Metadata Scrape needs a Nako-owned Addon Task runtime before the official Addon can safely declare or implement a task endpoint.",
+  "task_prefix": "OMAB",
+  "current_task": "OMAB-020",
+  "completed_tasks": [
+    "OMAB-010"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "docs/workstreams/official-metadata-addon-side-effect-writer",
+    "crates/nako-metadata-scraper/src/manifest.rs",
+    "../nako/docs/guides/ADDON_AUTHOR_GUIDE.md",
+    "../nako/docs/api/HTTP_API.md",
+    "../nako/docs/workstreams/addon-runtime-and-distribution",
+    "../nako/crates/nako-addon-protocol/src/lib.rs",
+    "../nako/crates/nako-server/src/app/addons.rs"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md",
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "next_task": "OMAB-020",
+    "notes": "Host task declarations/routing plans exist, but the generic Addon Task scheduler/invoker is deferred. Do not add bulk scrape to the manifest until OMAB-020 resolves the host contract."
+  }
+}

@@ -55,6 +55,7 @@ impl MetadataProvider for FixtureProvider {
                     "Fixture provider echoes normalized title for smoke testing.".to_owned(),
                 ),
             },
+            artwork_candidates: Vec::new(),
         }])
     }
 }
