@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-browser-worker",
+  "title": "Official Metadata Browser Worker",
+  "status": "active",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The official metadata addon needs a dedicated browser automation worker for Douban-like anti-bot sources without bloating the Rust sidecar.",
+  "task_prefix": "OMBW",
+  "current_task": "OMBW-010",
+  "completed_tasks": [],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-browser-worker/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-browser-worker/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-browser-worker/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-browser-worker/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-browser-worker/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "docker compose -f addons/metadata-scraper/compose.example.yml config",
+    "git diff --check"
+  ],
+  "evidence": [
+    "README.md",
+    "addons/metadata-scraper/README.md",
+    "addons/metadata-scraper/compose.example.yml",
+    "docs/workstreams/official-metadata-addon-fearless-refactor/DESIGN.md",
+    "docs/workstreams/official-metadata-addon-result-quality/DESIGN.md",
+    "docs/workstreams/official-metadata-bangumi-provider-baseline/DESIGN.md",
+    "docs/workstreams/official-metadata-addon-side-effect-writer/DESIGN.md"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "continue",
+    "notes": "Continue this lane while the browser worker target state remains valid. Split a follow-on when scope changes."
+  }
+}
