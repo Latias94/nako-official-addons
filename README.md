@@ -12,16 +12,16 @@ keeping provider implementations modular inside the codebase:
 
 - users install `nako-metadata-scraper` once;
 - the current runtime supports the fixture provider by default and includes
-  default-disabled TMDB and Bangumi baselines behind the same provider seam;
+  default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
+  seam;
 - runtime candidate shaping deduplicates exact duplicate provider candidates,
-  caps the final result set, and uses shared TMDB/Bangumi community score and
-  vote-count signals as a small generic ranking bonus without changing the
-  protocol contract;
+  caps the final result set, and uses shared TMDB/Bangumi/Douban community
+  score and vote-count signals as a small generic ranking bonus without
+  changing the protocol contract;
 - provider image facts are surfaced as typed artwork candidates, and explicit
   metadata/artwork writeback goes through Nako-owned Addon Side Effects;
-- future Douban, subtitle, or local rule providers should be added as
-  internal adapters behind the shared configuration, registry, and runtime
-  seams;
+- future subtitle or local rule providers should be added as internal adapters
+  behind the shared configuration, registry, and runtime seams;
 - provider modules may later become internal crates, but the install artifact
   should remain one addon unless a provider has a different trust, license, or
   deployment boundary.
@@ -53,6 +53,9 @@ Provider defaults:
   authenticated visibility.
 - `browser_worker`: disabled by default; used for rendered-page extraction
   through the companion browser worker service.
+- `douban`: disabled by default; uses the companion browser worker `POST /render`
+  contract through `NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL`, with
+  provider-specific parsing kept in the Rust sidecar.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and remains

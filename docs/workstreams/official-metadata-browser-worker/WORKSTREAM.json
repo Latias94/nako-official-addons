@@ -2,17 +2,18 @@
   "schema_version": 1,
   "slug": "official-metadata-browser-worker",
   "title": "Official Metadata Browser Worker",
-  "status": "active",
+  "status": "closed",
   "updated": "2026-05-23",
   "scope_kind": "execution",
   "problem": "The official metadata addon needs a dedicated browser automation worker for Douban-like anti-bot sources without bloating the Rust sidecar.",
   "task_prefix": "OMBW",
-  "current_task": "OMBW-050",
+  "current_task": null,
   "completed_tasks": [
     "OMBW-010",
     "OMBW-020",
     "OMBW-030",
-    "OMBW-040"
+    "OMBW-040",
+    "OMBW-050"
   ],
   "authoritative_docs": [
     {
@@ -57,11 +58,12 @@
     "docs/workstreams/official-metadata-addon-fearless-refactor/DESIGN.md",
     "docs/workstreams/official-metadata-addon-result-quality/DESIGN.md",
     "docs/workstreams/official-metadata-bangumi-provider-baseline/DESIGN.md",
-    "docs/workstreams/official-metadata-addon-side-effect-writer/DESIGN.md"
+    "docs/workstreams/official-metadata-addon-side-effect-writer/DESIGN.md",
+    "docs/workstreams/official-metadata-browser-worker/JOURNAL/2026-05-23-ombw-050-closeout.md"
   ],
   "adr_refs": [],
   "continue_policy": {
     "default_action": "continue",
-    "notes": "Continue this lane while the browser worker target state remains valid. Split a follow-on when scope changes."
+    "notes": "This lane is closed. Use a follow-on lane for live Douban smoke hardening, proxy/cookie policy, or broader provider parsing instead of reopening this implementation lane."
   }
 }

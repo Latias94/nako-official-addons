@@ -1,6 +1,6 @@
 # Official Metadata Browser Worker - TODO
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-23
 
 Task IDs use the `OMBW` prefix.
@@ -42,9 +42,9 @@ Task IDs use the `OMBW` prefix.
 
 ## M4 - Docs And Closeout
 
-- [ ] OMBW-050 [owner=planner] [deps=OMBW-030,OMBW-040] [scope=README.md,addons/metadata-scraper,docs/workstreams/official-metadata-browser-worker]
+- [x] OMBW-050 [owner=planner] [deps=OMBW-030,OMBW-040] [scope=README.md,addons/metadata-scraper,docs/workstreams/official-metadata-browser-worker]
   Goal: Update docs, record final gates, and close or split follow-ons.
   Validation: `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo nextest run --workspace --no-fail-fast`; `git diff --check`.
   Review: Use `verify-rust-workstream` before marking complete.
   Evidence: EVIDENCE_AND_GATES.md and WORKSTREAM.json.
-  Handoff: Summarize remaining risk in HANDOFF.md.
+  Handoff: DONE on 2026-05-23. Lane closed with live Douban smoke split to follow-on hardening; fixture-backed `/render` + Rust parsing baseline is the shipped proof.

@@ -1,6 +1,6 @@
 # Official Metadata Browser Worker
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-23
 
 ## Why This Lane Exists
@@ -97,3 +97,15 @@ This lane can close when:
 - one rendered-page extraction proof passes;
 - the Douban-backed baseline is implemented or explicitly split out;
 - docs reflect the shipped behavior truthfully.
+
+## Closeout Outcome
+
+Closed on 2026-05-23. The worker exists under `addons/browser-worker`, exposes
+the stable generic `POST /render` contract, and stays outside the public Nako
+addon surface. `nako-metadata-scraper` can call the worker through
+configuration, Compose wires both services, and Douban is the first
+browser-rendered provider baseline.
+
+The Douban baseline is fixture-backed for closeout. Live Douban extraction is
+not claimed by this lane and should be handled as follow-on hardening because
+it may depend on operator proxy, cookie, header, and rate-limit policy.

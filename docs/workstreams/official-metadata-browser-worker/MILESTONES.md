@@ -1,6 +1,6 @@
 # Official Metadata Browser Worker - Milestones
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-23
 
 ## M0 - Scope And Evidence Freeze
@@ -67,8 +67,17 @@ Primary gates:
 
 ## M4 - Closeout
 
+Status: Done on 2026-05-23.
+
 Exit criteria:
 
 - Gate set is recorded.
 - Remaining work is completed, deferred, or split.
 - `WORKSTREAM.json` is updated.
+
+Closeout result:
+
+- The workstream is closed.
+- Live Douban smoke is explicitly deferred as follow-on hardening.
+- The shipped proof is deterministic browser rendering plus fixture-backed
+  Douban search/detail parsing through `POST /render`.

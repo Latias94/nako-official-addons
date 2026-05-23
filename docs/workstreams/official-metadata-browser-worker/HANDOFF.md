@@ -1,6 +1,6 @@
 # Official Metadata Browser Worker - Handoff
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-23
 
 ## Current State
@@ -12,15 +12,14 @@ fixture-backed Douban search/detail HTML rendered through that contract. The
 public metadata addon remains the only Nako-facing addon surface;
 Playwright/Crawlee stay outside the Rust sidecar.
 
-## Active Task
+## Closeout
 
-- Task ID: OMBW-050
-- Owner: planner
-- Files: `README.md`, `addons/metadata-scraper`, `docs/workstreams/official-metadata-browser-worker`
-- Validation: closeout gate set from `EVIDENCE_AND_GATES.md`; live Douban risk must remain explicit if not separately proven.
-- Status: READY
-- Review: Pending
+- Closed task: OMBW-050
+- Status: CLOSED on 2026-05-23
 - Evidence: `docs/workstreams/official-metadata-browser-worker/EVIDENCE_AND_GATES.md`
+- Shipped proof: deterministic browser rendering, sidecar worker integration,
+  Compose topology, and fixture-backed Douban search/detail parsing through
+  `POST /render`.
 
 ## Decisions Since Last Update
 
@@ -37,6 +36,9 @@ Playwright/Crawlee stay outside the Rust sidecar.
 - None for the deterministic worker proof, sidecar integration, and fixture-backed Douban provider.
 - Live Douban smoke remains unproven and may require proxy, headers, cookies, or rate-limit policy.
 
-## Next Recommended Action
+## Follow-On
 
-- Run review/verify closeout for OMBW-050, then either close this workstream with live Douban as residual risk or split a follow-on for live Douban smoke hardening.
+- Open a focused follow-on for live Douban smoke hardening if the product wants
+  to claim live-network support. That follow-on should define proxy/cookie
+  policy, rate-limit behavior, selector breadth, and what counts as acceptable
+  external-site evidence.

@@ -1,6 +1,6 @@
 # Official Metadata Browser Worker - Evidence And Gates
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-23
 
 ## Smallest Current Repro
@@ -85,3 +85,22 @@ Fresh verification is required before marking a task, Codex goal, or lane comple
 - Direct sidecar smoke with `pwsh -File addons/metadata-scraper/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:9100`: PASS. Proves the default fixture-enabled public addon path still serves manifest, health, metadata candidates, and artifacts after adding Douban to the runtime schema.
 - `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
 - `git diff --check`: PASS. Proves the current diff has no whitespace errors.
+
+## 2026-05-23 OMBW-050 Closeout Verification
+
+Review result:
+
+- Workstream compliance: PASS with no blocking findings after root README was corrected to describe Douban as a current default-disabled baseline rather than future scope.
+- Code quality: PASS with no blocking findings. The worker owns Playwright/Crawlee, the Rust sidecar calls the worker over HTTP, and provider-specific Douban parsing stays in `nako-metadata-scraper`.
+- Residual risk: live Douban smoke remains unproven and is split to follow-on hardening. This closeout claims deterministic rendering and fixture-backed Douban parsing, not production live-network reliability.
+
+Fresh gates:
+
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting remains stable after closeout docs.
+- `npm test` in `addons/browser-worker`: PASS, 1 test passed. Proves the worker still captures JavaScript-rendered DOM text and returns rendered content.
+- `npm run smoke` in `addons/browser-worker`: PASS. Proves `/health`, fixture serving, `/extract`, and stable `POST /render` still work through the HTTP app.
+- `docker compose -f addons/metadata-scraper/compose.example.yml config`: PASS. Proves the sidecar + browser-worker topology still resolves and keeps Douban disabled by default.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS, 53 tests passed. Proves the package-level runtime, provider registry, manifest schema, and Douban render-contract seam remain green.
+- `cargo nextest run --workspace --no-fail-fast`: PASS, 53 tests passed. Proves the Rust workspace remains green at closeout.
+- `rg -n "playwright|crawlee" Cargo.toml Cargo.lock crates addons/browser-worker addons/metadata-scraper -S`: PASS for boundary review. Matches are in `addons/browser-worker` implementation/lockfiles and documentation wording; no Rust sidecar dependency embeds Playwright or Crawlee.
+- `git diff --check`: PASS. Proves the closeout diff has no whitespace errors.
