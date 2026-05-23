@@ -73,4 +73,15 @@ Fresh verification is required before marking a task, Codex goal, or lane comple
 
 ### Not Yet Proven
 
-- OMBW-040 Douban-backed extraction is not implemented in this pass. The deterministic proof is local and intentionally isolates the worker contract from live anti-bot behavior.
+- OMBW-040 live Douban extraction is not proven. The implemented baseline is fixture-backed and verifies the browser-worker `/render` contract plus Rust-side Douban search/detail parsing without depending on current Douban availability.
+
+## 2026-05-23 OMBW-040 Verification
+
+- `npm test` in `addons/browser-worker`: PASS. Proves the render path still captures rendered DOM text and now returns both `html` and `text`.
+- `npm run smoke` in `addons/browser-worker`: PASS. Proves the HTTP app exposes the stable `POST /render` contract in addition to the legacy `/extract` path.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS, 53 tests passed. Proves the `douban` provider is configured, appears in diagnostics/manifest schema, calls the browser worker `/render` endpoint, and maps recorded search/detail HTML into provider-neutral metadata/artwork facts.
+- `cargo nextest run --workspace --no-fail-fast`: PASS, 53 tests passed. Proves the current Rust workspace remains green with the Douban provider and `scraper` dependency.
+- `docker compose -f addons/metadata-scraper/compose.example.yml config`: PASS. Proves Compose still resolves the sidecar + worker topology and keeps Douban disabled by default.
+- Direct sidecar smoke with `pwsh -File addons/metadata-scraper/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:9100`: PASS. Proves the default fixture-enabled public addon path still serves manifest, health, metadata candidates, and artifacts after adding Douban to the runtime schema.
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
+- `git diff --check`: PASS. Proves the current diff has no whitespace errors.

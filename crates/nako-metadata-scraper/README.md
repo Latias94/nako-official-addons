@@ -17,10 +17,12 @@ Current alpha provider defaults:
   and requires a compliant User-Agent.
 - `browser_worker`: disabled by default; uses the companion browser worker for
   rendered-page extraction when an external browser-worker URL is supplied.
+- `douban`: disabled by default; calls the companion browser worker for rendered
+  HTML and keeps Douban parsing/mapping inside the Rust provider.
 
 Runtime candidate shaping deduplicates exact duplicate provider candidates,
 caps the final result set, and uses shared community score/vote-count facts
-from TMDB and Bangumi as a small generic ranking bonus.
+from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side

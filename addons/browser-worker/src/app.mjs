@@ -63,5 +63,35 @@ export function createApp() {
     }
   });
 
+  app.post('/render', async (request, response) => {
+    const url = request.body?.url;
+    if (typeof url !== 'string' || !url.trim()) {
+      response.status(400).json({
+        status: 'error',
+        error: 'invalid_request',
+        safe_error_code: 'missing_url',
+      });
+      return;
+    }
+
+    try {
+      const rendered = await extractRenderedPage(url.trim());
+      response.json({
+        status: 'ok',
+        url: rendered.url,
+        title: rendered.title,
+        html: rendered.html,
+        text: rendered.text,
+        excerpt: rendered.excerpt,
+      });
+    } catch (error) {
+      response.status(502).json({
+        status: 'error',
+        error: 'render_failed',
+        safe_error_code: 'rendered_page_render_failed',
+      });
+    }
+  });
+
   return app;
 }

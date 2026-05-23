@@ -52,12 +52,12 @@ Primary gates:
 
 ## M3 - Douban Browser-Backed Baseline
 
-Status: Pending.
+Status: Done with concerns on 2026-05-23.
 
 Exit criteria:
 
-- One Douban-backed extraction path is proven.
-- Live blocking is either solved or documented as a bounded follow-on.
+- One fixture-backed Douban search/detail extraction path through the browser-worker `/render` contract is proven.
+- Live blocking is documented as a bounded follow-on.
 - The anti-bot boundary stays outside the public addon surface.
 
 Primary gates:

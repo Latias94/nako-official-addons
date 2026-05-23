@@ -26,10 +26,13 @@ export async function extractRenderedPage(url) {
       const renderedText = normalizeWhitespace(
         await page.locator('body').innerText({ timeout: 5000 }),
       );
+      const html = await page.content();
 
       extracted = {
         url: page.url() || request.url,
         title,
+        html,
+        text: renderedText,
         rendered_text: renderedText,
         excerpt: renderedText.slice(0, 240),
       };

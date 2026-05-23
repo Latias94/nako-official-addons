@@ -32,6 +32,19 @@ async function main() {
     assert.match(extractBody.rendered_text, /rendered by JavaScript/);
     assert.match(extractBody.excerpt, /rendered by JavaScript/);
 
+    const render = await fetch(`${baseUrl}/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        url: `${baseUrl}/fixtures/rendered-page`,
+      }),
+    });
+    assert.equal(render.status, 200);
+    const renderBody = await render.json();
+    assert.equal(renderBody.status, 'ok');
+    assert.match(renderBody.text, /rendered by JavaScript/);
+    assert.match(renderBody.html, /rendered by JavaScript/);
+
     process.stdout.write('[ok] browser worker smoke passed\n');
   } finally {
     await new Promise((resolve) => server.close(resolve));

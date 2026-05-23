@@ -7,11 +7,12 @@
   "scope_kind": "execution",
   "problem": "The official metadata addon needs a dedicated browser automation worker for Douban-like anti-bot sources without bloating the Rust sidecar.",
   "task_prefix": "OMBW",
-  "current_task": "OMBW-040",
+  "current_task": "OMBW-050",
   "completed_tasks": [
     "OMBW-010",
     "OMBW-020",
-    "OMBW-030"
+    "OMBW-030",
+    "OMBW-040"
   ],
   "authoritative_docs": [
     {
@@ -52,6 +53,7 @@
     "addons/metadata-scraper/README.md",
     "addons/metadata-scraper/compose.example.yml",
     "crates/nako-metadata-scraper/src/providers/browser_worker.rs",
+    "crates/nako-metadata-scraper/src/providers/douban.rs",
     "docs/workstreams/official-metadata-addon-fearless-refactor/DESIGN.md",
     "docs/workstreams/official-metadata-addon-result-quality/DESIGN.md",
     "docs/workstreams/official-metadata-bangumi-provider-baseline/DESIGN.md",

@@ -13,6 +13,7 @@ services:
       NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
       NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED: "false"
       NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED: "true"
+      NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED: "false"
       NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL: "http://nako-browser-worker:3000"
       NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.1 (https://github.com/Latias94/nako-official-addons)"
       # Set only when enabling TMDB. Keep real tokens in your secret manager.

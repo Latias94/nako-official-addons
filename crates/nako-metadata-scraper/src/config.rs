@@ -46,14 +46,16 @@ pub enum ProviderId {
     Tmdb,
     Bangumi,
     BrowserWorker,
+    Douban,
 }
 
 impl ProviderId {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::Fixture,
         Self::Tmdb,
         Self::Bangumi,
         Self::BrowserWorker,
+        Self::Douban,
     ];
 
     #[must_use]
@@ -63,6 +65,7 @@ impl ProviderId {
             Self::Tmdb => "tmdb",
             Self::Bangumi => "bangumi",
             Self::BrowserWorker => "browser_worker",
+            Self::Douban => "douban",
         }
     }
 
@@ -73,6 +76,7 @@ impl ProviderId {
             Self::Tmdb => "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
             Self::Bangumi => "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED",
             Self::BrowserWorker => "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED",
+            Self::Douban => "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED",
         }
     }
 
@@ -80,7 +84,7 @@ impl ProviderId {
     pub const fn default_enabled(self) -> bool {
         match self {
             Self::Fixture => true,
-            Self::Tmdb | Self::Bangumi | Self::BrowserWorker => false,
+            Self::Tmdb | Self::Bangumi | Self::BrowserWorker | Self::Douban => false,
         }
     }
 }
@@ -92,6 +96,7 @@ pub struct ProviderConfig {
     pub tmdb: Option<TmdbProviderConfig>,
     pub bangumi: Option<BangumiProviderConfig>,
     pub browser_worker: Option<BrowserWorkerProviderConfig>,
+    pub douban: Option<DoubanProviderConfig>,
 }
 
 impl ProviderConfig {
@@ -103,6 +108,7 @@ impl ProviderConfig {
             tmdb: None,
             bangumi: None,
             browser_worker: None,
+            douban: None,
         }
     }
 
@@ -114,6 +120,7 @@ impl ProviderConfig {
             tmdb: None,
             bangumi: None,
             browser_worker: None,
+            douban: None,
         }
     }
 }
@@ -218,6 +225,38 @@ impl BrowserWorkerProviderConfig {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DoubanProviderConfig {
+    pub search_base_url: String,
+    pub browser_worker_base_url: String,
+    pub render_path: String,
+    pub timeout_ms: u64,
+}
+
+impl DoubanProviderConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            search_base_url: lookup("NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "https://movie.douban.com/subject_search".to_owned()),
+            browser_worker_base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
+            render_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "/render".to_owned()),
+            timeout_ms: lookup("NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS")
+                .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config {
     pub listen_addr: String,
     pub base_url: String,
@@ -257,6 +296,8 @@ impl Config {
                         browser_worker: (id == ProviderId::BrowserWorker).then(|| {
                             BrowserWorkerProviderConfig::from_env_lookup(|name| lookup(name))
                         }),
+                        douban: (id == ProviderId::Douban)
+                            .then(|| DoubanProviderConfig::from_env_lookup(|name| lookup(name))),
                     }
                 })
                 .collect(),
@@ -296,6 +337,8 @@ impl Default for Config {
                         .then(|| BangumiProviderConfig::from_env_lookup(|_| None)),
                     browser_worker: (id == ProviderId::BrowserWorker)
                         .then(|| BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
+                    douban: (id == ProviderId::Douban)
+                        .then(|| DoubanProviderConfig::from_env_lookup(|_| None)),
                 })
                 .collect(),
             nako_runtime: NakoRuntimeConfig::disabled(),
@@ -358,10 +401,24 @@ mod tests {
         assert_eq!(browser_worker.base_url, "http://nako-browser-worker:3000");
         assert_eq!(browser_worker.extract_path, "/extract");
         assert_eq!(browser_worker.timeout_ms, 10_000);
+        assert_eq!(config.providers[4].id, ProviderId::Douban);
+        assert!(!config.providers[4].enabled);
+        let douban = config.providers[4].douban.as_ref().unwrap();
+        assert_eq!(
+            douban.search_base_url,
+            "https://movie.douban.com/subject_search"
+        );
+        assert_eq!(
+            douban.browser_worker_base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(douban.render_path, "/render");
+        assert_eq!(douban.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
         assert!(!config.provider_enabled(ProviderId::BrowserWorker));
+        assert!(!config.provider_enabled(ProviderId::Douban));
     }
 
     #[test]
@@ -378,6 +435,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -396,6 +454,11 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH" => Some("/extract".to_owned()),
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS" => Some("7500".to_owned()),
+            "NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL" => {
+                Some("https://douban.example/subject_search".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH" => Some("/render".to_owned()),
+            "NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS" => Some("6500".to_owned()),
             _ => None,
         });
 
@@ -438,6 +501,18 @@ mod tests {
         );
         assert_eq!(browser_worker.extract_path, "/extract");
         assert_eq!(browser_worker.timeout_ms, 7500);
+        assert!(config.provider_enabled(ProviderId::Douban));
+        let douban = config.providers[4].douban.as_ref().unwrap();
+        assert_eq!(
+            douban.search_base_url,
+            "https://douban.example/subject_search"
+        );
+        assert_eq!(
+            douban.browser_worker_base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(douban.render_path, "/render");
+        assert_eq!(douban.timeout_ms, 6500);
     }
 
     #[test]

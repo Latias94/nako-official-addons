@@ -37,6 +37,8 @@ test('extractRenderedPage captures rendered DOM text from a local page', async (
   const result = await extractRenderedPage(`http://127.0.0.1:${address.port}/page`);
 
   assert.equal(result.title, 'Local Rendered Page');
+  assert.match(result.html, /rendered by JavaScript/);
+  assert.match(result.text, /rendered by JavaScript/);
   assert.match(result.rendered_text, /rendered by JavaScript/);
   assert.match(result.excerpt, /rendered by JavaScript/);
 });

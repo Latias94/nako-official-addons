@@ -285,7 +285,7 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["disabled_providers"],
-            serde_json::json!(["fixture", "tmdb", "bangumi", "browser_worker"])
+            serde_json::json!(["fixture", "tmdb", "bangumi", "browser_worker", "douban"])
         );
         assert_eq!(
             payload.diagnostics["unavailable_providers"],

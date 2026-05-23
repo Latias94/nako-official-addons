@@ -33,12 +33,12 @@ Task IDs use the `OMBW` prefix.
 
 ## M3 - Douban Browser-Backed Baseline
 
-- [ ] OMBW-040 [owner=unassigned] [deps=OMBW-030] [scope=addons/browser-worker,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/smoke.local.ps1]
+- [x] OMBW-040 [owner=codex] [deps=OMBW-030] [scope=addons/browser-worker,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/smoke.local.ps1]
   Goal: Prove one Douban-backed search/detail extraction path through the browser worker.
   Validation: targeted browser-worker smoke and metadata-scraper tests; live Douban proof may be gated or replaced with a recorded fixture if external blocking persists.
   Review: Do not hide login, proxy, or anti-bot assumptions inside ordinary metadata calls.
   Evidence: worker proof, provider tests, smoke script or notes.
-  Handoff: Continue with broader browser-backed providers or split them out.
+  Handoff: DONE on 2026-05-23 with recorded fixture-backed search/detail parsing through the browser-worker `/render` contract. Live Douban smoke remains a follow-on gate because access may depend on proxy, cookies, or rate limits.
 
 ## M4 - Docs And Closeout
 

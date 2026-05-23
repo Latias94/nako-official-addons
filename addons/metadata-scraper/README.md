@@ -180,9 +180,9 @@ docker buildx build \
 ```
 
 The Dockerfile and examples expose the runtime truth directly: fixture is
-enabled by default, TMDB and Bangumi are disabled by default, and provider
-secrets should be supplied by the operator's secret manager or environment
-policy.
+enabled by default, TMDB, Bangumi, and Douban are disabled by default, and
+provider secrets should be supplied by the operator's secret manager or
+environment policy.
 
 ## Current provider strategy
 
@@ -205,11 +205,21 @@ summary, release date, platform, subject type, episode counts, ratings, tags,
 typed poster artwork candidates, and the Bangumi subject ID into
 provider-neutral facts.
 
+Douban metadata is available when
+`NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
+companion service is reachable through
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL`. The worker provides the
+generic rendered HTML contract (`POST /render`); Douban search/detail parsing,
+field mapping, ranking facts, and artwork candidates stay inside the Rust
+provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
+the worker into a second metadata scraper.
+
 The runtime then deduplicates exact duplicate candidates, caps the final list,
 and applies a small generic bonus from the shared community score/vote-count
-facts exposed by TMDB and Bangumi. The protocol envelope does not change.
+facts exposed by TMDB, Bangumi, and Douban. The protocol envelope does not
+change.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the
-Playwright/Crawlee path for rendered-page extraction, and Douban will use that
-lane instead of embedding browser automation into the Rust sidecar.
+Playwright/Crawlee path for rendered-page extraction, while provider-specific
+metadata interpretation remains in `nako-metadata-scraper`.

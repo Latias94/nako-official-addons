@@ -4,8 +4,8 @@ use crate::config::ProviderId;
 use crate::{Config, providers::MetadataProvider};
 
 use super::{
-    bangumi::BangumiMetadataProvider, browser_worker::BrowserWorkerMetadataProvider, fixture,
-    tmdb::TmdbMetadataProvider,
+    bangumi::BangumiMetadataProvider, browser_worker::BrowserWorkerMetadataProvider,
+    douban::DoubanMetadataProvider, fixture, tmdb::TmdbMetadataProvider,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -182,6 +182,26 @@ fn default_catalog() -> Vec<ProviderCatalogEntry> {
                 }
             },
         },
+        ProviderCatalogEntry {
+            id: ProviderId::Douban,
+            capabilities: &[
+                "metadata_suggestion",
+                "movie_search",
+                "browser_worker_rendered_html",
+            ],
+            build: |config| {
+                let Some(douban_config) = config
+                    .provider_config(ProviderId::Douban)
+                    .and_then(|provider| provider.douban.clone())
+                else {
+                    return ProviderBuildStatus::Unavailable;
+                };
+                match DoubanMetadataProvider::new(douban_config) {
+                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+                    Err(_) => ProviderBuildStatus::Unavailable,
+                }
+            },
+        },
     ]
 }
 
@@ -221,7 +241,7 @@ mod tests {
         assert_eq!(diagnostics.enabled, vec!["fixture"]);
         assert_eq!(
             diagnostics.disabled,
-            vec!["tmdb", "bangumi", "browser_worker"]
+            vec!["tmdb", "bangumi", "browser_worker", "douban"]
         );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(
@@ -264,6 +284,20 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[4],
+            ProviderDescriptor {
+                id: "douban",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "movie_search",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -278,7 +312,7 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(
             diagnostics.disabled,
-            vec!["fixture", "tmdb", "bangumi", "browser_worker"]
+            vec!["fixture", "tmdb", "bangumi", "browser_worker", "douban"]
         );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(diagnostics.supported[0].status, ProviderStatus::Disabled);
@@ -319,6 +353,7 @@ mod tests {
                     tmdb: Some(TmdbProviderConfig::from_env_lookup(|_| None)),
                     bangumi: None,
                     browser_worker: None,
+                    douban: None,
                 },
             ],
             ..Config::default()
@@ -330,7 +365,7 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(
             diagnostics.disabled,
-            vec!["fixture", "bangumi", "browser_worker"]
+            vec!["fixture", "bangumi", "browser_worker", "douban"]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);
@@ -352,6 +387,7 @@ mod tests {
                     }),
                     bangumi: None,
                     browser_worker: None,
+                    douban: None,
                 },
             ],
             ..Config::default()
@@ -378,6 +414,7 @@ mod tests {
                     bangumi: Some(BangumiProviderConfig::from_env_lookup(|_| None)),
                     tmdb: None,
                     browser_worker: None,
+                    douban: None,
                 },
             ],
             ..Config::default()
@@ -405,6 +442,7 @@ mod tests {
                     tmdb: None,
                     bangumi: None,
                     browser_worker: Some(BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
+                    douban: None,
                 },
             ],
             ..Config::default()

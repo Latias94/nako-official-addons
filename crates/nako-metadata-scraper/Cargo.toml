@@ -17,6 +17,7 @@ async-trait.workspace = true
 axum.workspace = true
 nako-addon-protocol.workspace = true
 reqwest.workspace = true
+scraper = "0.27.0"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
