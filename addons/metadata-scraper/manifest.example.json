@@ -57,9 +57,19 @@
   },
   "secret_reference_fields": [],
   "event_subscriptions": [],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "bulk-metadata-scrape",
+      "name": "Bulk metadata scrape",
+      "path": "/tasks/bulk-metadata-scrape",
+      "description": "Runs metadata suggestions for a bounded batch of items",
+      "required_scopes": ["automation_run"],
+      "timeout_ms": 30000,
+      "max_attempts": 2
+    }
+  ],
   "auth": "none",
   "default_timeout_ms": 10000,
   "default_max_attempts": 2,
-  "scopes": ["item_metadata_read", "item_metadata_suggest"]
+  "scopes": ["item_metadata_read", "item_metadata_suggest", "automation_run"]
 }

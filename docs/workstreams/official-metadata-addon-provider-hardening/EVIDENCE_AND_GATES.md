@@ -82,3 +82,10 @@ Fresh gates:
 Fresh closeout re-run on 2026-05-23 matched the same gate results above.
 
 Fresh verification is required before marking a task, Codex goal, or lane complete.
+
+## 2026-05-24 Provider Config Boundary Normalization Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper tmdb_config_trims_network_boundary_values bangumi_config_trims_network_boundary_values --no-fail-fast`: expected RED before implementation, then PASS 2. Proves TMDB and Bangumi env-derived provider network values trim boundary whitespace before building auth headers, base endpoints, language parameters, and User-Agent policy.
+- `cargo nextest run -p nako-metadata-scraper config http_runtime tmdb bangumi ranking title --no-fail-fast`: PASS 82. Proves provider config normalization composes with registry/config tests, shared HTTP runtime behavior, TMDB/Bangumi request construction, ranking, title variants, degraded candidates, and payload resilience.

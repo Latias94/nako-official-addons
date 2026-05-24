@@ -63,6 +63,8 @@ Fresh gates:
 - `cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking --no-fail-fast`: PASS, 23 tests
   passed and 46 skipped. Proves TMDB and Bangumi return degraded candidates after candidate detail
   enrichment failure, still merge search-title variants, and keep ranking behavior covered.
+- `cargo nextest run --workspace --no-fail-fast`: PASS, 70 tests passed. Proves the full workspace
+  test suite stays green after the degraded-candidate closeout.
 
 ## 2026-05-24 OMPDC-030 Closeout
 

@@ -355,12 +355,7 @@ fn join_url(base_url: &str, path: &str) -> String {
 }
 
 fn safe_text(value: &str) -> String {
-    value
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .chars()
-        .take(240)
-        .collect()
+    value.replace(['\r', '\n'], " ").chars().take(240).collect()
 }
 
 #[cfg(test)]

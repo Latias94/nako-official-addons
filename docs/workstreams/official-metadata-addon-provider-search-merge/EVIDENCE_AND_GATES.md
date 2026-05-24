@@ -98,3 +98,56 @@ Fresh gates:
   test suite remains green for the current release scope.
 - `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
 - `git diff --check`: PASS. Proves the final diff has no whitespace errors.
+
+## 2026-05-24 Trailing Qualifier Variant Hardening Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper search_title_variants_include_trailing_qualifier_stripped_forms --no-fail-fast`: expected RED before implementation, then PASS. Proves search-title variants now try trailing bracket/parenthesis qualifier-stripped forms, including consecutive qualifiers such as `The Matrix` from `The Matrix (1999) [1080p]`, before fully normalized noisy search keys.
+- `cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking title --no-fail-fast`: PASS 44. Proves the new title variant ordering composes with TMDB/Bangumi search merge, ranking, direct lookup, payload resilience, and degraded fallback behavior.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS 87. Proves the package-level metadata scraper surface after title variant hardening.
+- `cargo nextest run --workspace --no-fail-fast`: PASS 87. Proves the full workspace test suite remains green.
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
+- `git diff --check`: PASS. Proves the final diff has no whitespace errors.
+
+## 2026-05-24 Query Year Normalization Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper metadata_query_parses_string_year metadata_query_parses_year_aliases metadata_query_parses_year_from_date_fields --no-fail-fast`: PASS 3. Proves metadata query parsing now accepts trimmed string years, `release_year`/`original_year` aliases, and date-derived years while rejecting non-year date text.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS 106. Proves the package-level metadata scraper surface after shared query-year normalization, including TMDB `primary_release_year`, Bangumi `filter.air_date`, and ranking consumers of `MetadataQuery::year`.
+- `cargo nextest run --workspace --no-fail-fast`: PASS 106. Proves the full workspace test suite remains green after query-year normalization and evidence updates.
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
+- `git diff --check`: PASS. Proves the diff has no whitespace errors.
+
+## 2026-05-24 Query Language Normalization Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper metadata_query_trims_language metadata_query_uses_default_language_when_payload_language_is_blank --no-fail-fast`: PASS 2. Proves metadata query parsing trims payload languages and falls back to the configured default when the payload language is blank.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS 108. Proves the package-level metadata scraper surface after shared query-language normalization, including Bangumi title-language selection, ranking language evidence, and writeback tag consumers.
+- `cargo nextest run --workspace --no-fail-fast`: PASS 108. Proves the full workspace test suite remains green after query-language normalization.
+- `cargo fmt --all -- --check`: PASS. Proves Rust formatting is stable.
+- `git diff --check`: PASS. Proves the diff has no whitespace errors.
+
+## 2026-05-24 Query Title Field Normalization Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper metadata_query_uses_first_non_empty_title_field metadata_query_falls_back_to_original_title --no-fail-fast`: expected RED before implementation, then PASS 2. Proves metadata query parsing no longer lets blank `title` values hide usable `name` or `original_title` fields.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: PASS 110. Proves the package-level metadata scraper surface after shared query-title field normalization.
+- `cargo nextest run --workspace --no-fail-fast`: PASS 110. Proves the full workspace test suite remains green after query-title field normalization.
+- `cargo fmt --all -- --check`: PASS after formatting the helper call.
+- `git diff --check`: PASS. Proves the diff has no whitespace errors.
+
+## 2026-05-24 Query Year Boundary Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper metadata_query_ignores_non_positive_years tmdb_search_omits_primary_release_year_when_query_year_is_invalid bangumi_air_date_filter_ignores_non_positive_years --no-fail-fast`: PASS 3. Proves payload year parsing skips non-positive years, TMDB omits `primary_release_year` for invalid direct query years, and Bangumi omits invalid `air_date` filters.
+
+## 2026-05-24 Query Year Range Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper metadata_query_ignores_out_of_range_years tmdb_search_omits_primary_release_year_when_query_year_is_invalid bangumi_air_date_filter_ignores_non_positive_years tmdb_release_year_ignores_zero_year_values bangumi_release_year_ignores_zero_year_values --no-fail-fast`: PASS 5. Proves query and provider date parsing reject out-of-range or overlong year prefixes instead of truncating them into plausible but wrong years.

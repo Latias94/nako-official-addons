@@ -1,484 +1,28 @@
-use std::{collections::HashSet, sync::Arc};
-
-use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, AddonArtifact, AddonResourceRequest, AddonResourceResponse,
-};
-use serde::Deserialize;
-
-use crate::nako_runtime::{
-    NakoAccessCheckRequest, NakoPermission, NakoRuntimeClient, NakoRuntimeTransport,
-    NakoSideEffectSummary, NakoSideEffectTarget, SubmitNakoArtworkWriteRequest,
-    SubmitNakoMetadataWriteRequest,
-};
-use crate::providers::MetadataProvider;
-
 pub mod artwork;
+pub mod bulk;
+mod orchestration;
+mod query;
 pub mod ranking;
+mod response;
+mod runtime;
 pub mod title;
+mod writeback;
 
-const MAX_CANDIDATES_PER_QUERY: usize = 12;
+pub(crate) const MAX_CANDIDATES_PER_QUERY: usize = 12;
 
 pub use artwork::{
     ArtworkCandidate, ArtworkWritebackResult, ArtworkWritebackStatus, ProviderArtworkCandidate,
     ProviderArtworkCandidateFacts,
 };
+pub use query::{MetadataQuery, QueryExternalId};
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
     ProviderMetadataCandidate,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct MetadataWritebackRequest {
-    pub library_id: String,
-    pub target: NakoSideEffectTarget,
-    pub idempotency_key: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum MetadataWritebackInput {
-    Absent,
-    Invalid { safe_error_code: &'static str },
-    Requested(MetadataWritebackRequest),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
-pub struct MetadataWritebackResult {
-    pub status: MetadataWritebackStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub safe_error_code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub side_effect: Option<NakoSideEffectSummary>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MetadataWritebackStatus {
-    Submitted,
-    Skipped,
-    Failed,
-}
-
-#[derive(Clone)]
-pub struct MetadataScrapeRuntime<T = crate::nako_runtime::ReqwestNakoRuntimeTransport>
-where
-    T: NakoRuntimeTransport,
-{
-    default_language: String,
-    providers: Arc<Vec<Box<dyn MetadataProvider>>>,
-    nako_runtime: Option<NakoRuntimeClient<T>>,
-}
-
-impl<T> MetadataScrapeRuntime<T>
-where
-    T: NakoRuntimeTransport,
-{
-    #[must_use]
-    pub fn new(
-        default_language: impl Into<String>,
-        providers: Vec<Box<dyn MetadataProvider>>,
-        nako_runtime: Option<NakoRuntimeClient<T>>,
-    ) -> Self {
-        Self {
-            default_language: default_language.into(),
-            providers: Arc::new(providers),
-            nako_runtime,
-        }
-    }
-
-    pub async fn scrape(&self, request: AddonResourceRequest) -> AddonResourceResponse {
-        let query = MetadataQuery::from_payload(&request.payload, &self.default_language);
-        let writeback_request = MetadataWritebackInput::from_payload(&request.payload);
-        let artwork_writeback_request =
-            artwork::ArtworkWritebackInput::from_payload(&request.payload);
-        let candidates = self.suggest_candidates(&query).await;
-        let selected_candidate = candidates.first().cloned();
-        let writeback_result = self
-            .maybe_submit_writeback(
-                &request.request_id,
-                &query,
-                selected_candidate.as_ref(),
-                writeback_request,
-            )
-            .await;
-        let artwork_writeback_result = self
-            .maybe_submit_artwork_writeback(
-                &request.request_id,
-                &query,
-                &candidates,
-                artwork_writeback_request,
-            )
-            .await;
-        let mut payload = serde_json::json!({
-            "query": {
-                "title": query.title,
-                "year": query.year,
-                "language": query.language
-            },
-            "candidates": candidates
-        });
-        if let Some(writeback_result) = writeback_result {
-            payload["writeback"] = serde_json::to_value(writeback_result)
-                .expect("writeback result is always serializable");
-        }
-        if let Some(artwork_writeback_result) = artwork_writeback_result {
-            payload["artwork_writeback"] = serde_json::to_value(artwork_writeback_result)
-                .expect("artwork writeback result is always serializable");
-        }
-
-        AddonResourceResponse {
-            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-            addon_id: request.addon_id,
-            resource: request.resource,
-            request_id: request.request_id,
-            payload: payload.clone(),
-            artifacts: vec![AddonArtifact {
-                kind: "metadata_suggestion".to_owned(),
-                payload,
-            }],
-        }
-    }
-
-    async fn maybe_submit_writeback(
-        &self,
-        request_id: &str,
-        query: &MetadataQuery,
-        selected_candidate: Option<&MetadataCandidate>,
-        writeback_request: MetadataWritebackInput,
-    ) -> Option<MetadataWritebackResult> {
-        let writeback_request = match writeback_request {
-            MetadataWritebackInput::Absent => return None,
-            MetadataWritebackInput::Invalid { safe_error_code } => {
-                return Some(MetadataWritebackResult {
-                    status: MetadataWritebackStatus::Skipped,
-                    safe_error_code: Some(safe_error_code.to_owned()),
-                    side_effect: None,
-                });
-            }
-            MetadataWritebackInput::Requested(writeback_request) => writeback_request,
-        };
-        let Some(selected_candidate) = selected_candidate else {
-            return Some(MetadataWritebackResult {
-                status: MetadataWritebackStatus::Skipped,
-                safe_error_code: Some("no_candidates".to_owned()),
-                side_effect: None,
-            });
-        };
-        let Some(runtime) = self.nako_runtime.as_ref() else {
-            return Some(MetadataWritebackResult {
-                status: MetadataWritebackStatus::Skipped,
-                safe_error_code: Some("nako_runtime_disabled".to_owned()),
-                side_effect: None,
-            });
-        };
-
-        let access = runtime
-            .access_check(NakoAccessCheckRequest {
-                permission: NakoPermission::MetadataWrite,
-                library_id: Some(writeback_request.library_id.clone()),
-            })
-            .await;
-        let Ok(access) = access else {
-            tracing::warn!(request_id = %request_id, "metadata writeback access check failed");
-            return Some(MetadataWritebackResult {
-                status: MetadataWritebackStatus::Skipped,
-                safe_error_code: Some("access_check_failed".to_owned()),
-                side_effect: None,
-            });
-        };
-        if !access.allowed {
-            return Some(MetadataWritebackResult {
-                status: MetadataWritebackStatus::Skipped,
-                safe_error_code: Some("access_denied".to_owned()),
-                side_effect: None,
-            });
-        }
-
-        let provenance = serde_json::json!({
-            "origin": "nako-metadata-scraper",
-            "request_id": request_id,
-            "query": {
-                "title": query.title,
-                "year": query.year,
-                "language": query.language
-            },
-            "selected_candidate": {
-                "provider": selected_candidate.provider,
-                "provider_id": selected_candidate.provider_id,
-                "confidence_milli": selected_candidate.confidence_milli
-            }
-        });
-        let writeback = runtime
-            .submit_metadata_write(SubmitNakoMetadataWriteRequest {
-                library_id: writeback_request.library_id.clone(),
-                target: writeback_request.target.clone(),
-                idempotency_key: writeback_request.idempotency_key.clone(),
-                provenance,
-                patch: selected_candidate.patch.clone(),
-            })
-            .await;
-
-        match writeback {
-            Ok(response) => Some(MetadataWritebackResult {
-                status: MetadataWritebackStatus::Submitted,
-                safe_error_code: None,
-                side_effect: Some(response.side_effect),
-            }),
-            Err(error) => {
-                tracing::warn!(
-                    request_id = %request_id,
-                    safe_error_code = error.safe_code(),
-                    "metadata writeback submission failed"
-                );
-                Some(MetadataWritebackResult {
-                    status: MetadataWritebackStatus::Failed,
-                    safe_error_code: Some(error.safe_code().to_owned()),
-                    side_effect: None,
-                })
-            }
-        }
-    }
-
-    async fn maybe_submit_artwork_writeback(
-        &self,
-        request_id: &str,
-        query: &MetadataQuery,
-        candidates: &[MetadataCandidate],
-        writeback_request: artwork::ArtworkWritebackInput,
-    ) -> Option<artwork::ArtworkWritebackResult> {
-        let writeback_request = match writeback_request {
-            artwork::ArtworkWritebackInput::Absent => return None,
-            artwork::ArtworkWritebackInput::Invalid { safe_error_code } => {
-                return Some(artwork::artwork_write_summary(
-                    artwork::ArtworkWritebackStatus::Skipped,
-                    Some(safe_error_code),
-                    None,
-                ));
-            }
-            artwork::ArtworkWritebackInput::Requested(writeback_request) => writeback_request,
-        };
-        if !artwork::valid_artwork_target(&writeback_request.target) {
-            return Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Skipped,
-                Some("invalid_artwork_target_kind"),
-                None,
-            ));
-        }
-        let Some(selected_candidate) =
-            artwork::select_artwork_candidate(candidates, writeback_request.kind)
-        else {
-            return Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Skipped,
-                Some("no_artwork_candidates"),
-                None,
-            ));
-        };
-        let Some(runtime) = self.nako_runtime.as_ref() else {
-            return Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Skipped,
-                Some("nako_runtime_disabled"),
-                None,
-            ));
-        };
-
-        let access = runtime
-            .access_check(NakoAccessCheckRequest {
-                permission: NakoPermission::ArtworkWrite,
-                library_id: Some(writeback_request.library_id.clone()),
-            })
-            .await;
-        let Ok(access) = access else {
-            tracing::warn!(request_id = %request_id, "artwork writeback access check failed");
-            return Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Skipped,
-                Some("access_check_failed"),
-                None,
-            ));
-        };
-        if !access.allowed {
-            return Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Skipped,
-                Some("access_denied"),
-                None,
-            ));
-        }
-
-        let provenance = artwork::artwork_write_provenance(
-            "nako-metadata-scraper",
-            request_id,
-            &query.title,
-            query.year,
-            &query.language,
-            selected_candidate,
-        );
-        let writeback = runtime
-            .submit_artwork_write(SubmitNakoArtworkWriteRequest {
-                library_id: writeback_request.library_id.clone(),
-                target: writeback_request.target.clone(),
-                idempotency_key: writeback_request.idempotency_key.clone(),
-                provenance,
-                artwork: selected_candidate.artwork.clone(),
-            })
-            .await;
-
-        match writeback {
-            Ok(response) => Some(artwork::artwork_write_summary(
-                artwork::ArtworkWritebackStatus::Submitted,
-                None,
-                Some(response.side_effect),
-            )),
-            Err(error) => {
-                tracing::warn!(
-                    request_id = %request_id,
-                    safe_error_code = error.safe_code(),
-                    "artwork writeback submission failed"
-                );
-                Some(artwork::artwork_write_summary(
-                    artwork::ArtworkWritebackStatus::Failed,
-                    Some(error.safe_code()),
-                    None,
-                ))
-            }
-        }
-    }
-
-    async fn suggest_candidates(&self, query: &MetadataQuery) -> Vec<MetadataCandidate> {
-        let mut candidates = Vec::new();
-
-        for provider in self.providers.iter() {
-            match provider.suggest(query).await {
-                Ok(provider_candidates) => candidates.extend(
-                    provider_candidates
-                        .into_iter()
-                        .map(|candidate| ranking::rank_candidate(query, candidate)),
-                ),
-                Err(error) => {
-                    tracing::warn!(provider = provider.id().as_str(), %error, "metadata provider failed")
-                }
-            }
-        }
-
-        candidates.sort_by(|left, right| {
-            right
-                .confidence_milli
-                .cmp(&left.confidence_milli)
-                .then_with(|| left.provider.cmp(&right.provider))
-                .then_with(|| left.provider_id.cmp(&right.provider_id))
-        });
-        let mut seen = HashSet::new();
-        candidates.retain(|candidate| {
-            seen.insert((candidate.provider.clone(), candidate.provider_id.clone()))
-        });
-        if candidates.len() > MAX_CANDIDATES_PER_QUERY {
-            candidates.truncate(MAX_CANDIDATES_PER_QUERY);
-        }
-        candidates
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-pub struct MetadataQuery {
-    pub title: String,
-    pub year: Option<i32>,
-    pub language: String,
-    pub external_ids: Vec<QueryExternalId>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-pub struct QueryExternalId {
-    pub provider: String,
-    pub value: String,
-}
-
-impl MetadataQuery {
-    #[must_use]
-    pub fn from_payload(payload: &serde_json::Value, default_language: &str) -> Self {
-        let raw_title = payload
-            .get("title")
-            .and_then(serde_json::Value::as_str)
-            .or_else(|| payload.get("name").and_then(serde_json::Value::as_str))
-            .unwrap_or("Unknown Title")
-            .trim();
-        let title = normalize_query_title(raw_title);
-        let year = payload
-            .get("year")
-            .and_then(serde_json::Value::as_i64)
-            .and_then(|value| i32::try_from(value).ok());
-        let language = payload
-            .get("language")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or(default_language)
-            .to_owned();
-        let external_ids = external_ids_from_payload(payload);
-
-        Self {
-            title: if title.is_empty() {
-                "Unknown Title".to_owned()
-            } else {
-                title
-            },
-            year,
-            language,
-            external_ids,
-        }
-    }
-
-    #[must_use]
-    pub fn search_title_variants(&self) -> Vec<String> {
-        title::search_title_variants(&self.title)
-    }
-}
-
-impl MetadataWritebackInput {
-    #[must_use]
-    fn from_payload(payload: &serde_json::Value) -> Self {
-        let Some(writeback) = payload.get("writeback") else {
-            return Self::Absent;
-        };
-
-        match serde_json::from_value::<MetadataWritebackRequest>(writeback.clone()) {
-            Ok(writeback_request) => Self::Requested(writeback_request),
-            Err(_) => Self::Invalid {
-                safe_error_code: "invalid_writeback_request",
-            },
-        }
-    }
-}
-
-fn normalize_query_title(title: &str) -> String {
-    title.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn external_ids_from_payload(payload: &serde_json::Value) -> Vec<QueryExternalId> {
-    if let Some(values) = payload
-        .get("external_ids")
-        .and_then(serde_json::Value::as_object)
-    {
-        return values
-            .iter()
-            .filter_map(|(provider, value)| {
-                value.as_str().map(|value| QueryExternalId {
-                    provider: provider.clone(),
-                    value: value.to_owned(),
-                })
-            })
-            .collect();
-    }
-
-    payload
-        .get("external_ids")
-        .and_then(serde_json::Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|value| {
-            Some(QueryExternalId {
-                provider: value.get("provider")?.as_str()?.to_owned(),
-                value: value.get("value")?.as_str()?.to_owned(),
-            })
-        })
-        .collect()
-}
-
+pub use runtime::MetadataScrapeRuntime;
+pub use writeback::{
+    MetadataWritebackRequest, MetadataWritebackResult, MetadataWritebackStatus,
+};
 #[cfg(test)]
 mod tests {
     use std::{
@@ -723,6 +267,185 @@ mod tests {
     }
 
     #[test]
+    fn metadata_query_parses_string_year() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "year": " 1999 "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(1999));
+    }
+
+    #[test]
+    fn metadata_query_parses_year_aliases() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "release_year": "1995"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(1995));
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "original_year": 2001
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(2001));
+    }
+
+    #[test]
+    fn metadata_query_parses_year_from_date_fields() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "release_date": "1999-03-31"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(1999));
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "date": "invalid"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, None);
+    }
+
+    #[test]
+    fn metadata_query_ignores_non_positive_years() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "year": 0,
+                "release_date": "1999-03-31"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(1999));
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "year": " -1 "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, None);
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "release_date": "0000-03-31"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, None);
+    }
+
+    #[test]
+    fn metadata_query_ignores_out_of_range_years() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "year": 10000
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, None);
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "release_date": "10000-03-31"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, None);
+
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "release_date": "9999-12-31"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.year, Some(9999));
+    }
+
+    #[test]
+    fn metadata_query_trims_language() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "language": " zh-CN "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.language, "zh-CN");
+    }
+
+    #[test]
+    fn metadata_query_uses_default_language_when_payload_language_is_blank() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "language": " "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.language, "en-US");
+    }
+
+    #[test]
+    fn metadata_query_uses_first_non_empty_title_field() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": " ",
+                "name": "  The   Matrix  "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(query.title, "The Matrix");
+    }
+
+    #[test]
+    fn metadata_query_falls_back_to_original_title() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "",
+                "name": " ",
+                "original_title": "  千と千尋の神隠し  "
+            }),
+            "ja-JP",
+        );
+
+        assert_eq!(query.title, "千と千尋の神隠し");
+    }
+
+    #[test]
     fn ranking_evidence_metadata_query_parses_external_ids() {
         let query = MetadataQuery::from_payload(
             &serde_json::json!({
@@ -741,6 +464,269 @@ mod tests {
                 QueryExternalId {
                     provider: "imdb".to_owned(),
                     value: "tt0133093".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_external_id_object_arrays() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": {
+                    "bangumi": ["not-a-number", "265"],
+                    "imdb": ["bad", "tt0133093"],
+                    "tmdb": ["invalid", "603"]
+                }
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "not-a-number".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "bad".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "tt0133093".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "invalid".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_external_id_array_object_value_aliases() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": [
+                    {"provider": "tmdb", "value": "603"},
+                    {"provider": "imdb", "id": "TT0133093"},
+                    {"provider": "bangumi", "external_id": "265"},
+                    {"provider": "ignored", "external_id": 123}
+                ]
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "TT0133093".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_trims_external_ids_and_skips_empty_entries() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": [
+                    {"provider": " tmdb ", "value": " 603 "},
+                    {"provider": " ", "value": "tt0133093"},
+                    {"provider": "imdb", "id": " "},
+                    {"provider": " bangumi ", "external_id": " 265 "}
+                ]
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_top_level_external_id_aliases() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "tmdb_id": " 603 ",
+                "imdb_id": " tt0133093 ",
+                "bangumi_id": " 265 "
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "tt0133093".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_preserves_external_ids_before_top_level_aliases() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": {
+                    "tmdb": "603"
+                },
+                "tmdb_id": "604"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "604".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_numeric_top_level_external_id_aliases() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "tmdb_id": 603,
+                "bangumi_id": 265,
+                "imdb_id": "tt0133093"
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "tt0133093".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_numeric_external_id_values() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": {
+                    "tmdb": 603,
+                    "bangumi": [265, "266"]
+                }
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "266".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_skips_non_positive_numeric_external_ids() {
+        let query = MetadataQuery::from_payload(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": {
+                    "tmdb": [0, "0", "-1", "603"],
+                    "bangumi": [0, "265"],
+                    "imdb": 0
+                },
+                "tmdb_id": 0,
+                "bangumi_id": "0",
+                "imdb_id": 0
+            }),
+            "en-US",
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
                 },
                 QueryExternalId {
                     provider: "tmdb".to_owned(),

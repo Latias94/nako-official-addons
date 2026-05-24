@@ -5,36 +5,38 @@ Last updated: 2026-05-24
 
 ## Current State
 
-The design line is closed for the current official metadata addon release. The parent side-effect
-writer lane completed explicit `metadata_write` and typed `artwork_write` flows, so Bulk Metadata
-Scrape can eventually reuse those seams.
+The official metadata addon now declares `bulk-metadata-scrape` and serves
+`/tasks/bulk-metadata-scrape`. The task endpoint uses a bounded batch planner,
+crate-local task request/response DTOs that mirror the host-owned task
+contract, and the same explicit metadata payload shape used by `POST
+/metadata`. The checked-in manifest example matches runtime output, and fresh
+manifest/bulk/workspace/clippy gates passed in this workspace.
 
-OMAB-010 is complete. The host assessment found that Nako currently supports
-Addon Task declarations and routing plans, but not a generic Addon Task
-scheduler/invoker with task progress and outcome ownership. The official Addon
-manifest therefore keeps `tasks: []`.
+## Completed Tasks
 
-OMAB-020, OMAB-030, and OMAB-040 are deferred outside this repository until the host runtime exists.
-OMAB-050 closes this lane by documenting that boundary.
+- OMAB-060: addon-side bulk manifest declaration, task endpoint, and bounded
+  batch planner.
+- OMAB-070: docs, verification, and closeout finalization.
 
-## Completed Or Deferred Tasks
+## Decisions Since Last Update
 
-- OMAB-010: completed host readiness assessment and manifest safety check.
-- OMAB-020: deferred to `../nako` host runtime work.
-- OMAB-030: deferred; do not declare `bulk-metadata-scrape` yet.
-- OMAB-040: deferred; do not implement a hidden sidecar task endpoint.
-- OMAB-050: completed current-release closeout.
+- Nako owns task scheduling, execution records, retry, cancellation, and
+  diagnostics.
+- The addon sidecar owns only the bounded batch planner and request
+  translation.
+- Task envelopes are implemented locally in this crate to mirror the
+  host-owned contract.
+- Bulk items reuse the explicit `metadata_write` and `artwork_write`
+  side-effect paths.
+- Batch size is clamped to a bounded minimum and maximum.
+- Redaction safety still applies to payloads, outputs, and diagnostics.
 
-## Known Constraints
+## Blockers
 
-- Do not add hidden background jobs in the Addon sidecar.
-- Do not declare `bulk-metadata-scrape` until Nako can invoke Addon Tasks.
-- Keep writes behind existing Addon Side Effects.
-- Preserve redaction safety for tokens, source locators, provider payloads, and
-  progress diagnostics.
+- None.
 
-## Next Likely Phase
+## Next Recommended Action
 
-Open a host-side workstream in `../nako` for the Addon Task scheduler/invoker. After that lands,
-open a new addon implementation lane to add `bulk-metadata-scrape` to the manifest and implement the
-task endpoint.
+- None. The lane is closed. Open a follow-on lane only if task-progress
+  diagnostics, partial result warnings, or new bulk semantics become a separate
+  priority.

@@ -58,9 +58,10 @@ Provider defaults:
   provider-specific parsing kept in the Rust sidecar.
 
 Bulk Metadata Scrape is tracked in
-`docs/workstreams/official-metadata-addon-bulk-task-design/` and remains
-deferred until Nako owns generic Addon Task execution. The current manifest
-keeps `tasks: []`.
+`docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
+declared as the `bulk-metadata-scrape` Addon Task at
+`/tasks/bulk-metadata-scrape`. The task processes bounded batches of the same
+metadata payload shape used by `POST /metadata`.
 
 Local sidecar smoke:
 

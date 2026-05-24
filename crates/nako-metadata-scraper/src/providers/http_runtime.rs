@@ -9,6 +9,7 @@ const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 const DEFAULT_MAX_ATTEMPTS: u32 = 2;
 const DEFAULT_RESPONSE_SIZE_LIMIT_BYTES: usize = 512 * 1024;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 100;
+const HTTP_STATUS_BODY_READ_LIMIT_BYTES: usize = 4 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProviderHttpRuntimeConfig {
@@ -316,19 +317,90 @@ impl ProviderHttpTransport for ReqwestProviderHttpTransport {
                 attempts: 0,
             })?;
         let status = response.status().as_u16();
-        let body = response
-            .bytes()
-            .await
-            .map_err(|source| ProviderHttpError::Transport {
-                provider_id: request.provider_id,
-                operation: request.operation,
-                message: safe_error_message(source),
-                attempts: 0,
-            })?
-            .to_vec();
+        let body = if (200..300).contains(&status) {
+            read_bounded_body(
+                response,
+                request.provider_id,
+                request.operation,
+                _config.response_size_limit_bytes,
+            )
+            .await?
+        } else {
+            read_truncated_body(
+                response,
+                request.provider_id,
+                request.operation,
+                HTTP_STATUS_BODY_READ_LIMIT_BYTES,
+            )
+            .await?
+        };
 
         Ok(ProviderHttpResponse { status, body })
     }
+}
+
+async fn read_bounded_body(
+    mut response: reqwest::Response,
+    provider_id: &'static str,
+    operation: &'static str,
+    limit_bytes: usize,
+) -> ProviderHttpResult<Vec<u8>> {
+    let mut body = Vec::new();
+    while let Some(chunk) =
+        response
+            .chunk()
+            .await
+            .map_err(|source| ProviderHttpError::Transport {
+                provider_id,
+                operation,
+                message: safe_error_message(source),
+                attempts: 0,
+            })?
+    {
+        let actual_bytes = body.len().saturating_add(chunk.len());
+        if actual_bytes > limit_bytes {
+            return Err(ProviderHttpError::ResponseTooLarge {
+                provider_id,
+                operation,
+                limit_bytes,
+                actual_bytes,
+                attempts: 0,
+            });
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+async fn read_truncated_body(
+    mut response: reqwest::Response,
+    provider_id: &'static str,
+    operation: &'static str,
+    read_limit_bytes: usize,
+) -> ProviderHttpResult<Vec<u8>> {
+    let mut body = Vec::new();
+    while let Some(chunk) =
+        response
+            .chunk()
+            .await
+            .map_err(|source| ProviderHttpError::Transport {
+                provider_id,
+                operation,
+                message: safe_error_message(source),
+                attempts: 0,
+            })?
+    {
+        let remaining = read_limit_bytes.saturating_sub(body.len());
+        if remaining == 0 {
+            break;
+        }
+        let take_bytes = remaining.min(chunk.len());
+        body.extend_from_slice(&chunk[..take_bytes]);
+        if take_bytes < chunk.len() {
+            break;
+        }
+    }
+    Ok(body)
 }
 
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
@@ -498,20 +570,20 @@ fn safe_excerpt(body: &[u8]) -> String {
 }
 
 fn safe_text(value: &str) -> String {
-    value
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .chars()
-        .take(240)
-        .collect()
+    value.replace(['\r', '\n'], " ").chars().take(240).collect()
 }
 
 #[cfg(test)]
 mod tests {
     use std::{
         collections::VecDeque,
-        sync::{Arc, Mutex},
+        sync::{
+            Arc, Mutex,
+            atomic::{AtomicUsize, Ordering},
+        },
     };
+
+    use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
 
     use super::*;
 
@@ -685,6 +757,106 @@ mod tests {
                 attempts: 1,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn reqwest_transport_bounds_response_size_while_reading_body() {
+        let app = Router::new().route(
+            "/large",
+            get(|| async { "{\"value\":\"response-body-is-too-large\"}" }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        let transport =
+            ReqwestProviderHttpTransport::new(&ProviderHttpRuntimeConfig::default()).unwrap();
+        let error = transport
+            .send(
+                ProviderHttpRequest {
+                    method: ProviderHttpMethod::Get,
+                    provider_id: "fixture",
+                    operation: "search",
+                    url: format!("http://{addr}/large"),
+                    query: Vec::new(),
+                    headers: Vec::new(),
+                    json_body: None,
+                },
+                ProviderHttpRuntimeConfig {
+                    response_size_limit_bytes: 8,
+                    ..ProviderHttpRuntimeConfig::default()
+                },
+            )
+            .await
+            .unwrap_err();
+
+        server.abort();
+        match error {
+            ProviderHttpError::ResponseTooLarge {
+                provider_id,
+                operation,
+                limit_bytes,
+                actual_bytes,
+                attempts,
+            } => {
+                assert_eq!(provider_id, "fixture");
+                assert_eq!(operation, "search");
+                assert_eq!(limit_bytes, 8);
+                assert!(actual_bytes > limit_bytes);
+                assert_eq!(attempts, 0);
+            }
+            other => panic!("expected response size error, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn reqwest_transport_preserves_large_retryable_status_for_runtime_retry() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let route_attempts = Arc::clone(&attempts);
+        let app = Router::new().route(
+            "/flaky",
+            get(move || {
+                let attempts = Arc::clone(&route_attempts);
+                async move {
+                    if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                        (StatusCode::SERVICE_UNAVAILABLE, "x".repeat(8 * 1024)).into_response()
+                    } else {
+                        (StatusCode::OK, "{\"ok\":true}").into_response()
+                    }
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
+            max_attempts: 2,
+            retry_backoff_ms: 0,
+            response_size_limit_bytes: 16,
+            ..ProviderHttpRuntimeConfig::default()
+        })
+        .unwrap();
+
+        let response = runtime
+            .get_json(
+                "fixture",
+                "search",
+                format!("http://{addr}/flaky"),
+                Vec::new(),
+                Vec::new(),
+            )
+            .await
+            .unwrap();
+
+        server.abort();
+        assert_eq!(response.attempts, 2);
+        assert_eq!(response.body["ok"], true);
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
     }
 
     #[tokio::test]

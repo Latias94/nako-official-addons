@@ -101,15 +101,15 @@ impl ArtworkWritebackInput {
 }
 
 #[must_use]
-pub fn select_artwork_candidate<'a>(
-    candidates: &'a [MetadataCandidate],
+pub fn select_artwork_candidate(
+    candidates: &[MetadataCandidate],
     kind: AddonArtworkKind,
-) -> Option<&'a ArtworkCandidate> {
+) -> Option<&ArtworkCandidate> {
     candidates
         .iter()
         .flat_map(|candidate| candidate.artwork_candidates.iter())
         .filter(|artwork_candidate| artwork_candidate.artwork.kind == kind)
-        .max_by(|left, right| compare_artwork_candidates(*left, *right))
+        .max_by(|left, right| compare_artwork_candidates(left, right))
 }
 
 fn compare_artwork_candidates(left: &ArtworkCandidate, right: &ArtworkCandidate) -> Ordering {

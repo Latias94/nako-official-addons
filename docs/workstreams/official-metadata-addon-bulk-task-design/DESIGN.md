@@ -6,46 +6,42 @@ Last updated: 2026-05-24
 ## Problem
 
 The official metadata Addon now supports explicit `metadata_write` and
-`artwork_write` side effects, but Bulk Metadata Scrape is larger than a single
-resource call. It needs host-owned scheduling, cancellation, retries, progress,
-and result accountability.
-
-Nako currently validates Addon Task declarations and can build routing plans
-for them, but the generic Addon Task scheduler/invoker is still deferred. The
-official Addon must not fill that gap with a hidden sidecar background worker.
+`artwork_write` side effects, and Nako now owns the generic Addon Task runtime.
+Bulk Metadata Scrape is larger than a single resource call, so the addon side
+needs a bounded task endpoint and batch planner instead of a hidden worker.
 
 ## Target State
 
 - Nako owns Addon Task scheduling, execution records, cancellation, retry, and
   diagnostics.
-- The official metadata Addon declares `bulk-metadata-scrape` only after the
-  host task runtime contract is available.
+- The official metadata Addon declares `bulk-metadata-scrape` and serves the
+  task path now that the host task runtime contract exists.
 - Bulk scrape work uses existing suggestion, ranking, `metadata_write`, and
   `artwork_write` seams rather than direct filesystem, database, or storage
   mutation.
 - The task contract is safe for large libraries: bounded batch size,
-  idempotency, grant checks, provider rate limits, and redaction-safe progress.
+  idempotency, grant checks, provider rate limits, and redaction-safe task
+  summaries.
 
 ## Current Host Assessment
 
-- `nako-addon-protocol` has `AddonTaskDeclaration`.
+- `nako-addon-protocol` has `AddonTaskDeclaration`, `AddonTaskRequest`, and
+  `AddonTaskResponse`.
 - Nako Admin registration validates task declarations and required scopes.
 - Nako can build Addon routing plans with `AddonRoutingPlanTarget::AddonTaskJob`
-  and `JobKind::AddonTask`.
-- Nako docs still state that full Addon Task scheduler/runtime breadth is
-  deferred.
-- There is no generic Admin or Addon runtime endpoint that invokes an Addon
-  Task path and records task progress/outcome.
+  and `JobKind::AddonTask`, and direct task-path dispatch is available.
+- The official Addon can now expose a real task path without a hidden worker.
 
-Therefore the official Addon manifest must keep `tasks: []` until the host
-runtime seam exists.
+Therefore the official Addon manifest can declare `bulk-metadata-scrape` and
+the addon repository can implement the bounded batch planner behind it.
 
 ## Scope
 
-- Preserve the official addon manifest as task-free until host execution exists.
-- Define the host prerequisites for `bulk-metadata-scrape`.
-- Define the future task request/response semantics and side-effect workflow.
-- Add implementation tasks only after the host contract is owned by Nako.
+- Declare the official addon task and keep the manifest/example manifest in
+  sync.
+- Implement the host-facing task endpoint and bounded batch planner.
+- Reuse existing metadata/artwork side-effect APIs inside the batch planner.
+- Keep task payloads, outputs, and progress summaries redaction-safe.
 
 ## Non-Goals
 
@@ -57,10 +53,12 @@ runtime seam exists.
 ## Architecture Direction
 
 The Addon should remain an Adapter that translates Nako task input into bounded
-provider calls and explicit Addon Side Effects. Nako must own the durable task
-record and call the Addon task endpoint when it is ready. The Addon may report
-progress and candidate summaries, but Nako remains the owner of library
-mutation, artwork ingest, retries, cancellation, and operator-visible state.
+provider calls and explicit Addon Side Effects. Nako still owns the durable
+task record and host-facing run state, while the Addon processes a bounded batch
+of `/metadata`-style payloads and returns a redaction-safe summary. The Addon
+may report progress and candidate summaries, but Nako remains the owner of
+library mutation, artwork ingest, retries, cancellation, and operator-visible
+state.
 
 ## Related Evidence
 
@@ -71,10 +69,9 @@ mutation, artwork ingest, retries, cancellation, and operator-visible state.
 - `../nako/crates/nako-addon-protocol/src/lib.rs`
 - `../nako/crates/nako-server/src/app/addons.rs`
 
-## Closeout Summary
+## Closeout
 
-Closed for the current official metadata addon release on 2026-05-24. The addon-side design is
-complete: `bulk-metadata-scrape` must remain undeclared until Nako owns a generic Addon Task
-scheduler/invoker, durable task records, cancellation, retry, progress, and redaction-safe outcome
-reporting. Implementation of the host runtime belongs in `../nako`; this repository intentionally
-keeps the official addon manifest task-free.
+Completed on 2026-05-24. The addon manifest now declares `bulk-metadata-scrape`, the
+`/tasks/bulk-metadata-scrape` endpoint and bounded batch planner are implemented in this
+repository, and the checked-in example manifest matches runtime output. Future bulk-task progress
+semantics or diagnostics should open a fresh follow-on lane.

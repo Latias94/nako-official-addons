@@ -2,12 +2,17 @@ use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration,
     AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest, AddonResource,
     AddonResourceDeclaration, AddonScope, AddonSecretReferenceFieldDeclaration,
+    AddonTaskDeclaration,
 };
 use serde_json::json;
 
 use crate::{
     Config,
     config::{BangumiProviderConfig, ProviderId, TmdbProviderConfig},
+    engine::bulk::{
+        BULK_METADATA_SCRAPE_TASK_DESCRIPTION, BULK_METADATA_SCRAPE_TASK_ID,
+        BULK_METADATA_SCRAPE_TASK_NAME, BULK_METADATA_SCRAPE_TASK_PATH,
+    },
 };
 
 pub const ADDON_ID: &str = "nako.official.metadata-scraper";
@@ -55,13 +60,21 @@ pub fn addon_manifest(config: &Config) -> AddonManifest {
         configuration_schema: Some(configuration_schema(config)),
         secret_reference_fields: secret_reference_fields(config),
         event_subscriptions: vec![],
-        tasks: vec![],
+        tasks: vec![AddonTaskDeclaration::new(
+            BULK_METADATA_SCRAPE_TASK_ID,
+            BULK_METADATA_SCRAPE_TASK_NAME,
+            BULK_METADATA_SCRAPE_TASK_PATH,
+            vec![AddonScope::AutomationRun],
+        )
+        .with_description(BULK_METADATA_SCRAPE_TASK_DESCRIPTION)
+        .with_execution_bounds(Some(30_000), Some(2))],
         auth: AddonAuth::None,
         default_timeout_ms: Some(10_000),
         default_max_attempts: Some(2),
         scopes: vec![
             AddonScope::ItemMetadataRead,
             AddonScope::ItemMetadataSuggest,
+            AddonScope::AutomationRun,
         ],
     }
 }
@@ -142,13 +155,20 @@ mod tests {
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
         assert_eq!(manifest.resources[0].path, "/metadata");
+        assert_eq!(manifest.tasks.len(), 1);
+        assert_eq!(manifest.tasks[0].id, BULK_METADATA_SCRAPE_TASK_ID);
+        assert_eq!(manifest.tasks[0].path, BULK_METADATA_SCRAPE_TASK_PATH);
+        assert_eq!(
+            manifest.tasks[0].required_scopes,
+            vec![AddonScope::AutomationRun]
+        );
     }
 
     #[test]
-    fn addon_manifest_defers_bulk_metadata_task_until_host_runtime_exists() {
+    fn addon_manifest_exposes_bulk_metadata_task() {
         let manifest = addon_manifest(&Config::default());
 
-        assert!(manifest.tasks.is_empty());
+        assert_eq!(manifest.tasks.len(), 1);
     }
 
     #[test]

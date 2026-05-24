@@ -164,6 +164,28 @@ pub fn rank_candidate(
     }
 }
 
+#[must_use]
+pub fn select_ranked_provider_inputs<T, F>(
+    query: &MetadataQuery,
+    mut inputs: Vec<T>,
+    limit: usize,
+    mut candidate_for_input: F,
+) -> Vec<T>
+where
+    F: FnMut(&T) -> ProviderMetadataCandidate,
+{
+    inputs.sort_by(|left, right| {
+        let left_candidate = rank_candidate(query, candidate_for_input(left));
+        let right_candidate = rank_candidate(query, candidate_for_input(right));
+        right_candidate
+            .confidence_milli
+            .cmp(&left_candidate.confidence_milli)
+            .then_with(|| left_candidate.provider_id.cmp(&right_candidate.provider_id))
+    });
+    inputs.truncate(limit);
+    inputs
+}
+
 fn push_reason(reasons: &mut Vec<CandidateScoreReason>, reason: Option<CandidateScoreReason>) {
     if let Some(reason) = reason {
         reasons.push(reason);
@@ -284,15 +306,25 @@ fn external_id_match(
     }
 
     if query_ids.iter().any(|query| {
-        candidate_ids.iter().any(|candidate| {
-            query.provider.eq_ignore_ascii_case(&candidate.provider)
-                && query.value == candidate.value
-        })
+        candidate_ids
+            .iter()
+            .any(|candidate| external_ids_match(query, candidate))
     }) {
         ExternalIdMatchEvidence::Exact
     } else {
         ExternalIdMatchEvidence::Mismatch
     }
+}
+
+fn external_ids_match(query: &QueryExternalId, candidate: &ProviderExternalId) -> bool {
+    query
+        .provider
+        .trim()
+        .eq_ignore_ascii_case(candidate.provider.trim())
+        && query
+            .value
+            .trim()
+            .eq_ignore_ascii_case(candidate.value.trim())
 }
 
 fn external_id_delta(value: ExternalIdMatchEvidence) -> i16 {
@@ -328,11 +360,20 @@ fn language_match(query_language: &str, candidate_language: Option<&str>) -> Lan
         return LanguageMatchEvidence::CandidateMissing;
     };
 
-    if query_language.eq_ignore_ascii_case(candidate_language) {
+    if language_tags_match(query_language, candidate_language) {
         LanguageMatchEvidence::Exact
     } else {
         LanguageMatchEvidence::Mismatch
     }
+}
+
+fn language_tags_match(left: &str, right: &str) -> bool {
+    left.eq_ignore_ascii_case(right)
+        || primary_language_subtag(left).eq_ignore_ascii_case(primary_language_subtag(right))
+}
+
+fn primary_language_subtag(value: &str) -> &str {
+    value.split(['-', '_']).next().unwrap_or(value).trim()
 }
 
 fn language_delta(value: LanguageMatchEvidence) -> i16 {
@@ -514,6 +555,162 @@ mod tests {
 
         assert_eq!(candidate.confidence_milli, 650);
         assert_eq!(candidate.evidence.title_match, TitleMatchEvidence::Exact);
+    }
+
+    #[test]
+    fn ranking_evidence_matches_language_primary_subtags() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "The Matrix".to_owned(),
+                year: None,
+                language: "en-US".to_owned(),
+                external_ids: Vec::new(),
+            },
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:603".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("The Matrix".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("The Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: None,
+                    language: Some("en".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(
+            candidate.evidence.language_match,
+            LanguageMatchEvidence::Exact
+        );
+    }
+
+    #[test]
+    fn ranking_evidence_matches_language_primary_subtags_with_script() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "Movie".to_owned(),
+                year: None,
+                language: "zh-Hans-CN".to_owned(),
+                external_ids: Vec::new(),
+            },
+            ProviderMetadataCandidate {
+                provider: "bangumi".to_owned(),
+                provider_id: "bangumi:subject:265".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("Movie".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("Movie".to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: None,
+                    language: Some("zh".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(
+            candidate.evidence.language_match,
+            LanguageMatchEvidence::Exact
+        );
+    }
+
+    #[test]
+    fn ranking_evidence_matches_external_id_values_case_insensitively() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "The Matrix".to_owned(),
+                year: Some(1999),
+                language: "en-US".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "TT0133093".to_owned(),
+                }],
+            },
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:603".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("The Matrix".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("The Matrix".to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: Some(1999),
+                    language: Some("en".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: vec![ProviderExternalId {
+                        provider: "imdb".to_owned(),
+                        value: "tt0133093".to_owned(),
+                    }],
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(
+            candidate.evidence.external_id_match,
+            ExternalIdMatchEvidence::Exact
+        );
+    }
+
+    #[test]
+    fn ranking_evidence_keeps_external_id_value_mismatch() {
+        let candidate = rank_candidate(
+            &MetadataQuery {
+                title: "The Matrix".to_owned(),
+                year: Some(1999),
+                language: "en-US".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "imdb".to_owned(),
+                    value: "tt0133093".to_owned(),
+                }],
+            },
+            ProviderMetadataCandidate {
+                provider: "tmdb".to_owned(),
+                provider_id: "tmdb:movie:604".to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some("The Matrix Reloaded".to_owned()),
+                    ..AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some("The Matrix Reloaded".to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: Some(2003),
+                    language: Some("en".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: vec![ProviderExternalId {
+                        provider: "imdb".to_owned(),
+                        value: "tt0234215".to_owned(),
+                    }],
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            },
+        );
+
+        assert_eq!(
+            candidate.evidence.external_id_match,
+            ExternalIdMatchEvidence::Mismatch
+        );
     }
 
     #[test]

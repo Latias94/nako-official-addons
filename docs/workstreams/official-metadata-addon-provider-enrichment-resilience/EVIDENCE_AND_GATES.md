@@ -89,3 +89,15 @@ The later `official-metadata-addon-provider-degraded-candidates` lane supersedes
 candidate behavior by returning degraded search-result candidates when detail enrichment fails.
 This OMPER lane remains complete as the intermediate resilience slice; the current release behavior
 is recorded in the OMPDC evidence.
+
+## 2026-05-24 HTTP Response Body Boundary Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper reqwest_transport_bounds_response_size_while_reading_body reqwest_transport_preserves_large_retryable_status_for_runtime_retry --no-fail-fast`: PASS 2. Proves the real reqwest provider transport enforces the configured 2xx response body size limit while reading the body, and large retryable non-2xx error pages remain status errors so runtime retry policy still applies.
+
+## 2026-05-24 Detail ID Consistency Addendum
+
+Fresh gates:
+
+- `cargo nextest run -p nako-metadata-scraper tmdb_provider_rejects_mismatched_detail_id_for_direct_lookup bangumi_provider_rejects_mismatched_detail_id_for_direct_lookup --no-fail-fast`: PASS 2. Proves TMDB and Bangumi reject detail payloads whose `id` is zero or does not match the requested lookup id, preventing malformed but parseable detail responses from becoming candidates.

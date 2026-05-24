@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-relevance-budget",
+  "title": "Official Metadata Addon Provider Relevance Budget",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "TMDB and Bangumi spend merged search-result enrichment budgets in first-seen provider order instead of selecting the most relevant deduped results.",
+  "task_prefix": "OMPRB",
+  "current_task": null,
+  "completed_tasks": [
+    "OMPRB-010",
+    "OMPRB-020",
+    "OMPRB-030",
+    "OMPRB-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-relevance-budget/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-relevance-budget/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-provider-relevance-budget/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-relevance-budget/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-relevance-budget/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking title --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs",
+    "crates/nako-metadata-scraper/src/engine/ranking.rs",
+    "crates/nako-metadata-scraper/src/engine/title.rs",
+    "docs/workstreams/official-metadata-addon-provider-search-merge",
+    "docs/workstreams/official-metadata-addon-provider-degraded-candidates"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "next_task": null,
+    "notes": "Lane complete. Live provider drift checks and provider-specific transliteration/alias expansion remain follow-on scope."
+  }
+}

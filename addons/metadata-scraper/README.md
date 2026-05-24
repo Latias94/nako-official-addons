@@ -23,6 +23,7 @@ Endpoints:
 - `GET /manifest.json`
 - `POST /health`
 - `POST /metadata`
+- `POST /tasks/bulk-metadata-scrape`
 - `GET /ui/diagnostics`
 
 ## Local smoke
@@ -138,13 +139,15 @@ and public image serving.
 
 ## Bulk metadata scrape task status
 
-The manifest intentionally keeps `tasks: []` for now. Nako core can validate
-Addon Task declarations and build routing plans, but the generic Addon Task
-scheduler/invoker is still deferred. Bulk Metadata Scrape now has a dedicated
-design follow-on at
-`docs/workstreams/official-metadata-addon-bulk-task-design/`; this addon will
-declare `bulk-metadata-scrape` only after Nako owns task execution, progress,
-retry, and cancellation.
+The manifest now declares `bulk-metadata-scrape` at
+`/tasks/bulk-metadata-scrape`. Nako owns task execution, progress, retry, and
+cancellation, while the addon sidecar owns the bounded batch planner and the
+same explicit metadata payload shape used by `POST /metadata`.
+
+Each task item is a metadata request payload and may include the explicit
+`writeback` and `artwork_writeback` objects described above. The task response
+returns a batch summary plus the per-item metadata payloads produced by the
+existing runtime.
 
 ## Register in Nako Admin Web
 

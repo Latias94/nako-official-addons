@@ -38,10 +38,19 @@ Typed artwork candidates are returned with ranked metadata candidates. Explicit
 an `artwork_writeback` object and Nako grants `artwork_write` for the target
 library.
 
-Bulk Metadata Scrape is intentionally not declared as an Addon Task yet. Nako
-can validate task declarations and routing plans today, but the generic Addon
-Task scheduler/invoker must land before this crate exposes
-`bulk-metadata-scrape`.
+Bulk Metadata Scrape is declared as the `bulk-metadata-scrape` Addon Task at
+`/tasks/bulk-metadata-scrape`. Nako owns task execution, progress, retry, and
+cancellation; this crate owns the bounded batch planner and metadata/item
+scrape execution behind that task path.
+
+Optional live drift smoke checks are available for manual use only:
+
+```bash
+NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT=1 cargo test -p nako-metadata-scraper --test live_provider_drift -- --ignored
+```
+
+TMDB requires `NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` to be set in the
+environment before that command can do anything useful.
 
 Version `0.1.0-alpha.1` targets Nako Addon Protocol `0.1.0-alpha.1` and
 `nako-addon-protocol` Rust crate `0.1.0-alpha.1`.

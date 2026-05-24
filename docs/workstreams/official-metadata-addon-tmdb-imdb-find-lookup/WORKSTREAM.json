@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-tmdb-imdb-find-lookup",
+  "title": "Official Metadata Addon TMDB IMDb Find Lookup",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "TMDB currently uses native TMDB query IDs for direct lookup, but query IMDb IDs still fall through to ambiguous title search even though TMDB supports official find-by-IMDb lookup.",
+  "task_prefix": "OMITF",
+  "current_task": null,
+  "completed_tasks": [
+    "OMITF-010",
+    "OMITF-020",
+    "OMITF-030",
+    "OMITF-040",
+    "OMITF-050",
+    "OMITF-060"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-tmdb-imdb-find-lookup/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-tmdb-imdb-find-lookup/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-tmdb-imdb-find-lookup/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-tmdb-imdb-find-lookup/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-tmdb-imdb-find-lookup/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper tmdb ranking title --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "next_task": null,
+    "notes": "Lane complete. TMDB IMDb find keeps trying later valid IMDb IDs before title-search fallback, normalizes case-varied IMDb IDs to lowercase tt, and deduplicates repeated normalized IDs before external requests. Follow-ons include richer TMDB find disambiguation if needed, live TMDB drift checks with credentials, or analogous cross-provider ID lookup for another provider."
+  }
+}

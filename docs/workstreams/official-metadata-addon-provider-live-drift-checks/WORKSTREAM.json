@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-live-drift-checks",
+  "title": "Official Metadata Addon Provider Live Drift Checks",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "TMDB and Bangumi need opt-in live smoke checks to catch parser drift that synthetic fixtures will not reveal.",
+  "task_prefix": "OMLDC",
+  "current_task": null,
+  "completed_tasks": [
+    "OMLDC-010",
+    "OMLDC-020",
+    "OMLDC-030",
+    "OMLDC-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-live-drift-checks/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-live-drift-checks/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-provider-live-drift-checks/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-live-drift-checks/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-live-drift-checks/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT=1 cargo test -p nako-metadata-scraper --test live_provider_drift -- --ignored",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/tests/live_provider_drift.rs",
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "notes": "Lane complete. Keep the live gate opt-in and split provider-specific follow-ons if live auth or payload drift needs separate handling."
+  }
+}

@@ -61,3 +61,22 @@ Result:
 
 - Complete on 2026-05-24 for the current release. Future work starts in `../nako` with the host
   Addon Task runtime.
+
+## M5 - Reopened Addon Implementation
+
+Exit criteria:
+
+- `bulk-metadata-scrape` is declared in the addon manifest and the checked-in
+  example manifest matches runtime output;
+- the task endpoint accepts host-owned `AddonTaskRequest` envelopes and
+  processes bounded batches of metadata payloads;
+- metadata and artwork writes continue to go through the existing Addon Side
+  Effect APIs;
+- docs, verification gates, and handoff evidence reflect the reopened lane.
+
+Result:
+
+- Complete on 2026-05-24. The addon manifest declares `bulk-metadata-scrape`,
+  the task endpoint and bounded batch planner ship with crate-local task
+  envelopes, the checked-in example manifest matches runtime output, and the
+  fresh closeout gates passed.

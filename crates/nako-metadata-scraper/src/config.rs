@@ -139,10 +139,12 @@ impl TmdbProviderConfig {
     pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
         Self {
             read_access_token: lookup("NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN")
-                .filter(|value| !value.trim().is_empty()),
+                .and_then(non_empty_trimmed),
             api_base_url: lookup("NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL")
+                .and_then(non_empty_trimmed)
                 .unwrap_or_else(|| "https://api.themoviedb.org/3".to_owned()),
             language: lookup("NAKO_METADATA_SCRAPER_TMDB_LANGUAGE")
+                .and_then(non_empty_trimmed)
                 .unwrap_or_else(|| "en-US".to_owned()),
             include_adult: lookup("NAKO_METADATA_SCRAPER_TMDB_INCLUDE_ADULT")
                 .and_then(|value| parse_bool(&value))
@@ -172,11 +174,12 @@ impl BangumiProviderConfig {
     pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
         Self {
             access_token: lookup("NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN")
-                .filter(|value| !value.trim().is_empty()),
+                .and_then(non_empty_trimmed),
             api_base_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_API_BASE_URL")
+                .and_then(non_empty_trimmed)
                 .unwrap_or_else(|| "https://api.bgm.tv".to_owned()),
             user_agent: lookup("NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT")
-                .filter(|value| !value.trim().is_empty())
+                .and_then(non_empty_trimmed)
                 .unwrap_or_else(Self::default_user_agent),
             include_nsfw: lookup("NAKO_METADATA_SCRAPER_BANGUMI_INCLUDE_NSFW")
                 .and_then(|value| parse_bool(&value))
@@ -563,6 +566,40 @@ mod tests {
         );
         assert_eq!(douban.render_path, "/render");
         assert_eq!(douban.timeout_ms, 6500);
+    }
+
+    #[test]
+    fn tmdb_config_trims_network_boundary_values() {
+        let config = TmdbProviderConfig::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some(" tmdb-token ".to_owned()),
+            "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => {
+                Some(" https://tmdb.example/3/ ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some(" zh-CN ".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.read_access_token.as_deref(), Some("tmdb-token"));
+        assert_eq!(config.api_base_url, "https://tmdb.example/3/");
+        assert_eq!(config.language, "zh-CN");
+    }
+
+    #[test]
+    fn bangumi_config_trims_network_boundary_values() {
+        let config = BangumiProviderConfig::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN" => Some(" bangumi-token ".to_owned()),
+            "NAKO_METADATA_SCRAPER_BANGUMI_API_BASE_URL" => {
+                Some(" https://bangumi.example ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT" => {
+                Some(" Latias94/test-addon/0.1.0 ".to_owned())
+            }
+            _ => None,
+        });
+
+        assert_eq!(config.access_token.as_deref(), Some("bangumi-token"));
+        assert_eq!(config.api_base_url, "https://bangumi.example");
+        assert_eq!(config.user_agent, "Latias94/test-addon/0.1.0");
     }
 
     #[test]

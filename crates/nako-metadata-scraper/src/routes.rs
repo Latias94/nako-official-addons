@@ -1,6 +1,7 @@
 use axum::{
     Json, Router,
     extract::State,
+    http::StatusCode,
     response::Html,
     routing::{get, post},
 };
@@ -13,7 +14,13 @@ use tower_http::trace::TraceLayer;
 use crate::{
     Config,
     config::ProviderId,
-    engine::MetadataScrapeRuntime,
+    engine::{
+        MetadataScrapeRuntime,
+        bulk::{
+            AddonTaskRequest, AddonTaskResponse, BULK_METADATA_SCRAPE_TASK_ID,
+            BULK_METADATA_SCRAPE_TASK_PATH,
+        },
+    },
     manifest::{ADDON_ID, ADDON_VERSION, addon_manifest},
     nako_runtime::NakoRuntimeClient,
     nako_runtime::NakoRuntimeClientConfig,
@@ -27,7 +34,6 @@ pub struct AppState {
     provider_diagnostics: ProviderDiagnostics,
 }
 
-#[must_use]
 pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
     let provider_diagnostics = registry.diagnostics();
@@ -48,6 +54,7 @@ pub fn router(config: Config) -> Router {
         .route("/manifest.json", get(manifest))
         .route("/health", post(health))
         .route("/metadata", post(metadata))
+        .route(BULK_METADATA_SCRAPE_TASK_PATH, post(bulk_metadata_scrape))
         .route("/ui/diagnostics", get(diagnostics))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -95,6 +102,22 @@ async fn metadata(
     Json(request): Json<AddonResourceRequest>,
 ) -> Json<AddonResourceResponse> {
     Json(state.metadata_runtime.scrape(request).await)
+}
+
+async fn bulk_metadata_scrape(
+    State(state): State<AppState>,
+    Json(request): Json<AddonTaskRequest>,
+) -> Result<Json<AddonTaskResponse>, (StatusCode, Json<serde_json::Value>)> {
+    match state.metadata_runtime.bulk_scrape(request).await {
+        Ok(response) => Ok(Json(response)),
+        Err(error) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": error.to_string(),
+                "task_id": BULK_METADATA_SCRAPE_TASK_ID
+            })),
+        )),
+    }
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
@@ -188,9 +211,13 @@ mod tests {
             manifest.scopes,
             vec![
                 AddonScope::ItemMetadataRead,
-                AddonScope::ItemMetadataSuggest
+                AddonScope::ItemMetadataSuggest,
+                AddonScope::AutomationRun,
             ]
         );
+        assert_eq!(manifest.tasks.len(), 1);
+        assert_eq!(manifest.tasks[0].id, BULK_METADATA_SCRAPE_TASK_ID);
+        assert_eq!(manifest.tasks[0].path, BULK_METADATA_SCRAPE_TASK_PATH);
     }
 
     #[tokio::test]
@@ -259,6 +286,59 @@ mod tests {
         let payload: AddonResourceResponse = serde_json::from_slice(&body).unwrap();
 
         assert!(payload.payload["candidates"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn bulk_metadata_scrape_endpoint_returns_planned_batch_output() {
+        let request = AddonTaskRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+            job_id: "job-1".to_owned(),
+            request_id: "task-request-1".to_owned(),
+            attempt: 1,
+            retry_of_job_id: None,
+            library_id: Some("library-1".to_owned()),
+            source_id: Some("source-1".to_owned()),
+            payload: serde_json::json!({
+                "batch_size": 1,
+                "items": [
+                    {"title": "The Matrix", "year": 1999},
+                    {"title": "Inception", "year": 2010}
+                ]
+            }),
+        };
+        let response = router(Config::default())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(BULK_METADATA_SCRAPE_TASK_PATH)
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: AddonTaskResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(payload.task_id, BULK_METADATA_SCRAPE_TASK_ID);
+        assert_eq!(payload.request_id, "task-request-1");
+        assert_eq!(
+            payload.output["schema"],
+            "nako.official.metadata-scraper.bulk-metadata-scrape.result.v1"
+        );
+        assert_eq!(payload.output["processed_items"], 1);
+        assert_eq!(payload.output["remaining_items"], 1);
+        assert_eq!(payload.output["next_cursor"], 1);
+        assert_eq!(
+            payload.output["items"][0]["payload"]["query"]["title"],
+            "The Matrix"
+        );
     }
 
     #[tokio::test]

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-external-id-lookup",
+  "title": "Official Metadata Addon Provider External ID Lookup",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "TMDB and Bangumi ignore provider-native query external IDs and start with fuzzy title search.",
+  "task_prefix": "OMPEIL",
+  "current_task": null,
+  "completed_tasks": [
+    "OMPEIL-010",
+    "OMPEIL-020",
+    "OMPEIL-030",
+    "OMPEIL-040",
+    "OMPEIL-050",
+    "OMPEIL-060",
+    "OMPEIL-070",
+    "OMPEIL-080"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-external-id-lookup/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-external-id-lookup/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-provider-external-id-lookup/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-external-id-lookup/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-external-id-lookup/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs",
+    "crates/nako-metadata-scraper/src/engine/mod.rs",
+    "crates/nako-metadata-scraper/src/engine/ranking.rs",
+    "docs/workstreams/official-metadata-addon-result-quality"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "next_task": null,
+    "notes": "Lane complete. Object-form external_ids supports repeated same-provider IDs through string arrays, array-of-object external_ids accepts value/id/external_id fields, parsed providers and values are trimmed, direct lookup tries later same-provider IDs before title-search fallback, and repeated provider-native IDs are deduplicated before external requests. Cross-provider ID mapping and live provider drift checks remain follow-on scope."
+  }
+}

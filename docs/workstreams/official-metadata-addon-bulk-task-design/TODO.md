@@ -64,3 +64,23 @@ Task IDs use the `OMAB` prefix.
   Result: DONE 2026-05-24.
   Handoff: Lane closed for the current release with bulk task implementation
   explicitly deferred to a future host-runtime-backed workstream.
+
+## M5 - Reopened Addon Implementation
+
+- [x] OMAB-060 [owner=codex] [deps=OMAB-050] [scope=crates/nako-metadata-scraper/src/engine/bulk.rs,crates/nako-metadata-scraper/src/routes.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/manifest.example.json]
+  Goal: Reopen the lane now that the host Addon Task runtime exists and wire
+  the official addon manifest, task endpoint, and bounded batch planner for
+  `bulk-metadata-scrape`.
+  Validation: `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast`; `cargo nextest run --workspace --no-fail-fast`; `cargo clippy -p nako-metadata-scraper --all-targets -- -D warnings`; `git diff --check`.
+  Review: The addon-side task DTOs mirror the host-owned envelope, keep payloads redaction-safe, and avoid a hidden scheduler or direct DB access.
+  Evidence: engine bulk module, manifest, route tests, example manifest.
+  Result: DONE 2026-05-24.
+  Handoff: Continue with OMAB-070 verification, docs, and closeout.
+
+- [x] OMAB-070 [owner=planner] [deps=OMAB-060] [scope=README.md,addons/metadata-scraper,docs/workstreams/official-metadata-addon-bulk-task-design]
+  Goal: Refresh operator docs, record fresh gates, and close or split remaining
+  follow-ons after the reopened bulk task implementation lands.
+  Validation: `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast`; `cargo nextest run --workspace --no-fail-fast`; `cargo clippy -p nako-metadata-scraper --all-targets -- -D warnings`; `git diff --check`.
+  Review: Closeout evidence is fresh and the shipped behavior matches the docs.
+  Evidence: README.md, addons/metadata-scraper/README.md, addons/metadata-scraper/manifest.example.json, docs/workstreams/official-metadata-addon-bulk-task-design/EVIDENCE_AND_GATES.md, docs/workstreams/official-metadata-addon-bulk-task-design/HANDOFF.md, docs/workstreams/official-metadata-addon-bulk-task-design/WORKSTREAM.json
+  Handoff: Lane closed for the current release.
