@@ -14,6 +14,9 @@ keeping provider implementations modular inside the codebase:
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
+- the same sidecar also declares a small `library.scanned` event subscription
+  proof path, so resource, task, and event capabilities can share one official
+  deployment unit when they share trust and lifecycle;
 - runtime candidate shaping deduplicates exact duplicate provider candidates,
   caps the final result set, and uses shared TMDB/Bangumi/Douban community
   score and vote-count signals as a small generic ranking bonus without
@@ -29,7 +32,7 @@ keeping provider implementations modular inside the codebase:
 ## Current Addon
 
 - `crates/nako-metadata-scraper`: Rust HTTP sidecar that implements the Nako
-  Addon Protocol metadata resource.
+  Addon Protocol metadata resource, bulk task, and library-scanned event proof.
 
 ## Development
 

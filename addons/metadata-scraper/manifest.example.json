@@ -56,7 +56,15 @@
     }
   },
   "secret_reference_fields": [],
-  "event_subscriptions": [],
+  "event_subscriptions": [
+    {
+      "id": "library-scanned",
+      "event_kind": "library.scanned",
+      "path": "/events/library-scanned",
+      "required_scopes": ["webhook_event_read"],
+      "filters": null
+    }
+  ],
   "tasks": [
     {
       "id": "bulk-metadata-scrape",
@@ -71,5 +79,5 @@
   "auth": "none",
   "default_timeout_ms": 10000,
   "default_max_attempts": 2,
-  "scopes": ["item_metadata_read", "item_metadata_suggest", "automation_run"]
+  "scopes": ["item_metadata_read", "item_metadata_suggest", "automation_run", "webhook_event_read"]
 }

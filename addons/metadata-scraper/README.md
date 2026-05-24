@@ -24,6 +24,7 @@ Endpoints:
 - `POST /health`
 - `POST /metadata`
 - `POST /tasks/bulk-metadata-scrape`
+- `POST /events/library-scanned`
 - `GET /ui/diagnostics`
 
 ## Local smoke
@@ -36,8 +37,10 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
 ```
 
 The direct smoke fetches `/manifest.json`, calls `/health`, and calls the
-`metadata` resource with a fixture movie query. It expects at least one
-candidate and one generated artifact with the default fixture provider.
+`metadata` resource with a fixture movie query. It also posts a safe
+`library.scanned` event envelope to `/events/library-scanned`. It expects at
+least one candidate and one generated artifact with the default fixture
+provider.
 
 When a local Nako server is already running, use the same script for an
 Admin-mediated smoke. This path registers the manifest only when it is not
@@ -171,6 +174,22 @@ Each task item is a metadata request payload and may include the explicit
 `writeback` and `artwork_writeback` objects described above. The task response
 returns a batch summary plus the per-item metadata payloads produced by the
 existing runtime.
+
+## Library scanned event proof
+
+The manifest declares one event subscription:
+
+- `id`: `library-scanned`
+- `event_kind`: `library.scanned`
+- `path`: `/events/library-scanned`
+- `required_scopes`: `webhook_event_read`
+
+The handler is intentionally small. It validates the event envelope and returns
+a redaction-safe ACK with payload keys, not payload values. Its purpose is to
+prove that the official metadata sidecar can carry event-driven capabilities in
+the same deployment unit as metadata resources and Addon Tasks. Full
+notification bridges and provider fan-out remain separate future addons or
+suite capabilities.
 
 ## Register in Nako Admin Web
 

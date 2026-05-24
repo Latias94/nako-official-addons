@@ -6,10 +6,11 @@ use axum::{
     routing::{get, post},
 };
 use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, AddonHealthCheckRequest, AddonHealthCheckResponse,
-    AddonHealthManifestFacts, AddonHealthStatus, AddonResourceRequest, AddonResourceResponse,
-    AddonTaskRequest, AddonTaskResponse,
+    ADDON_PROTOCOL_VERSION, AddonEventRequest, AddonEventResponse, AddonHealthCheckRequest,
+    AddonHealthCheckResponse, AddonHealthManifestFacts, AddonHealthStatus, AddonResourceRequest,
+    AddonResourceResponse, AddonTaskRequest, AddonTaskResponse,
 };
+use nako_official_addon_catalog::metadata_scraper;
 use tower_http::trace::TraceLayer;
 
 use crate::{
@@ -53,6 +54,10 @@ pub fn router(config: Config) -> Router {
         .route("/health", post(health))
         .route("/metadata", post(metadata))
         .route(BULK_METADATA_SCRAPE_TASK_PATH, post(bulk_metadata_scrape))
+        .route(
+            metadata_scraper::LIBRARY_SCANNED_EVENT_PATH,
+            post(library_scanned_event),
+        )
         .route("/ui/diagnostics", get(diagnostics))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -118,6 +123,48 @@ async fn bulk_metadata_scrape(
     }
 }
 
+async fn library_scanned_event(
+    Json(request): Json<AddonEventRequest>,
+) -> Result<Json<AddonEventResponse>, (StatusCode, Json<serde_json::Value>)> {
+    if request.protocol_version != ADDON_PROTOCOL_VERSION
+        || request.addon_id != ADDON_ID
+        || request.subscription_id != metadata_scraper::LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID
+        || request.event_kind != metadata_scraper::LIBRARY_SCANNED_EVENT_KIND
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "safe_error_code": "invalid_event_envelope"
+            })),
+        ));
+    }
+
+    let payload_keys = request
+        .payload
+        .as_object()
+        .map(|object| {
+            let mut keys = object.keys().cloned().collect::<Vec<_>>();
+            keys.sort();
+            keys
+        })
+        .unwrap_or_default();
+
+    Ok(Json(AddonEventResponse {
+        protocol_version: request.protocol_version,
+        addon_id: request.addon_id,
+        subscription_id: request.subscription_id,
+        event_id: request.event_id,
+        output: serde_json::json!({
+            "schema": "nako.official.metadata-scraper.library-scanned.event.v1",
+            "accepted": true,
+            "attempt": request.attempt,
+            "subject_kind": request.subject_kind,
+            "subject_id": request.subject_id,
+            "payload_keys": payload_keys
+        }),
+    }))
+}
+
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     let enabled_providers = provider_list_label(&state.provider_diagnostics.enabled);
     let supported_provider_ids = state
@@ -168,7 +215,8 @@ mod tests {
         http::{Request, StatusCode},
     };
     use nako_addon_protocol::{
-        AddonHealthCheckRequest, AddonResource, AddonScope, validate_manifest,
+        AddonEventRequest, AddonEventResponse, AddonHealthCheckRequest, AddonResource, AddonScope,
+        validate_manifest,
     };
     use tower::ServiceExt;
 
@@ -211,11 +259,25 @@ mod tests {
                 AddonScope::ItemMetadataRead,
                 AddonScope::ItemMetadataSuggest,
                 AddonScope::AutomationRun,
+                AddonScope::WebhookEventRead,
             ]
         );
         assert_eq!(manifest.tasks.len(), 1);
         assert_eq!(manifest.tasks[0].id, BULK_METADATA_SCRAPE_TASK_ID);
         assert_eq!(manifest.tasks[0].path, BULK_METADATA_SCRAPE_TASK_PATH);
+        assert_eq!(manifest.event_subscriptions.len(), 1);
+        assert_eq!(
+            manifest.event_subscriptions[0].id,
+            metadata_scraper::LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID
+        );
+        assert_eq!(
+            manifest.event_subscriptions[0].event_kind,
+            metadata_scraper::LIBRARY_SCANNED_EVENT_KIND
+        );
+        assert_eq!(
+            manifest.event_subscriptions[0].path,
+            metadata_scraper::LIBRARY_SCANNED_EVENT_PATH
+        );
     }
 
     #[tokio::test]
@@ -337,6 +399,60 @@ mod tests {
             payload.output["items"][0]["payload"]["query"]["title"],
             "The Matrix"
         );
+    }
+
+    #[tokio::test]
+    async fn library_scanned_event_endpoint_accepts_event_without_echoing_payload_values() {
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: metadata_scraper::LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: metadata_scraper::LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::default())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(metadata_scraper::LIBRARY_SCANNED_EVENT_PATH)
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonEventResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.addon_id, ADDON_ID);
+        assert_eq!(
+            payload.subscription_id,
+            metadata_scraper::LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID
+        );
+        assert_eq!(payload.event_id, "event-1");
+        assert_eq!(
+            payload.output["schema"],
+            "nako.official.metadata-scraper.library-scanned.event.v1"
+        );
+        assert_eq!(payload.output["accepted"], true);
+        assert_eq!(
+            payload.output["payload_keys"],
+            serde_json::json!(["library_id", "secret"])
+        );
+        assert!(!text.contains("nako_at_should_not_echo"));
     }
 
     #[tokio::test]

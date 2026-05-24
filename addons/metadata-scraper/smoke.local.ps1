@@ -120,6 +120,20 @@ function Assert-ManifestTask {
     Assert-Equal -Actual $matches[0].path -Expected $Path -Name "manifest.tasks[$TaskId].path"
 }
 
+function Assert-ManifestEventSubscription {
+    param(
+        [Parameter(Mandatory = $true)][object]$Manifest,
+        [Parameter(Mandatory = $true)][string]$SubscriptionId,
+        [Parameter(Mandatory = $true)][string]$EventKind,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $matches = @($Manifest.event_subscriptions | Where-Object { $_.id -eq $SubscriptionId })
+    Assert-MinCount -Items $matches -Minimum 1 -Name "manifest.event_subscriptions[$SubscriptionId]"
+    Assert-Equal -Actual $matches[0].event_kind -Expected $EventKind -Name "manifest.event_subscriptions[$SubscriptionId].event_kind"
+    Assert-Equal -Actual $matches[0].path -Expected $Path -Name "manifest.event_subscriptions[$SubscriptionId].path"
+}
+
 function Assert-WritebackExpectation {
     param(
         [object]$Writeback,
@@ -230,6 +244,7 @@ Assert-Equal -Actual $manifest.id -Expected 'nako.official.metadata-scraper' -Na
 Assert-Equal -Actual $manifest.protocol_version -Expected '0.1.0-alpha.1' -Name 'manifest.protocol_version'
 Assert-MinCount -Items @($manifest.resources) -Minimum 1 -Name 'manifest.resources'
 Assert-ManifestTask -Manifest $manifest -TaskId 'bulk-metadata-scrape' -Path '/tasks/bulk-metadata-scrape'
+Assert-ManifestEventSubscription -Manifest $manifest -SubscriptionId 'library-scanned' -EventKind 'library.scanned' -Path '/events/library-scanned'
 Write-Host "[sidecar] Manifest OK: $($manifest.id)@$($manifest.version)"
 
 $healthRequest = [ordered]@{
@@ -282,6 +297,33 @@ if ($RunWriteback) {
     Write-Host "[sidecar] Writeback status: $($metadata.payload.writeback.status)"
 }
 
+$eventRequest = [ordered]@{
+    protocol_version = $manifest.protocol_version
+    addon_id = $manifest.id
+    subscription_id = 'library-scanned'
+    event_id = "local-smoke-event-$([guid]::NewGuid())"
+    event_kind = 'library.scanned'
+    subject_kind = 'library'
+    subject_id = 'local-smoke-library'
+    occurred_at = '2026-05-25T00:00:00.000Z'
+    attempt = 1
+    payload = [ordered]@{
+        library_id = 'local-smoke-library'
+        secret = 'nako_at_should_not_echo'
+    }
+}
+$event = Invoke-Json -Method 'POST' -Url (Join-HttpUrl $SidecarBaseUrl '/events/library-scanned') -Body $eventRequest
+Assert-Equal -Actual $event.addon_id -Expected $manifest.id -Name 'event.addon_id'
+Assert-Equal -Actual $event.subscription_id -Expected 'library-scanned' -Name 'event.subscription_id'
+Assert-Equal -Actual $event.event_id -Expected $eventRequest.event_id -Name 'event.event_id'
+Assert-Equal -Actual $event.output.schema -Expected 'nako.official.metadata-scraper.library-scanned.event.v1' -Name 'event.output.schema'
+Assert-Equal -Actual $event.output.accepted -Expected $true -Name 'event.output.accepted'
+$eventJson = $event | ConvertTo-Json -Depth 64 -Compress
+if ($eventJson.Contains('nako_at_should_not_echo')) {
+    throw 'event response echoed a secret payload value.'
+}
+Write-Host "[sidecar] Event subscription OK; subscription=$($event.subscription_id)"
+
 if (-not $RegisterInNako) {
     if ($RequireNako) {
         throw '-RequireNako requires -RegisterInNako.'
@@ -308,7 +350,7 @@ if ($manifest.base_url.TrimEnd('/') -ne $SidecarBaseUrl.TrimEnd('/')) {
 
 $addons = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $NakoBaseUrl '/admin/v1/addons') -Headers $adminHeaders
 $existingMatches = @($addons.addons | Where-Object { $_.manifest_id -eq $manifest.id -and $_.status -ne 'unregistered' })
-$requiredScopes = @('item_metadata_read', 'item_metadata_suggest')
+$requiredScopes = @('item_metadata_read', 'item_metadata_suggest', 'webhook_event_read')
 if ($RunTaskPath) {
     $requiredScopes += 'automation_run'
 }
