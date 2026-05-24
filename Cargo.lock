@@ -666,10 +666,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nako-addon-client"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "async-trait",
+ "nako-addon-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nako-addon-protocol"
-version = "0.1.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e08353692e50690db5af9246a8afb9504d6a4d0119a89510133aef2ac1dbec"
+version = "0.1.0-alpha.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -677,11 +686,12 @@ dependencies = [
 
 [[package]]
 name = "nako-metadata-scraper"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "nako-addon-client",
  "nako-addon-protocol",
  "reqwest",
  "scraper",

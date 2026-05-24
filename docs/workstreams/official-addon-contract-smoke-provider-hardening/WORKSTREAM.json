@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "slug": "official-addon-contract-smoke-provider-hardening",
+  "title": "Official Addon Contract Smoke Provider Hardening",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "architecture_execution",
+  "problem": "After the cross-repo official addon refactor, the remaining near-term risks are local task envelope mirrors, live smoke repeatability, and provider descriptor ownership.",
+  "task_prefix": "OACSH",
+  "current_task": "OACSH-050",
+  "completed_tasks": [
+    "OACSH-010",
+    "OACSH-020",
+    "OACSH-030",
+    "OACSH-040",
+    "OACSH-050"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-addon-contract-smoke-provider-hardening/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-addon-contract-smoke-provider-hardening/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-addon-contract-smoke-provider-hardening/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-addon-contract-smoke-provider-hardening/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-addon-contract-smoke-provider-hardening/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper bulk task routes manifest --no-fail-fast",
+    "PowerShell parser checks for smoke scripts",
+    "live smoke when local Nako server/admin token are available",
+    "cargo nextest run -p nako-metadata-scraper provider registry manifest config --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-24",
+      "task": "OACSH-010",
+      "summary": "Confirmed ADR 0033 already records Addon Protocol version/release separation. Opened follow-on lane for task envelope unification, live smoke hardening, and provider descriptor boundary while deferring official sidecar packaging splits."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACSH-020",
+      "summary": "Removed metadata scraper local Addon Task envelope mirrors and switched bulk route/planner code to public nako-addon-protocol AddonTaskRequest/AddonTaskResponse types. Focused task/route/manifest tests, fmt, and diff checks passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACSH-030",
+      "summary": "Hardened official smoke scripts with explicit Nako-path guards, writeback outcome assertions, manifest task declaration checks, and E2E preflight mode. Parser checks, preflight, guard proof, focused Rust tests, and diff checks passed; full live Docker/server smoke was not executed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACSH-040",
+      "summary": "Moved provider catalog entries into provider modules and made manifest provider schema/secret reference generation consume registry-derived descriptors. Focused provider/registry/manifest/config tests, full package tests, fmt, and diff checks passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACSH-050",
+      "summary": "Closed workstream with residual live smoke and official addon-family install-boundary follow-ons recorded."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md",
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "depends_on": [
+    "docs/workstreams/official-addons-cross-repo-fearless-refactor",
+    "docs/workstreams/official-metadata-addon-bulk-task-design",
+    "docs/workstreams/official-metadata-addon-fearless-refactor"
+  ],
+  "non_goals": [
+    "re-deciding Addon Protocol versioning",
+    "splitting official metadata addon into many user-installed sidecars",
+    "new official addon family implementation",
+    "Nako product process supervision for sidecars",
+    "copying reference scraper implementation code"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "next_task": null,
+    "notes": "Core lane is complete. Future work should open separate lanes for full live Docker/server smoke execution or official addon-family packaging/install UX decisions."
+  }
+}

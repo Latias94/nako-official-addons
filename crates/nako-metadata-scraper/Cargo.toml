@@ -15,6 +15,7 @@ keywords = ["nako", "addon", "metadata", "scraper", "media"]
 anyhow.workspace = true
 async-trait.workspace = true
 axum.workspace = true
+nako-addon-client.workspace = true
 nako-addon-protocol.workspace = true
 reqwest.workspace = true
 scraper = "0.27.0"

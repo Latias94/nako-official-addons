@@ -52,8 +52,8 @@ NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT=1 cargo test -p nako-metadata-scraper 
 TMDB requires `NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` to be set in the
 environment before that command can do anything useful.
 
-Version `0.1.0-alpha.1` targets Nako Addon Protocol `0.1.0-alpha.1` and
-`nako-addon-protocol` Rust crate `0.1.0-alpha.1`.
+Version `0.1.0-alpha.2` targets Nako Addon Protocol `0.1.0-alpha.1` and
+`nako-addon-protocol` Rust crate `0.1.0-alpha.2`.
 
 Run locally:
 

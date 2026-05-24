@@ -6,6 +6,7 @@ param(
     [switch]$RegisterInNako,
     [switch]$Enable,
     [switch]$RunResourceCall,
+    [switch]$RunTaskPath,
     [switch]$RunWriteback,
     [switch]$IssueAddonToken,
     [switch]$RequireNako,
@@ -13,7 +14,12 @@ param(
     [string]$MetadataWritebackLibraryId = $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_LIBRARY_ID,
     [string]$MetadataWritebackTargetKind = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_KIND) { $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_KIND } else { 'media_source' }),
     [string]$MetadataWritebackTargetId = $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_TARGET_ID,
-    [string]$MetadataWritebackIdempotencyKey = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY) { $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY } else { "local-smoke-metadata-writeback-$([guid]::NewGuid())" })
+    [string]$MetadataWritebackIdempotencyKey = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY) { $env:NAKO_METADATA_SCRAPER_SMOKE_WRITEBACK_IDEMPOTENCY_KEY } else { "local-smoke-metadata-writeback-$([guid]::NewGuid())" }),
+    [string]$ExpectedWritebackStatus = $env:NAKO_METADATA_SCRAPER_SMOKE_EXPECTED_WRITEBACK_STATUS,
+    [string]$ExpectedWritebackSafeErrorCode = $env:NAKO_METADATA_SCRAPER_SMOKE_EXPECTED_WRITEBACK_SAFE_ERROR_CODE,
+    [string]$TaskPathLibraryId = $env:NAKO_METADATA_SCRAPER_SMOKE_TASK_LIBRARY_ID,
+    [string]$TaskPathSourceId = $env:NAKO_METADATA_SCRAPER_SMOKE_TASK_SOURCE_ID,
+    [string]$TaskPathIdempotencyKey = $(if ($env:NAKO_METADATA_SCRAPER_SMOKE_TASK_IDEMPOTENCY_KEY) { $env:NAKO_METADATA_SCRAPER_SMOKE_TASK_IDEMPOTENCY_KEY } else { "local-smoke-bulk-task-$([guid]::NewGuid())" })
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,6 +81,72 @@ function Assert-MinCount {
     }
 }
 
+function Assert-SmokeOptions {
+    $nakoFlags = @()
+    if ($Enable) { $nakoFlags += '-Enable' }
+    if ($RunResourceCall) { $nakoFlags += '-RunResourceCall' }
+    if ($RunTaskPath) { $nakoFlags += '-RunTaskPath' }
+    if ($IssueAddonToken) { $nakoFlags += '-IssueAddonToken' }
+    if ($RequireNako) { $nakoFlags += '-RequireNako' }
+
+    if ($nakoFlags.Count -gt 0 -and -not $RegisterInNako) {
+        throw "$($nakoFlags -join ', ') require -RegisterInNako so the smoke cannot silently skip Nako Admin paths."
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedWritebackStatus)) {
+        $allowedStatuses = @('submitted', 'skipped', 'failed', 'any')
+        if ($ExpectedWritebackStatus -notin $allowedStatuses) {
+            throw "-ExpectedWritebackStatus must be one of: $($allowedStatuses -join ', ')."
+        }
+        if (-not $RunWriteback) {
+            throw '-ExpectedWritebackStatus requires -RunWriteback.'
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedWritebackSafeErrorCode) -and -not $RunWriteback) {
+        throw '-ExpectedWritebackSafeErrorCode requires -RunWriteback.'
+    }
+}
+
+function Assert-ManifestTask {
+    param(
+        [Parameter(Mandatory = $true)][object]$Manifest,
+        [Parameter(Mandatory = $true)][string]$TaskId,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $matches = @($Manifest.tasks | Where-Object { $_.id -eq $TaskId })
+    Assert-MinCount -Items $matches -Minimum 1 -Name "manifest.tasks[$TaskId]"
+    Assert-Equal -Actual $matches[0].path -Expected $Path -Name "manifest.tasks[$TaskId].path"
+}
+
+function Assert-WritebackExpectation {
+    param(
+        [object]$Writeback,
+        [string]$ExpectedStatus,
+        [string]$ExpectedSafeErrorCode
+    )
+
+    if (
+        [string]::IsNullOrWhiteSpace($ExpectedStatus) -and
+        [string]::IsNullOrWhiteSpace($ExpectedSafeErrorCode)
+    ) {
+        return
+    }
+
+    if ($null -eq $Writeback) {
+        throw 'metadata response did not include a writeback summary.'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedStatus) -and $ExpectedStatus -ne 'any') {
+        Assert-Equal -Actual ([string]$Writeback.status) -Expected $ExpectedStatus -Name 'metadata writeback status'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSafeErrorCode)) {
+        Assert-Equal -Actual ([string]$Writeback.safe_error_code) -Expected $ExpectedSafeErrorCode -Name 'metadata writeback safe_error_code'
+    }
+}
+
 function New-MetadataWritebackPayload {
     param(
         [Parameter(Mandatory = $true)][switch]$Enabled,
@@ -126,11 +198,38 @@ function New-AdminHeaders {
     }
 }
 
+function Wait-NakoAddonTaskRun {
+    param(
+        [Parameter(Mandatory = $true)][string]$AddonId,
+        [Parameter(Mandatory = $true)][string]$JobId,
+        [Parameter(Mandatory = $true)][hashtable]$Headers,
+        [int]$TimeoutSeconds = 90
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $taskRun = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $NakoBaseUrl "/admin/v1/addons/$AddonId/task-runs/$JobId") -Headers $Headers
+        $status = [string]$taskRun.run.status
+        if ($status -in @('succeeded', 'failed', 'cancelled')) {
+            return $taskRun
+        }
+
+        if ((Get-Date) -ge $deadline) {
+            throw "Addon task run $JobId did not reach a terminal status within $TimeoutSeconds seconds. Last status: '$status'."
+        }
+
+        Start-Sleep -Seconds 1
+    } while ($true)
+}
+
+Assert-SmokeOptions
+
 Write-Host "[sidecar] Fetching manifest from $SidecarBaseUrl"
 $manifest = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $SidecarBaseUrl '/manifest.json')
 Assert-Equal -Actual $manifest.id -Expected 'nako.official.metadata-scraper' -Name 'manifest.id'
 Assert-Equal -Actual $manifest.protocol_version -Expected '0.1.0-alpha.1' -Name 'manifest.protocol_version'
 Assert-MinCount -Items @($manifest.resources) -Minimum 1 -Name 'manifest.resources'
+Assert-ManifestTask -Manifest $manifest -TaskId 'bulk-metadata-scrape' -Path '/tasks/bulk-metadata-scrape'
 Write-Host "[sidecar] Manifest OK: $($manifest.id)@$($manifest.version)"
 
 $healthRequest = [ordered]@{
@@ -176,6 +275,10 @@ if ($RunWriteback) {
         throw 'metadata response did not include a writeback summary.'
     }
 
+    Assert-WritebackExpectation `
+        -Writeback $metadata.payload.writeback `
+        -ExpectedStatus $ExpectedWritebackStatus `
+        -ExpectedSafeErrorCode $ExpectedWritebackSafeErrorCode
     Write-Host "[sidecar] Writeback status: $($metadata.payload.writeback.status)"
 }
 
@@ -206,6 +309,9 @@ if ($manifest.base_url.TrimEnd('/') -ne $SidecarBaseUrl.TrimEnd('/')) {
 $addons = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $NakoBaseUrl '/admin/v1/addons') -Headers $adminHeaders
 $existingMatches = @($addons.addons | Where-Object { $_.manifest_id -eq $manifest.id -and $_.status -ne 'unregistered' })
 $requiredScopes = @('item_metadata_read', 'item_metadata_suggest')
+if ($RunTaskPath) {
+    $requiredScopes += 'automation_run'
+}
 
 if ($existingMatches.Count -gt 0) {
     $addonId = $existingMatches[0].id
@@ -249,6 +355,7 @@ if ($IssueAddonToken) {
 if ($Enable) {
     $enabled = Invoke-Json -Method 'PATCH' -Url (Join-HttpUrl $NakoBaseUrl "/admin/v1/addons/$addonId/status") -Body @{ status = 'enabled' } -Headers $adminHeaders
     Assert-Equal -Actual $enabled.addon.summary.status -Expected 'enabled' -Name 'Nako addon status'
+    $addonStatus = $enabled.addon.summary.status
     Write-Host "[nako] Addon enabled"
 }
 
@@ -267,6 +374,52 @@ if ($RunResourceCall) {
     }
 
     Write-Host "[nako] Resource diagnostic OK; attempts=$($diagnostic.attempts), http_status=$($diagnostic.http_status)"
+}
+
+if ($RunTaskPath) {
+    if ($addonStatus -ne 'enabled') {
+        throw '-RunTaskPath requires an enabled addon. Pass -Enable or reuse an already-enabled registration.'
+    }
+
+    $routing = Invoke-Json -Method 'POST' -Url (Join-HttpUrl $NakoBaseUrl "/admin/v1/addons/$addonId/routing-plans") -Headers $adminHeaders
+    Write-Host "[nako] Routing plans synced; plans=$(@($routing.plans).Count)"
+
+    $taskPayloadItem = [ordered]@{
+        title = 'The Matrix'
+        year = 1999
+        language = 'en-US'
+    }
+    $taskRunRequest = [ordered]@{
+        declaration_id = 'bulk-metadata-scrape'
+        idempotency_key = $TaskPathIdempotencyKey
+        dispatch = 'direct'
+        payload = [ordered]@{
+            batch_size = 1
+            items = @($taskPayloadItem)
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($TaskPathLibraryId)) {
+        $taskRunRequest['library_id'] = $TaskPathLibraryId
+    }
+    if (-not [string]::IsNullOrWhiteSpace($TaskPathSourceId)) {
+        $taskRunRequest['source_id'] = $TaskPathSourceId
+    }
+
+    $createdTaskRun = Invoke-Json -Method 'POST' -Url (Join-HttpUrl $NakoBaseUrl "/admin/v1/addons/$addonId/task-runs") -Body $taskRunRequest -Headers $adminHeaders
+    Assert-Equal -Actual $createdTaskRun.run.declaration_id -Expected 'bulk-metadata-scrape' -Name 'Addon Task declaration_id'
+    Assert-Equal -Actual $createdTaskRun.run.has_input -Expected $true -Name 'Addon Task has_input'
+    Write-Host "[nako] Created direct Addon Task run $($createdTaskRun.run.job_id); status=$($createdTaskRun.run.status)"
+
+    $completedTaskRun = Wait-NakoAddonTaskRun -AddonId $addonId -JobId $createdTaskRun.run.job_id -Headers $adminHeaders
+    Assert-Equal -Actual $completedTaskRun.run.status -Expected 'succeeded' -Name 'Addon Task run status'
+    Assert-Equal -Actual $completedTaskRun.run.result.status -Expected 'succeeded' -Name 'Addon Task result status'
+    Assert-Equal -Actual $completedTaskRun.run.result.output.schema -Expected 'nako.official.metadata-scraper.bulk-metadata-scrape.result.v1' -Name 'Addon Task output schema'
+    Assert-Equal -Actual $completedTaskRun.run.result.output.processed_items -Expected 1 -Name 'Addon Task processed_items'
+    $taskItems = @($completedTaskRun.run.result.output.items | Where-Object { $null -ne $_ })
+    Assert-MinCount -Items $taskItems -Minimum 1 -Name 'Addon Task output.items'
+    $taskCandidates = @($taskItems[0].payload.candidates | Where-Object { $null -ne $_ })
+    Assert-MinCount -Items $taskCandidates -Minimum 1 -Name 'Addon Task first item candidates'
+    Write-Host "[nako] Direct Addon Task path OK; job_id=$($completedTaskRun.run.job_id), candidates=$($taskCandidates.Count)"
 }
 
 Write-Host '[ok] Local metadata scraper smoke completed.'

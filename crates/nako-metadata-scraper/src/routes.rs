@@ -8,6 +8,7 @@ use axum::{
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonHealthCheckRequest, AddonHealthCheckResponse,
     AddonHealthManifestFacts, AddonHealthStatus, AddonResourceRequest, AddonResourceResponse,
+    AddonTaskRequest, AddonTaskResponse,
 };
 use tower_http::trace::TraceLayer;
 
@@ -16,10 +17,7 @@ use crate::{
     config::ProviderId,
     engine::{
         MetadataScrapeRuntime,
-        bulk::{
-            AddonTaskRequest, AddonTaskResponse, BULK_METADATA_SCRAPE_TASK_ID,
-            BULK_METADATA_SCRAPE_TASK_PATH,
-        },
+        bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH},
     },
     manifest::{ADDON_ID, ADDON_VERSION, addon_manifest},
     nako_runtime::NakoRuntimeClient,

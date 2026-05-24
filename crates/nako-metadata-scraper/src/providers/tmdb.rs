@@ -7,13 +7,16 @@ mod search;
 mod test_support;
 
 use async_trait::async_trait;
+use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
+    Config,
     config::{ProviderId, TmdbProviderConfig},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
-        MetadataProvider,
+        MetadataProvider, ProviderBuildStatus,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
+        registry::ProviderCatalogEntry,
     },
 };
 
@@ -33,6 +36,40 @@ use search::tmdb_query_movie_ids;
 use test_support::FakeTransport;
 
 pub const TMDB_PROVIDER_ID: &str = "tmdb";
+
+#[must_use]
+pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
+    ProviderCatalogEntry {
+        id: ProviderId::Tmdb,
+        capabilities: &["metadata_suggestion", "movie_search"],
+        secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
+            TmdbProviderConfig::secret_field_id(),
+            "TMDB Read Access Token",
+            Some(
+                "Secret Reference for a TMDB API Read Access Token. The sidecar resolves it from NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN."
+                    .to_owned(),
+            ),
+            true,
+        )),
+        build: build_provider,
+    }
+}
+
+fn build_provider(config: &Config) -> ProviderBuildStatus {
+    let Some(tmdb_config) = config
+        .provider_config(ProviderId::Tmdb)
+        .and_then(|provider| provider.tmdb.clone())
+    else {
+        return ProviderBuildStatus::Unavailable;
+    };
+    if tmdb_config.read_access_token.is_none() {
+        return ProviderBuildStatus::Unavailable;
+    }
+    match TmdbMetadataProvider::new(tmdb_config) {
+        Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+        Err(_) => ProviderBuildStatus::Unavailable,
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct TmdbMetadataProvider<T = ReqwestProviderHttpTransport>

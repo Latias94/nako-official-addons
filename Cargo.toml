@@ -3,7 +3,7 @@ members = ["crates/nako-metadata-scraper"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2024"
 authors = ["Mingzhen Zhuang <superfrankie621@gmail.com>"]
 description = "Official Nako Addon Sidecars for metadata scraping and provider integrations."
@@ -25,4 +25,5 @@ tower-http = { version = "0.6.8", features = ["trace"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
-nako-addon-protocol = "0.1.0-alpha.1"
+nako-addon-client = { path = "../nako/crates/nako-addon-client", version = "0.1.0-alpha.2" }
+nako-addon-protocol = { path = "../nako/crates/nako-addon-protocol", version = "0.1.0-alpha.2" }

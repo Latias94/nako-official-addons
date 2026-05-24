@@ -8,11 +8,11 @@ use serde_json::json;
 
 use crate::{
     Config,
-    config::{BangumiProviderConfig, ProviderId, TmdbProviderConfig},
     engine::bulk::{
         BULK_METADATA_SCRAPE_TASK_DESCRIPTION, BULK_METADATA_SCRAPE_TASK_ID,
         BULK_METADATA_SCRAPE_TASK_NAME, BULK_METADATA_SCRAPE_TASK_PATH,
     },
+    providers::ProviderRegistry,
 };
 
 pub const ADDON_ID: &str = "nako.official.metadata-scraper";
@@ -81,45 +81,12 @@ pub fn addon_manifest(config: &Config) -> AddonManifest {
 
 #[must_use]
 fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDeclaration> {
-    let mut fields = Vec::new();
-    if config.provider_enabled(ProviderId::Tmdb) {
-        fields.push(AddonSecretReferenceFieldDeclaration::new(
-            TmdbProviderConfig::secret_field_id(),
-            "TMDB Read Access Token",
-            Some(
-                "Secret Reference for a TMDB API Read Access Token. The sidecar resolves it from NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN."
-                    .to_owned(),
-            ),
-            true,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Bangumi) {
-        fields.push(AddonSecretReferenceFieldDeclaration::new(
-            BangumiProviderConfig::secret_field_id(),
-            "Bangumi Access Token",
-            Some(
-                "Optional Secret Reference for a Bangumi access token. Public read APIs work without it, but authenticated access may reveal user-permitted sensitive results."
-                    .to_owned(),
-            ),
-            false,
-        ));
-    }
-
-    fields
+    ProviderRegistry::secret_reference_fields(config)
 }
 
 #[must_use]
 fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
-    let mut provider_properties = serde_json::Map::new();
-    for provider in &config.providers {
-        provider_properties.insert(
-            provider.id.as_str().to_owned(),
-            json!({
-                "type": "boolean",
-                "default": provider.enabled
-            }),
-        );
-    }
+    let provider_properties = ProviderRegistry::provider_schema_properties(config);
 
     AddonConfigurationSchema {
         schema_id: "nako.official.metadata-scraper.config.v1".to_owned(),
@@ -146,7 +113,7 @@ mod tests {
     use nako_addon_protocol::validate_manifest;
 
     use super::*;
-    use crate::config::ProviderConfig;
+    use crate::config::{BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig};
 
     #[test]
     fn addon_manifest_is_valid() {

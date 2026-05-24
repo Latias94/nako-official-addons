@@ -1,12 +1,9 @@
 use serde::Serialize;
 
+use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
+
 use crate::config::ProviderId;
 use crate::{Config, providers::MetadataProvider};
-
-use super::{
-    bangumi::BangumiMetadataProvider, browser_worker::BrowserWorkerMetadataProvider,
-    douban::DoubanMetadataProvider, fixture, tmdb::TmdbMetadataProvider,
-};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProviderDescriptor {
@@ -41,11 +38,43 @@ pub struct ProviderRegistry {
 impl ProviderRegistry {
     #[must_use]
     pub fn from_config(config: Config) -> Self {
-        Self::with_catalog(config, default_catalog())
+        Self::with_catalog(config, super::provider_catalog())
     }
 
     fn with_catalog(config: Config, catalog: Vec<ProviderCatalogEntry>) -> Self {
         Self { config, catalog }
+    }
+
+    #[must_use]
+    pub fn catalog() -> Vec<ProviderCatalogEntry> {
+        super::provider_catalog()
+    }
+
+    #[must_use]
+    pub fn provider_schema_properties(
+        config: &Config,
+    ) -> serde_json::Map<String, serde_json::Value> {
+        Self::catalog()
+            .into_iter()
+            .map(|entry| {
+                (
+                    entry.id.as_str().to_owned(),
+                    serde_json::json!({
+                        "type": "boolean",
+                        "default": config.provider_enabled(entry.id)
+                    }),
+                )
+            })
+            .collect()
+    }
+
+    #[must_use]
+    pub fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDeclaration> {
+        Self::catalog()
+            .into_iter()
+            .filter(|entry| config.provider_enabled(entry.id))
+            .filter_map(|entry| entry.secret_reference)
+            .collect()
     }
 
     #[must_use]
@@ -112,97 +141,16 @@ impl ProviderRegistry {
 }
 
 #[derive(Clone)]
-struct ProviderCatalogEntry {
-    id: ProviderId,
-    capabilities: &'static [&'static str],
-    build: fn(&Config) -> ProviderBuildStatus,
+pub struct ProviderCatalogEntry {
+    pub(crate) id: ProviderId,
+    pub(crate) capabilities: &'static [&'static str],
+    pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
+    pub(crate) build: fn(&Config) -> ProviderBuildStatus,
 }
 
-enum ProviderBuildStatus {
+pub enum ProviderBuildStatus {
     Ready(Box<dyn MetadataProvider>),
     Unavailable,
-}
-
-#[must_use]
-fn default_catalog() -> Vec<ProviderCatalogEntry> {
-    vec![
-        ProviderCatalogEntry {
-            id: ProviderId::Fixture,
-            capabilities: &["metadata_suggestion"],
-            build: |_| ProviderBuildStatus::Ready(Box::new(fixture::FixtureProvider)),
-        },
-        ProviderCatalogEntry {
-            id: ProviderId::Tmdb,
-            capabilities: &["metadata_suggestion", "movie_search"],
-            build: |config| {
-                let Some(tmdb_config) = config
-                    .provider_config(ProviderId::Tmdb)
-                    .and_then(|provider| provider.tmdb.clone())
-                else {
-                    return ProviderBuildStatus::Unavailable;
-                };
-                if tmdb_config.read_access_token.is_none() {
-                    return ProviderBuildStatus::Unavailable;
-                }
-                match TmdbMetadataProvider::new(tmdb_config) {
-                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
-                    Err(_) => ProviderBuildStatus::Unavailable,
-                }
-            },
-        },
-        ProviderCatalogEntry {
-            id: ProviderId::Bangumi,
-            capabilities: &["metadata_suggestion", "subject_search", "anime_search"],
-            build: |config| {
-                let Some(bangumi_config) = config
-                    .provider_config(ProviderId::Bangumi)
-                    .and_then(|provider| provider.bangumi.clone())
-                else {
-                    return ProviderBuildStatus::Unavailable;
-                };
-                match BangumiMetadataProvider::new(bangumi_config) {
-                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
-                    Err(_) => ProviderBuildStatus::Unavailable,
-                }
-            },
-        },
-        ProviderCatalogEntry {
-            id: ProviderId::BrowserWorker,
-            capabilities: &["metadata_suggestion", "rendered_page_extraction"],
-            build: |config| {
-                let Some(browser_worker_config) = config
-                    .provider_config(ProviderId::BrowserWorker)
-                    .and_then(|provider| provider.browser_worker.clone())
-                else {
-                    return ProviderBuildStatus::Unavailable;
-                };
-                match BrowserWorkerMetadataProvider::new(browser_worker_config) {
-                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
-                    Err(_) => ProviderBuildStatus::Unavailable,
-                }
-            },
-        },
-        ProviderCatalogEntry {
-            id: ProviderId::Douban,
-            capabilities: &[
-                "metadata_suggestion",
-                "movie_search",
-                "browser_worker_rendered_html",
-            ],
-            build: |config| {
-                let Some(douban_config) = config
-                    .provider_config(ProviderId::Douban)
-                    .and_then(|provider| provider.douban.clone())
-                else {
-                    return ProviderBuildStatus::Unavailable;
-                };
-                match DoubanMetadataProvider::new(douban_config) {
-                    Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
-                    Err(_) => ProviderBuildStatus::Unavailable,
-                }
-            },
-        },
-    ]
 }
 
 #[cfg(test)]
@@ -329,6 +277,7 @@ mod tests {
             vec![ProviderCatalogEntry {
                 id: ProviderId::Fixture,
                 capabilities: &["metadata_suggestion"],
+                secret_reference: None,
                 build: unavailable_provider,
             }],
         );

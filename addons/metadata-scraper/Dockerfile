@@ -37,6 +37,6 @@ ENV NAKO_METADATA_SCRAPER_LANGUAGE=en-US
 ENV NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED=true
 ENV NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED=false
 ENV NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED=false
-ENV NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT="Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.1 (https://github.com/Latias94/nako-official-addons)"
+ENV NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT="Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.2 (https://github.com/Latias94/nako-official-addons)"
 EXPOSE 9100
 ENTRYPOINT ["/usr/local/bin/nako-metadata-scraper"]

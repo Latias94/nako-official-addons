@@ -1,4 +1,7 @@
-use nako_addon_protocol::{ADDON_PROTOCOL_VERSION, AddonResource, AddonResourceRequest};
+use nako_addon_protocol::{
+    ADDON_PROTOCOL_VERSION, AddonResource, AddonResourceRequest, AddonTaskRequest,
+    AddonTaskResponse,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -27,35 +30,6 @@ impl BulkMetadataScrapeError {
             message: message.into(),
         }
     }
-}
-
-// Mirror the host task envelope locally until the published protocol crate exports it.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct AddonTaskRequest {
-    pub protocol_version: String,
-    pub addon_id: String,
-    pub task_id: String,
-    pub job_id: String,
-    pub request_id: String,
-    pub attempt: u32,
-    #[serde(default)]
-    pub retry_of_job_id: Option<String>,
-    #[serde(default)]
-    pub library_id: Option<String>,
-    #[serde(default)]
-    pub source_id: Option<String>,
-    pub payload: Value,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct AddonTaskResponse {
-    pub protocol_version: String,
-    pub addon_id: String,
-    pub task_id: String,
-    pub job_id: String,
-    pub request_id: String,
-    pub output: Value,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -450,7 +424,7 @@ mod tests {
                 .unwrap()
                 .pop_front()
                 .unwrap_or_else(|| {
-                    Err(NakoRuntimeError::Transport {
+                    Err(NakoRuntimeError::Http {
                         message: "fake response queue was empty".to_owned(),
                     })
                 })

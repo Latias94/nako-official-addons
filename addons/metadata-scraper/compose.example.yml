@@ -3,7 +3,7 @@ services:
     build:
       context: ../..
       dockerfile: addons/metadata-scraper/Dockerfile
-    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.1
+    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.2
     restart: unless-stopped
     environment:
       NAKO_METADATA_SCRAPER_LISTEN_ADDR: "0.0.0.0:9100"
@@ -15,7 +15,7 @@ services:
       NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED: "true"
       NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED: "false"
       NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL: "http://nako-browser-worker:3000"
-      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.1 (https://github.com/Latias94/nako-official-addons)"
+      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.2 (https://github.com/Latias94/nako-official-addons)"
       # Set only when enabling TMDB. Keep real tokens in your secret manager.
       # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
       # Optional when enabling Bangumi authenticated visibility.
@@ -26,7 +26,7 @@ services:
   nako-browser-worker:
     build:
       context: ../browser-worker
-    image: ghcr.io/latias94/nako-browser-worker:0.1.0-alpha.1
+    image: ghcr.io/latias94/nako-browser-worker:0.1.0-alpha.2
     restart: unless-stopped
     environment:
       HOST: "0.0.0.0"

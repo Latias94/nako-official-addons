@@ -6,6 +6,34 @@ This project follows SemVer for release labels. The addon protocol is still
 alpha, so `0.1.0-alpha.1` is not a compatibility promise for future alpha
 builds.
 
+## 0.1.0-alpha.2 - 2026-05-24
+
+### Added
+
+- Public `nako-addon-protocol` task envelope and protected-write side-effect
+  DTOs used by the official metadata scraper.
+- Public `nako-addon-client` runtime helpers for access checks and
+  metadata/artwork side-effect submission.
+- Admin-mediated smoke support for direct Nako-owned
+  `bulk-metadata-scrape` Addon Task execution.
+
+### Changed
+
+- The official metadata scraper now depends on `nako-addon-client` and
+  `nako-addon-protocol` `0.1.0-alpha.2`.
+- Bangumi and Douban provider implementations are split into provider-local
+  modules for client, enrichment, parser, mapper, and test support.
+- Provider manifest schema and secret-reference declarations now come from
+  provider-owned catalog entries through the provider registry.
+
+### Fixed
+
+- Package verification no longer relies on unpublished local path-only SDK
+  APIs while retaining Addon Protocol runtime compatibility
+  `0.1.0-alpha.1`.
+- The official E2E smoke preflight now fails early when the Docker daemon is
+  not reachable.
+
 ## 0.1.0-alpha.1 - 2026-05-23
 
 ### Added

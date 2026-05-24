@@ -2,7 +2,7 @@
 
 Official Nako-maintained Addon Sidecars.
 
-Current release target: `v0.1.0-alpha.1`.
+Current release target: `v0.1.0-alpha.2`.
 
 Main Nako repository: <https://github.com/Latias94/nako>.
 Official addons repository: <https://github.com/Latias94/nako-official-addons>.
@@ -79,19 +79,30 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
   -NakoBaseUrl http://127.0.0.1:3000 `
   -RegisterInNako `
   -Enable `
-  -RunResourceCall
+  -RunResourceCall `
+  -RunTaskPath
 ```
+
+`-RunTaskPath` creates a Nako-owned direct Addon Task run for
+`bulk-metadata-scrape`, waits for it to succeed, and verifies the result came
+from the sidecar's `/tasks/bulk-metadata-scrape` path.
+
+When a smoke option asks for a Nako-owned path, such as `-RunTaskPath`,
+`-RunResourceCall`, `-Enable`, or `-IssueAddonToken`, the script requires
+`-RegisterInNako` so release gates cannot silently fall back to sidecar-only
+checks. For writeback smoke, pass `-ExpectedWritebackStatus` and optionally
+`-ExpectedWritebackSafeErrorCode` to assert the exact side-effect gate result.
 
 ## Relationship to Nako Core
 
 This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and the matching
-`nako-addon-protocol` Rust crate version `0.1.0-alpha.1`.
+`nako-addon-protocol` Rust crate version `0.1.0-alpha.2`.
 
 The main Nako repository is <https://github.com/Latias94/nako>. This repository
 contains the official addon sidecars that integrate with that core project.
 
 The Rust implementation depends on the published `nako-addon-protocol`
-`0.1.0-alpha.1` crate and imports it in code as `nako_addon_protocol`.
+`0.1.0-alpha.2` crate and imports it in code as `nako_addon_protocol`.
 
 Versioning has three separate layers:
 

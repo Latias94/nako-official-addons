@@ -3,21 +3,49 @@ use nako_addon_protocol::AddonMetadataPatch;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    Config,
     config::{BrowserWorkerProviderConfig, ProviderId},
     engine::{
         MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
     },
     providers::{
-        MetadataProvider,
+        MetadataProvider, ProviderBuildStatus,
         http_runtime::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig,
             ProviderHttpTransport, ReqwestProviderHttpTransport,
         },
+        registry::ProviderCatalogEntry,
     },
 };
 
 pub const BROWSER_WORKER_PROVIDER_ID: &str = "browser_worker";
 const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction";
+
+#[must_use]
+pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
+    ProviderCatalogEntry {
+        id: ProviderId::BrowserWorker,
+        capabilities: &[
+            "metadata_suggestion",
+            BROWSER_WORKER_RENDERED_PAGE_CAPABILITY,
+        ],
+        secret_reference: None,
+        build: build_provider,
+    }
+}
+
+fn build_provider(config: &Config) -> ProviderBuildStatus {
+    let Some(browser_worker_config) = config
+        .provider_config(ProviderId::BrowserWorker)
+        .and_then(|provider| provider.browser_worker.clone())
+    else {
+        return ProviderBuildStatus::Unavailable;
+    };
+    match BrowserWorkerMetadataProvider::new(browser_worker_config) {
+        Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+        Err(_) => ProviderBuildStatus::Unavailable,
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct BrowserWorkerMetadataProvider<T = ReqwestProviderHttpTransport>

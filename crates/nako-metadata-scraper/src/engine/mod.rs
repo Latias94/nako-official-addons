@@ -1037,7 +1037,7 @@ mod tests {
                 .unwrap()
                 .pop_front()
                 .unwrap_or_else(|| {
-                    Err(NakoRuntimeError::Transport {
+                    Err(NakoRuntimeError::Http {
                         message: "fake response queue was empty".to_owned(),
                     })
                 })

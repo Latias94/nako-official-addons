@@ -2,7 +2,7 @@
 
 Official metadata scraper Addon Sidecar for Nako.
 
-Current release target: `v0.1.0-alpha.1`.
+Current release target: `v0.1.0-alpha.2`.
 
 Main Nako repository: <https://github.com/Latias94/nako>.
 Official addons repository: <https://github.com/Latias94/nako-official-addons>.
@@ -52,8 +52,18 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
   -NakoBaseUrl http://127.0.0.1:3000 `
   -RegisterInNako `
   -Enable `
-  -RunResourceCall
+  -RunResourceCall `
+  -RunTaskPath
 ```
+
+`-RunTaskPath` syncs routing plans, creates a Nako-owned direct Addon Task run
+for `bulk-metadata-scrape`, waits for terminal success, and verifies the task
+result contains the sidecar's bulk metadata scrape output schema.
+
+Any option that requires Nako-owned behavior, including `-RunTaskPath`,
+`-RunResourceCall`, `-Enable`, `-IssueAddonToken`, and `-RequireNako`, now
+requires `-RegisterInNako`. This keeps release smoke gates from reporting a
+sidecar-only pass after silently skipping Nako Admin paths.
 
 Pass `-NoAdminAuth` only for an unauthenticated local development server. The
 script never prints administrator bearer tokens, one-time Addon raw tokens, or
@@ -106,6 +116,19 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
 
 Without the runtime gates above, the smoke should report a skipped writeback
 status such as `nako_runtime_disabled`.
+
+For a release gate, assert the expected writeback outcome explicitly:
+
+```powershell
+pwsh -File addons/metadata-scraper/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9100 `
+  -RunWriteback `
+  -ExpectedWritebackStatus skipped `
+  -ExpectedWritebackSafeErrorCode nako_runtime_disabled `
+  -MetadataWritebackLibraryId 018f0000-0000-7000-8000-000000000003 `
+  -MetadataWritebackTargetKind media_source `
+  -MetadataWritebackTargetId 018f0000-0000-7000-8000-000000000005
+```
 
 ## Explicit artwork writeback
 
@@ -161,7 +184,7 @@ existing runtime.
 ## Docker example
 
 This alpha targets Nako Addon Protocol `0.1.0-alpha.1` and
-`nako-addon-protocol` Rust crate version `0.1.0-alpha.1`.
+`nako-addon-protocol` Rust crate version `0.1.0-alpha.2`.
 
 The addon manifest has separate version fields: `version` is this sidecar's
 release version, while `protocol_version` is the Nako Addon Protocol wire
@@ -178,7 +201,7 @@ The Docker build uses this repository as its build context because
 ```bash
 docker buildx build \
   -f addons/metadata-scraper/Dockerfile \
-  -t ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.1 \
+  -t ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.2 \
   .
 ```
 
