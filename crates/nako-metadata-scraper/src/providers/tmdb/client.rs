@@ -87,58 +87,28 @@ where
         TmdbSearchResponse::from_value(response.body)
     }
 
-    pub(super) async fn fetch_movie_detail(
+    pub(super) async fn fetch_movie_detail_bundle(
         &self,
         movie_id: u64,
-    ) -> anyhow::Result<TmdbMovieDetail> {
+    ) -> anyhow::Result<TmdbMovieDetailBundle> {
         let response = self
             .runtime
             .get_json(
                 TMDB_PROVIDER_ID,
                 "movie detail",
                 self.endpoint(format!("movie/{movie_id}")),
-                vec![("language".to_owned(), self.config.language.clone())],
+                vec![
+                    ("language".to_owned(), self.config.language.clone()),
+                    (
+                        "append_to_response".to_owned(),
+                        "external_ids,alternative_titles".to_owned(),
+                    ),
+                ],
                 self.bearer_headers(),
             )
             .await?;
 
-        TmdbMovieDetail::from_value(response.body)
-    }
-
-    pub(super) async fn fetch_movie_external_ids(
-        &self,
-        movie_id: u64,
-    ) -> anyhow::Result<TmdbMovieExternalIds> {
-        let response = self
-            .runtime
-            .get_json(
-                TMDB_PROVIDER_ID,
-                "movie external ids",
-                self.endpoint(format!("movie/{movie_id}/external_ids")),
-                Vec::new(),
-                self.bearer_headers(),
-            )
-            .await?;
-
-        TmdbMovieExternalIds::from_value(response.body)
-    }
-
-    pub(super) async fn fetch_movie_alternative_titles(
-        &self,
-        movie_id: u64,
-    ) -> anyhow::Result<TmdbMovieAlternativeTitles> {
-        let response = self
-            .runtime
-            .get_json(
-                TMDB_PROVIDER_ID,
-                "movie alternative titles",
-                self.endpoint(format!("movie/{movie_id}/alternative_titles")),
-                Vec::new(),
-                self.bearer_headers(),
-            )
-            .await?;
-
-        TmdbMovieAlternativeTitles::from_value(response.body)
+        TmdbMovieDetailBundle::from_value(response.body)
     }
 
     pub(super) async fn find_movie_id_by_imdb_id(
@@ -157,5 +127,60 @@ where
             .await?;
 
         Ok(TmdbFindResponse::from_value(response.body)?.first_movie_id())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct TmdbMovieDetailBundle {
+    pub(super) detail: TmdbMovieDetail,
+    pub(super) external_ids: TmdbMovieExternalIds,
+    pub(super) alternative_titles: TmdbMovieAlternativeTitles,
+    pub(super) partial_enrichment: bool,
+}
+
+impl TmdbMovieDetailBundle {
+    fn from_value(value: serde_json::Value) -> anyhow::Result<Self> {
+        let detail = TmdbMovieDetail::from_value(value.clone())?;
+        let (external_ids, external_ids_partial) = parse_optional_nested_value(
+            value.get("external_ids"),
+            "TMDB appended external IDs",
+            TmdbMovieExternalIds::from_value,
+        );
+        let (alternative_titles, alternative_titles_partial) = parse_optional_nested_value(
+            value.get("alternative_titles"),
+            "TMDB appended alternative titles",
+            TmdbMovieAlternativeTitles::from_value,
+        );
+
+        Ok(Self {
+            detail,
+            external_ids,
+            alternative_titles,
+            partial_enrichment: external_ids_partial || alternative_titles_partial,
+        })
+    }
+}
+
+fn parse_optional_nested_value<T>(
+    value: Option<&serde_json::Value>,
+    label: &'static str,
+    parser: impl FnOnce(serde_json::Value) -> anyhow::Result<T>,
+) -> (T, bool)
+where
+    T: Default,
+{
+    let Some(value) = value else {
+        return (T::default(), false);
+    };
+    if value.is_null() {
+        return (T::default(), false);
+    }
+
+    match parser(value.clone()) {
+        Ok(parsed) => (parsed, false),
+        Err(error) => {
+            tracing::warn!(provider = TMDB_PROVIDER_ID, %error, %label, "TMDB appended detail field could not be parsed; continuing with partial enrichment");
+            (T::default(), true)
+        }
     }
 }

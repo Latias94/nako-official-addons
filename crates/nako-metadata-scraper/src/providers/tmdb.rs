@@ -253,7 +253,7 @@ mod tests {
         }));
         transport.push(Ok(ProviderHttpResponse {
             status: 200,
-            body: br#"{
+            body: r#"{
                 "id": 603,
                 "title": "The Matrix",
                 "original_title": "The Matrix",
@@ -269,26 +269,17 @@ mod tests {
                     {"id": 878, "name": "Science Fiction"}
                 ],
                 "vote_average": 8.7,
-                "vote_count": 23456
-            }"#
-            .to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: br#"{
-                "imdb_id": "tt0133093",
-                "wikidata_id": "Q83495"
-            }"#
-            .to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: r#"{
-                "id": 603,
-                "titles": [
-                    {"iso_3166_1": "CN", "title": "黑客帝国", "type": "localized"},
-                    {"iso_3166_1": "US", "title": "The Matrix", "type": "original"}
-                ]
+                "vote_count": 23456,
+                "external_ids": {
+                    "imdb_id": "tt0133093",
+                    "wikidata_id": "Q83495"
+                },
+                "alternative_titles": {
+                    "titles": [
+                        {"iso_3166_1": "CN", "title": "黑客帝国", "type": "localized"},
+                        {"iso_3166_1": "US", "title": "The Matrix", "type": "original"}
+                    ]
+                }
             }"#
             .as_bytes()
             .to_vec(),
@@ -377,6 +368,7 @@ mod tests {
         );
 
         let requests = transport.requests();
+        assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].url, "https://tmdb.example/3/search/movie");
         assert_eq!(
             requests[0].headers,
@@ -390,15 +382,13 @@ mod tests {
         assert_eq!(requests[1].url, "https://tmdb.example/3/movie/603");
         assert_eq!(
             requests[1].query,
-            vec![("language".to_owned(), "en-US".to_owned())]
-        );
-        assert_eq!(
-            requests[2].url,
-            "https://tmdb.example/3/movie/603/external_ids"
-        );
-        assert_eq!(
-            requests[3].url,
-            "https://tmdb.example/3/movie/603/alternative_titles"
+            vec![
+                ("language".to_owned(), "en-US".to_owned()),
+                (
+                    "append_to_response".to_owned(),
+                    "external_ids,alternative_titles".to_owned()
+                )
+            ]
         );
         assert!(transport.configs()[0].proxy_url.is_none());
     }
@@ -547,7 +537,7 @@ mod tests {
         let transport = FakeTransport::default();
         transport.push(Ok(ProviderHttpResponse {
             status: 200,
-            body: br#"{
+            body: r#"{
                 "id": 603,
                 "title": "The Matrix",
                 "original_title": "The Matrix",
@@ -560,17 +550,17 @@ mod tests {
                 "backdrop_path": null,
                 "genres": [{"id": 28, "name": "Action"}],
                 "vote_average": 8.7,
-                "vote_count": 23456
+                "vote_count": 23456,
+                "external_ids": {
+                    "imdb_id": "tt0133093",
+                    "wikidata_id": "Q83495"
+                },
+                "alternative_titles": {
+                    "titles": [{"title": "黑客帝国"}]
+                }
             }"#
+            .as_bytes()
             .to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: br#"{"imdb_id": "tt0133093"}"#.to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: r#"{"titles": [{"title": "黑客帝国"}]}"#.as_bytes().to_vec(),
         }));
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
@@ -633,15 +623,17 @@ mod tests {
         );
 
         let requests = transport.requests();
-        assert_eq!(requests.len(), 3);
+        assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].url, "https://tmdb.example/3/movie/603");
         assert_eq!(
-            requests[1].url,
-            "https://tmdb.example/3/movie/603/external_ids"
-        );
-        assert_eq!(
-            requests[2].url,
-            "https://tmdb.example/3/movie/603/alternative_titles"
+            requests[0].query,
+            vec![
+                ("language".to_owned(), "en-US".to_owned()),
+                (
+                    "append_to_response".to_owned(),
+                    "external_ids,alternative_titles".to_owned()
+                )
+            ]
         );
         assert!(
             requests
@@ -673,7 +665,7 @@ mod tests {
         }));
         transport.push(Ok(ProviderHttpResponse {
             status: 200,
-            body: br#"{
+            body: r#"{
                 "id": 603,
                 "title": "The Matrix",
                 "original_title": "The Matrix",
@@ -686,17 +678,17 @@ mod tests {
                 "backdrop_path": null,
                 "genres": [{"id": 28, "name": "Action"}],
                 "vote_average": 8.7,
-                "vote_count": 23456
+                "vote_count": 23456,
+                "external_ids": {
+                    "imdb_id": "tt0133093",
+                    "wikidata_id": "Q83495"
+                },
+                "alternative_titles": {
+                    "titles": [{"title": "黑客帝国"}]
+                }
             }"#
+            .as_bytes()
             .to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: br#"{"imdb_id": "tt0133093"}"#.to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: r#"{"titles": [{"title": "黑客帝国"}]}"#.as_bytes().to_vec(),
         }));
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
@@ -744,7 +736,7 @@ mod tests {
         );
 
         let requests = transport.requests();
-        assert_eq!(requests.len(), 4);
+        assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].url, "https://tmdb.example/3/find/tt0133093");
         assert!(
             requests[0]
@@ -752,6 +744,16 @@ mod tests {
                 .contains(&("external_source".to_owned(), "imdb_id".to_owned()))
         );
         assert_eq!(requests[1].url, "https://tmdb.example/3/movie/603");
+        assert_eq!(
+            requests[1].query,
+            vec![
+                ("language".to_owned(), "en-US".to_owned()),
+                (
+                    "append_to_response".to_owned(),
+                    "external_ids,alternative_titles".to_owned()
+                )
+            ]
+        );
         assert!(
             requests
                 .iter()
@@ -2561,20 +2563,13 @@ mod tests {
                 "backdrop_path": null,
                 "genres": [{"id": 28, "name": "Action"}],
                 "vote_average": 8.0,
-                "vote_count": 1000
-            }"#
-            .to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 503,
-            body: br#"temporarily unavailable"#.to_vec(),
-        }));
-        transport.push(Ok(ProviderHttpResponse {
-            status: 200,
-            body: br#"{
-                "titles": [
-                    {"title": "Detail Alias"}
-                ]
+                "vote_count": 1000,
+                "external_ids": 503,
+                "alternative_titles": {
+                    "titles": [
+                        {"title": "Detail Alias"}
+                    ]
+                }
             }"#
             .to_vec(),
         }));
@@ -2641,14 +2636,17 @@ mod tests {
         );
 
         let requests = transport.requests();
+        assert_eq!(requests.len(), 2);
         assert_eq!(requests[1].url, "https://tmdb.example/3/movie/10");
         assert_eq!(
-            requests[2].url,
-            "https://tmdb.example/3/movie/10/external_ids"
-        );
-        assert_eq!(
-            requests[3].url,
-            "https://tmdb.example/3/movie/10/alternative_titles"
+            requests[1].query,
+            vec![
+                ("language".to_owned(), "en-US".to_owned()),
+                (
+                    "append_to_response".to_owned(),
+                    "external_ids,alternative_titles".to_owned()
+                )
+            ]
         );
     }
 }

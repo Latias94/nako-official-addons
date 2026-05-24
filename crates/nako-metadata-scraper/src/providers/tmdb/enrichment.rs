@@ -135,7 +135,8 @@ where
         result: TmdbMovieSearchResult,
         movie_id: u64,
     ) -> anyhow::Result<ProviderMetadataCandidate> {
-        let detail = self.fetch_movie_detail(movie_id).await?;
+        let detail_bundle = self.fetch_movie_detail_bundle(movie_id).await?;
+        let detail = detail_bundle.detail;
         if detail.id == 0 {
             anyhow::bail!(
                 "TMDB movie detail response returned zero id for requested movie {movie_id}"
@@ -147,30 +148,13 @@ where
                 detail.id
             );
         }
-        let mut partial_enrichment = false;
-        let external_ids = match self.fetch_movie_external_ids(movie_id).await {
-            Ok(external_ids) => external_ids,
-            Err(error) => {
-                partial_enrichment = true;
-                tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "TMDB external IDs enrichment failed for detail candidate");
-                Default::default()
-            }
-        };
-        let alternative_titles = match self.fetch_movie_alternative_titles(movie_id).await {
-            Ok(alternative_titles) => alternative_titles,
-            Err(error) => {
-                partial_enrichment = true;
-                tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "TMDB alternative titles enrichment failed for detail candidate");
-                Default::default()
-            }
-        };
 
         Ok(TmdbMovieCandidate {
             search: result,
             detail,
-            external_ids,
-            alternative_titles,
-            partial_enrichment,
+            external_ids: detail_bundle.external_ids,
+            alternative_titles: detail_bundle.alternative_titles,
+            partial_enrichment: detail_bundle.partial_enrichment,
         }
         .into_candidate(query))
     }
