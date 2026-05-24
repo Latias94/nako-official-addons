@@ -693,6 +693,7 @@ dependencies = [
  "axum",
  "nako-addon-client",
  "nako-addon-protocol",
+ "nako-official-addon-catalog",
  "reqwest",
  "scraper",
  "serde",
@@ -703,6 +704,14 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "nako-official-addon-catalog"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "nako-addon-protocol",
+ "serde_json",
 ]
 
 [[package]]

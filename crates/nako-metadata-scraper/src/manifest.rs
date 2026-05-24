@@ -1,82 +1,21 @@
-use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration,
-    AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest, AddonResource,
-    AddonResourceDeclaration, AddonScope, AddonSecretReferenceFieldDeclaration,
-    AddonTaskDeclaration,
-};
-use serde_json::json;
+use nako_addon_protocol::{AddonManifest, AddonSecretReferenceFieldDeclaration};
+use nako_official_addon_catalog::metadata_scraper;
 
-use crate::{
-    Config,
-    engine::bulk::{
-        BULK_METADATA_SCRAPE_TASK_DESCRIPTION, BULK_METADATA_SCRAPE_TASK_ID,
-        BULK_METADATA_SCRAPE_TASK_NAME, BULK_METADATA_SCRAPE_TASK_PATH,
-    },
-    providers::ProviderRegistry,
-};
+use crate::{Config, config::ProviderConfig, providers::ProviderRegistry};
 
-pub const ADDON_ID: &str = "nako.official.metadata-scraper";
-pub const ADDON_NAME: &str = "Nako Metadata Scraper";
+pub const ADDON_ID: &str = metadata_scraper::ADDON_ID;
+pub const ADDON_NAME: &str = metadata_scraper::ADDON_NAME;
 pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[must_use]
 pub fn addon_manifest(config: &Config) -> AddonManifest {
-    AddonManifest {
-        id: ADDON_ID.to_owned(),
-        name: ADDON_NAME.to_owned(),
-        version: ADDON_VERSION.to_owned(),
-        protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-        base_url: config.base_url.clone(),
-        description: Some(
-            "Official Nako metadata scraper sidecar. It returns metadata suggestions and can submit explicit Nako-owned metadata/artwork side effects when configured."
-                .to_owned(),
-        ),
-        resources: vec![AddonResourceDeclaration {
-            kind: AddonResource::Metadata,
-            path: "/metadata".to_owned(),
-            input_schema: Some("nako.metadata.request.v1".to_owned()),
-            output_schema: Some("nako.metadata.response.v1".to_owned()),
-            required_scopes: vec![
-                AddonScope::ItemMetadataRead,
-                AddonScope::ItemMetadataSuggest,
-            ],
-            timeout_ms: Some(10_000),
-            max_attempts: Some(2),
-        }],
-        entry_points: vec![AddonEntryPointDeclaration::hosted_page(
-            "metadata-diagnostics",
-            AddonEntryPointKind::Diagnostics,
-            "Metadata Scraper Diagnostics",
-            "/ui/diagnostics",
-            "diagnostics",
-            vec![AddonScope::ItemMetadataRead],
-        )],
-        hosted_pages: vec![AddonHostedPageDeclaration {
-            id: "diagnostics".to_owned(),
-            title: "Metadata Scraper Diagnostics".to_owned(),
-            path: "/ui/diagnostics".to_owned(),
-            required_scopes: vec![AddonScope::ItemMetadataRead],
-        }],
-        configuration_schema: Some(configuration_schema(config)),
-        secret_reference_fields: secret_reference_fields(config),
-        event_subscriptions: vec![],
-        tasks: vec![AddonTaskDeclaration::new(
-            BULK_METADATA_SCRAPE_TASK_ID,
-            BULK_METADATA_SCRAPE_TASK_NAME,
-            BULK_METADATA_SCRAPE_TASK_PATH,
-            vec![AddonScope::AutomationRun],
-        )
-        .with_description(BULK_METADATA_SCRAPE_TASK_DESCRIPTION)
-        .with_execution_bounds(Some(30_000), Some(2))],
-        auth: AddonAuth::None,
-        default_timeout_ms: Some(10_000),
-        default_max_attempts: Some(2),
-        scopes: vec![
-            AddonScope::ItemMetadataRead,
-            AddonScope::ItemMetadataSuggest,
-            AddonScope::AutomationRun,
-        ],
-    }
+    metadata_scraper::manifest_with_version(
+        ADDON_VERSION,
+        config.base_url.clone(),
+        config.preferred_language.clone(),
+        provider_toggles(config),
+        secret_reference_fields(config),
+    )
 }
 
 #[must_use]
@@ -85,35 +24,22 @@ fn secret_reference_fields(config: &Config) -> Vec<AddonSecretReferenceFieldDecl
 }
 
 #[must_use]
-fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
-    let provider_properties = ProviderRegistry::provider_schema_properties(config);
+fn provider_toggles(config: &Config) -> Vec<metadata_scraper::ProviderToggle> {
+    config.providers.iter().map(provider_toggle).collect()
+}
 
-    AddonConfigurationSchema {
-        schema_id: "nako.official.metadata-scraper.config.v1".to_owned(),
-        schema: json!({
-            "type": "object",
-            "properties": {
-                "preferred_language": {
-                    "type": "string",
-                    "default": config.preferred_language
-                },
-                "providers": {
-                    "type": "object",
-                    "properties": provider_properties,
-                    "additionalProperties": false
-                }
-            },
-            "additionalProperties": false
-        }),
-    }
+#[must_use]
+fn provider_toggle(provider: &ProviderConfig) -> metadata_scraper::ProviderToggle {
+    metadata_scraper::ProviderToggle::new(provider.id.as_str(), provider.enabled)
 }
 
 #[cfg(test)]
 mod tests {
-    use nako_addon_protocol::validate_manifest;
+    use nako_addon_protocol::{AddonScope, validate_manifest};
 
     use super::*;
     use crate::config::{BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig};
+    use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
 
     #[test]
     fn addon_manifest_is_valid() {
@@ -121,7 +47,20 @@ mod tests {
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
-        assert_eq!(manifest.resources[0].path, "/metadata");
+        assert_eq!(
+            manifest,
+            metadata_scraper::manifest_with_version(
+                ADDON_VERSION,
+                metadata_scraper::DEFAULT_BASE_URL,
+                metadata_scraper::DEFAULT_LANGUAGE,
+                metadata_scraper::default_provider_toggles(),
+                Vec::new(),
+            )
+        );
+        assert_eq!(
+            manifest.resources[0].path,
+            metadata_scraper::METADATA_RESOURCE_PATH
+        );
         assert_eq!(manifest.tasks.len(), 1);
         assert_eq!(manifest.tasks[0].id, BULK_METADATA_SCRAPE_TASK_ID);
         assert_eq!(manifest.tasks[0].path, BULK_METADATA_SCRAPE_TASK_PATH);
