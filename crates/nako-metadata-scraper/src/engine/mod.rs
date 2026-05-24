@@ -20,18 +20,19 @@ pub use ranking::{
     ProviderMetadataCandidate,
 };
 pub use runtime::MetadataScrapeRuntime;
-pub use writeback::{
-    MetadataWritebackRequest, MetadataWritebackResult, MetadataWritebackStatus,
-};
+pub use writeback::{MetadataWritebackRequest, MetadataWritebackResult, MetadataWritebackStatus};
 #[cfg(test)]
 mod tests {
     use std::{
-        collections::VecDeque,
+        collections::{HashSet, VecDeque},
         sync::{Arc, Mutex},
     };
 
     use async_trait::async_trait;
-    use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch, AddonResource};
+    use nako_addon_protocol::{
+        ADDON_PROTOCOL_VERSION, AddonArtworkKind, AddonMetadataPatch, AddonResource,
+        AddonResourceRequest,
+    };
 
     use super::*;
     use crate::{

@@ -22,8 +22,8 @@ pub(crate) fn metadata_response(
         "candidates": candidates
     });
     if let Some(writeback_result) = writeback_result {
-        payload["writeback"] =
-            serde_json::to_value(writeback_result).expect("writeback result is always serializable");
+        payload["writeback"] = serde_json::to_value(writeback_result)
+            .expect("writeback result is always serializable");
     }
     if let Some(artwork_writeback_result) = artwork_writeback_result {
         payload["artwork_writeback"] = serde_json::to_value(artwork_writeback_result)
