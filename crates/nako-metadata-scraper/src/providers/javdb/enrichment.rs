@@ -1,6 +1,6 @@
 use crate::engine::{
     MetadataQuery, ProviderMetadataCandidate,
-    av::{AvNumberSource, facts_from_query, facts_from_text},
+    av::{AvNumberRoute, AvNumberSource, facts_from_query, facts_from_text},
 };
 
 use super::{
@@ -19,6 +19,9 @@ where
         let Some(av_facts) = facts_from_query(query) else {
             return Ok(Vec::new());
         };
+        if av_facts.route == AvNumberRoute::Fc2 {
+            return Ok(Vec::new());
+        }
 
         let search = self.render(self.search_url(&av_facts.number)).await?;
         let search_results = parse_search_results(&search.html, &av_facts.number)

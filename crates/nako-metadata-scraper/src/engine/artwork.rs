@@ -215,6 +215,9 @@ mod tests {
                 language_match: LanguageMatchEvidence::Exact,
                 external_id_match: ExternalIdMatchEvidence::QueryMissing,
                 score_reasons: Vec::new(),
+                field_sources: Vec::new(),
+                provider_sources: Vec::new(),
+                merge_reasons: Vec::new(),
                 provider_note: None,
             },
         }

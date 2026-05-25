@@ -1,6 +1,6 @@
 # Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Required Gates
@@ -10,13 +10,14 @@ Last updated: 2026-05-26
 | Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-mdcx-style-av-scraping/WORKSTREAM.json` | Passed | JSON parsed successfully. |
 | Example manifest JSON | `python -m json.tool addons/metadata-scraper/manifest.example.json` | Passed | JSON parsed successfully. |
 | Targeted AV query tests | `cargo nextest run -p nako-metadata-scraper av --no-fail-fast` | Passed | 12 passed. |
-| Targeted JavDB tests | `cargo nextest run -p nako-metadata-scraper javdb --no-fail-fast` | Passed | 3 passed. |
-| Targeted FC2 tests | `cargo nextest run -p nako-metadata-scraper fc2 --no-fail-fast` | Passed | 3 passed. |
+| Targeted JavDB tests | `cargo nextest run -p nako-metadata-scraper javdb --no-fail-fast` | Passed | 5 passed. |
+| Targeted FC2 tests | `cargo nextest run -p nako-metadata-scraper fc2 --no-fail-fast` | Passed | 6 passed. |
+| Targeted engine tests | `cargo nextest run -p nako-metadata-scraper engine --no-fail-fast` | Passed | 66 passed. |
 | Targeted bulk tests | `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast` | Passed | 8 passed. |
 | Targeted config tests | `cargo nextest run -p nako-metadata-scraper config --no-fail-fast` | Passed | 13 passed. |
 | Targeted registry tests | `cargo nextest run -p nako-metadata-scraper registry --no-fail-fast` | Passed | 11 passed. |
 | Targeted routes tests | `cargo nextest run -p nako-metadata-scraper routes --no-fail-fast` | Passed | 7 passed. |
-| Package tests | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | Passed | 167 passed, 2 skipped. |
+| Package tests | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | Passed | 171 passed, 2 skipped. |
 | Formatting | `rustfmt --edition 2024 --check <modified nako-metadata-scraper rust files>` | Passed | Modified Rust files are formatted. |
 | Full workspace formatting | `cargo fmt --all -- --check` | Not used as gate | It scans the adjacent `../nako` path dependency and reports pre-existing formatting differences outside this repo's edited files. |
 | Diff hygiene | `git diff --check` | Passed | No whitespace errors. |
@@ -29,3 +30,5 @@ Last updated: 2026-05-26
 - 2026-05-26: Verified package tests and modified-file formatting. Full workspace `cargo fmt --all -- --check` is not a clean gate because path dependency `../nako` has unrelated pre-existing formatting drift.
 - 2026-05-26: Added bounded-batch duplicate AV-number reuse, `reused_from_index`, summary counters, and `safe_failure_reason: no_candidates`.
 - 2026-05-26: Added route-specific FC2 direct article provider using shared AV facts and browser-worker rendered HTML.
+- 2026-05-26: Added provider-declared AV route support and redaction-safe field/provider-source evidence for merged provider facts.
+- 2026-05-26: Closeout package gate passed with 171 passed, 2 skipped; modified-file format, JSON validation, and diff hygiene gates passed.

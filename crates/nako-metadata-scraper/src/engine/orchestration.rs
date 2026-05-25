@@ -2,7 +2,7 @@ use crate::providers::MetadataProvider;
 
 use super::{
     MAX_CANDIDATES_PER_QUERY, MetadataCandidate, MetadataQuery, ProviderExternalIdCapability,
-    ranking, resolver,
+    av::facts_from_query, ranking, resolver,
 };
 
 pub(crate) async fn suggest_candidates(
@@ -11,8 +11,15 @@ pub(crate) async fn suggest_candidates(
     external_id_capabilities: &[ProviderExternalIdCapability],
 ) -> Vec<MetadataCandidate> {
     let mut provider_candidates = Vec::new();
+    let av_route = facts_from_query(query).map(|facts| facts.route);
 
     for provider in providers {
+        if let Some(route) = av_route
+            && !provider.supports_av_route(route)
+        {
+            continue;
+        }
+
         match provider.suggest(query).await {
             Ok(candidates) => provider_candidates.extend(candidates),
             Err(error) => {

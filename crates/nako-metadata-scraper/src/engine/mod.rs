@@ -83,6 +83,14 @@ mod tests {
             true,
         ),
         ProviderExternalIdCapability::new(
+            "av_number",
+            ExternalIdValueKind::Opaque,
+            true,
+            true,
+            &["av_number"],
+            false,
+        ),
+        ProviderExternalIdCapability::new(
             "browser_worker",
             ExternalIdValueKind::Url,
             true,
@@ -160,6 +168,13 @@ mod tests {
         title: &'static str,
         year: Option<i32>,
         external_ids: &'static [(&'static str, &'static str)],
+    }
+
+    struct CountingProvider {
+        provider_id: ProviderId,
+        candidate_provider: &'static str,
+        candidate_id: &'static str,
+        calls: Arc<Mutex<usize>>,
     }
 
     #[async_trait]
@@ -255,6 +270,58 @@ mod tests {
                             value: (*value).to_owned(),
                         })
                         .collect(),
+                    provider_outcomes: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            }])
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for CountingProvider {
+        fn id(&self) -> ProviderId {
+            self.provider_id
+        }
+
+        fn supports_av_route(&self, route: av::AvNumberRoute) -> bool {
+            match self.provider_id {
+                ProviderId::Javdb => route != av::AvNumberRoute::Fc2,
+                ProviderId::Fc2 => route == av::AvNumberRoute::Fc2,
+                _ => true,
+            }
+        }
+
+        async fn suggest(
+            &self,
+            query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            *self.calls.lock().unwrap() += 1;
+            Ok(vec![ProviderMetadataCandidate {
+                provider: self.candidate_provider.to_owned(),
+                provider_id: self.candidate_id.to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some(query.title.clone()),
+                    original_title: None,
+                    sort_title: None,
+                    overview: None,
+                    release_date: None,
+                    runtime_minutes: None,
+                    tagline: None,
+                    genres: None,
+                    tags: None,
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some(query.title.clone()),
+                    alternate_titles: Vec::new(),
+                    release_year: query.year,
+                    language: Some(query.language.clone()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: vec![ProviderExternalId {
+                        provider: "av_number".to_owned(),
+                        value: query.title.clone(),
+                    }],
                     provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
@@ -447,6 +514,144 @@ mod tests {
         assert_eq!(candidates[0]["provider"], "tmdb");
         assert_eq!(candidates[0]["provider_id"], "tmdb:movie:603");
         assert_eq!(candidates[0]["patch"]["title"], "The Matrix");
+    }
+
+    #[tokio::test]
+    async fn runtime_exposes_redaction_safe_provider_source_evidence_for_merged_av_candidates() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
+            "zh-CN",
+            TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            vec![
+                Box::new(ExternalIdCandidateProvider {
+                    candidate_provider: "javdb",
+                    provider_id: "javdb:movie:abc123",
+                    title: "SSNI-644",
+                    year: None,
+                    external_ids: &[("av_number", "SSNI-644"), ("javdb", "abc123")],
+                }),
+                Box::new(ExternalIdCandidateProvider {
+                    candidate_provider: "dmm",
+                    provider_id: "dmm:cid:abc123",
+                    title: "SSNI-644",
+                    year: None,
+                    external_ids: &[("av_number", "ssni-644")],
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"av_number": "SSNI-644"}),
+            })
+            .await;
+
+        let candidates = response.payload["candidates"].as_array().unwrap();
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0]["evidence"]["provider_sources"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            candidates[0]["evidence"]["merge_reasons"][0]["provider"],
+            "av_number"
+        );
+        assert!(
+            candidates[0]["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "title")
+        );
+
+        let evidence_text = serde_json::to_string(&candidates[0]["evidence"]).unwrap();
+        assert!(!evidence_text.contains("SSNI-644"));
+        assert!(!evidence_text.contains("ssni-644"));
+    }
+
+    #[tokio::test]
+    async fn runtime_routes_fc2_av_queries_only_to_fc2_provider_when_av_providers_are_enabled() {
+        let javdb_calls = Arc::new(Mutex::new(0));
+        let fc2_calls = Arc::new(Mutex::new(0));
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Javdb,
+                    candidate_provider: "javdb",
+                    candidate_id: "javdb:movie:fc2-should-not-run",
+                    calls: javdb_calls.clone(),
+                }),
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Fc2,
+                    candidate_provider: "fc2",
+                    candidate_id: "fc2:article:1723984",
+                    calls: fc2_calls.clone(),
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"file_name": "FC2PPV-1723984.mp4"}),
+            })
+            .await;
+
+        assert_eq!(*javdb_calls.lock().unwrap(), 0);
+        assert_eq!(*fc2_calls.lock().unwrap(), 1);
+        assert_eq!(response.payload["candidates"][0]["provider"], "fc2");
+        assert_eq!(response.payload["query"]["av"]["route"], "fc2");
+    }
+
+    #[tokio::test]
+    async fn runtime_routes_non_fc2_av_queries_to_javdb_provider_when_av_providers_are_enabled() {
+        let javdb_calls = Arc::new(Mutex::new(0));
+        let fc2_calls = Arc::new(Mutex::new(0));
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Javdb,
+                    candidate_provider: "javdb",
+                    candidate_id: "javdb:movie:ssni",
+                    calls: javdb_calls.clone(),
+                }),
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Fc2,
+                    candidate_provider: "fc2",
+                    candidate_id: "fc2:article:should-not-run",
+                    calls: fc2_calls.clone(),
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+            })
+            .await;
+
+        assert_eq!(*javdb_calls.lock().unwrap(), 1);
+        assert_eq!(*fc2_calls.lock().unwrap(), 0);
+        assert_eq!(response.payload["candidates"][0]["provider"], "javdb");
+        assert_eq!(response.payload["query"]["av"]["route"], "censored");
     }
 
     #[test]

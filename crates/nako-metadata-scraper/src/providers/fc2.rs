@@ -12,7 +12,8 @@ use crate::{
     config::{ProviderConfig, ProviderId, non_empty_trimmed},
     engine::{
         ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability,
-        ProviderMetadataCandidate, av::AV_NUMBER_EXTERNAL_ID_PROVIDER,
+        ProviderMetadataCandidate,
+        av::{AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute},
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -150,6 +151,10 @@ where
 {
     fn id(&self) -> ProviderId {
         ProviderId::Fc2
+    }
+
+    fn supports_av_route(&self, route: AvNumberRoute) -> bool {
+        route == AvNumberRoute::Fc2
     }
 
     async fn suggest(

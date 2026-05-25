@@ -12,7 +12,8 @@ use crate::{
     config::{ProviderConfig, ProviderId, non_empty_trimmed},
     engine::{
         ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability,
-        ProviderMetadataCandidate, av::AV_NUMBER_EXTERNAL_ID_PROVIDER,
+        ProviderMetadataCandidate,
+        av::{AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute},
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -150,6 +151,10 @@ where
 {
     fn id(&self) -> ProviderId {
         ProviderId::Javdb
+    }
+
+    fn supports_av_route(&self, route: AvNumberRoute) -> bool {
+        route != AvNumberRoute::Fc2
     }
 
     async fn suggest(
@@ -334,6 +339,38 @@ mod tests {
                 language: "en-US".to_owned(),
                 external_ids: vec![],
             })
+            .await
+            .unwrap();
+
+        assert!(candidates.is_empty());
+        assert!(transport.requests().is_empty());
+    }
+
+    #[tokio::test]
+    async fn javdb_provider_skips_fc2_numbers() {
+        let transport = FakeTransport::default();
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavdbMetadataProvider::with_runtime(
+            JavdbProviderConfig::new(
+                "https://javdb.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "FC2PPV-1723984.mp4"}),
+                "zh-CN",
+            ))
             .await
             .unwrap();
 

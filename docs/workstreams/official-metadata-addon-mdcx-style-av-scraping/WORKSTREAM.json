@@ -1,18 +1,20 @@
 {
   "id": "official-metadata-addon-mdcx-style-av-scraping",
   "title": "Official Metadata Addon MDCx-Style AV Scraping",
-  "status": "active",
+  "status": "complete",
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMAV",
-  "current_task": "OMAV-050",
+  "current_task": null,
   "completed_tasks": [
     "OMAV-010",
     "OMAV-020",
     "OMAV-030",
     "OMAV-040",
     "OMAV-060",
-    "OMAV-070"
+    "OMAV-070",
+    "OMAV-090",
+    "OMAV-050"
   ],
   "validation": {
     "targeted": [
@@ -41,7 +43,6 @@
   ],
   "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, or structure.",
   "follow_up_candidates": [
-    "OMAV-080",
-    "OMAV-090"
+    "OMAV-080"
   ]
 }

@@ -55,8 +55,34 @@ pub struct CandidateEvidence {
     pub language_match: LanguageMatchEvidence,
     pub external_id_match: ExternalIdMatchEvidence,
     pub score_reasons: Vec<CandidateScoreReason>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub field_sources: Vec<CandidateFieldSource>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub provider_sources: Vec<CandidateProviderSource>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub merge_reasons: Vec<CandidateMergeReason>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider_note: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+pub struct CandidateFieldSource {
+    pub field: &'static str,
+    pub provider: String,
+    pub provider_id: String,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
+pub struct CandidateProviderSource {
+    pub provider: String,
+    pub provider_id: String,
+}
+
+#[derive(Clone, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
+pub struct CandidateMergeReason {
+    pub kind: &'static str,
+    pub provider: String,
+    pub source_count: usize,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Eq, PartialEq)]
@@ -107,6 +133,16 @@ pub fn rank_candidate(
     query: &MetadataQuery,
     candidate: ProviderMetadataCandidate,
 ) -> MetadataCandidate {
+    rank_candidate_with_source_evidence(query, candidate, Vec::new(), Vec::new())
+}
+
+#[must_use]
+pub(crate) fn rank_candidate_with_source_evidence(
+    query: &MetadataQuery,
+    candidate: ProviderMetadataCandidate,
+    provider_sources: Vec<CandidateProviderSource>,
+    merge_reasons: Vec<CandidateMergeReason>,
+) -> MetadataCandidate {
     let mut score = 250_i16;
     let mut reasons = vec![CandidateScoreReason {
         kind: "base",
@@ -146,6 +182,11 @@ pub fn rank_candidate(
         &candidate.facts.provider_outcomes,
         candidate.facts.provider_note.as_deref(),
     );
+    let field_sources = field_sources_for_patch(
+        &candidate.patch,
+        &candidate.provider,
+        &candidate.provider_id,
+    );
 
     MetadataCandidate {
         provider: candidate.provider,
@@ -168,8 +209,112 @@ pub fn rank_candidate(
             language_match,
             external_id_match,
             score_reasons: reasons,
+            field_sources,
+            provider_sources,
+            merge_reasons,
             provider_note,
         },
+    }
+}
+
+fn field_sources_for_patch(
+    patch: &AddonMetadataPatch,
+    provider: &str,
+    provider_id: &str,
+) -> Vec<CandidateFieldSource> {
+    let mut sources = Vec::new();
+    push_string_field_source(
+        &mut sources,
+        "title",
+        patch.title.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_string_field_source(
+        &mut sources,
+        "original_title",
+        patch.original_title.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_string_field_source(
+        &mut sources,
+        "sort_title",
+        patch.sort_title.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_string_field_source(
+        &mut sources,
+        "overview",
+        patch.overview.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_string_field_source(
+        &mut sources,
+        "release_date",
+        patch.release_date.as_deref(),
+        provider,
+        provider_id,
+    );
+    if patch.runtime_minutes.is_some() {
+        sources.push(field_source("runtime_minutes", provider, provider_id));
+    }
+    push_string_field_source(
+        &mut sources,
+        "tagline",
+        patch.tagline.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_vec_field_source(
+        &mut sources,
+        "genres",
+        patch.genres.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_vec_field_source(
+        &mut sources,
+        "tags",
+        patch.tags.as_ref(),
+        provider,
+        provider_id,
+    );
+
+    sources
+}
+
+fn push_string_field_source(
+    sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    value: Option<&str>,
+    provider: &str,
+    provider_id: &str,
+) {
+    if value.is_some_and(|value| !value.trim().is_empty()) {
+        sources.push(field_source(field, provider, provider_id));
+    }
+}
+
+fn push_vec_field_source(
+    sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    value: Option<&Vec<String>>,
+    provider: &str,
+    provider_id: &str,
+) {
+    if value.is_some_and(|value| !value.is_empty()) {
+        sources.push(field_source(field, provider, provider_id));
+    }
+}
+
+fn field_source(field: &'static str, provider: &str, provider_id: &str) -> CandidateFieldSource {
+    CandidateFieldSource {
+        field,
+        provider: provider.to_owned(),
+        provider_id: provider_id.to_owned(),
     }
 }
 

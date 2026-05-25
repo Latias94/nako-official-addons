@@ -45,6 +45,10 @@ Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
+AV provider routing now uses declared route support so FC2 numbers stay on the
+FC2 path and non-FC2 AV numbers stay on the JavDB path. Ranked candidate
+evidence also carries redaction-safe provider-source and field-source metadata
+when shared external IDs merge multiple provider facts.
 
 The `/health` diagnostics report whether TMDB and Bangumi proxy policy is
 configured without exposing the proxy URL itself.

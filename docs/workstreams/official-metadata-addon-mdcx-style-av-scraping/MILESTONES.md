@@ -34,14 +34,20 @@ Status: Complete
 
 ## M4 - Verified Closeout
 
-Status: In progress
+Status: Complete
 
 - Package tests, format, JSON validation, and diff checks pass.
 - Implementation is ready to commit with conventional commit message.
 
-## Follow-Up - Multi-Provider Maturity
+## M5 - Multi-Provider Maturity
+
+Status: Complete
+
+- Providers declare AV route support, allowing the runtime to keep FC2 numbers on the FC2 path and non-FC2 AV numbers on the JavDB path.
+- Candidate evidence includes redaction-safe field-source, provider-source, and shared-external-ID merge reasons for merged provider facts.
+
+## Follow-Up - Batch Maturity
 
 Status: Candidate
 
-- Add additional AV provider groups using the shared AV route facts.
-- Add field-level provenance and cross-batch failure accounting beyond this first vertical slice.
+- Add cross-batch failure accounting beyond this vertical slice.

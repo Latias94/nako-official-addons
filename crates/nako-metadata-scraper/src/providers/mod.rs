@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::config::ProviderId;
-use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
+use crate::engine::{MetadataQuery, ProviderMetadataCandidate, av::AvNumberRoute};
 
 pub mod bangumi;
 pub mod browser_worker;
@@ -37,6 +37,10 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
 #[async_trait]
 pub trait MetadataProvider: Send + Sync {
     fn id(&self) -> ProviderId;
+
+    fn supports_av_route(&self, _route: AvNumberRoute) -> bool {
+        true
+    }
 
     async fn suggest(
         &self,

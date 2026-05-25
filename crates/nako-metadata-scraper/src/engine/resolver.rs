@@ -1,10 +1,9 @@
-#[cfg(test)]
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     MetadataCandidate, MetadataQuery, ProviderExternalId, ProviderExternalIdCapability,
-    ProviderMetadataCandidate, ranking,
+    ProviderMetadataCandidate,
+    ranking::{self, CandidateMergeReason, CandidateProviderSource},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,16 +72,61 @@ impl ResolvedCandidateCluster {
 
     #[must_use]
     pub(crate) fn into_ranked_candidate(self, query: &MetadataQuery) -> MetadataCandidate {
+        let provider_sources = self.provider_sources_for_evidence();
+        let merge_reasons = self.merge_reasons_for_evidence(provider_sources.len());
         let mut candidates = self
             .facts
             .into_iter()
-            .map(|fact| ranking::rank_candidate(query, fact.candidate))
+            .map(|fact| {
+                ranking::rank_candidate_with_source_evidence(
+                    query,
+                    fact.candidate,
+                    provider_sources.clone(),
+                    merge_reasons.clone(),
+                )
+            })
             .collect::<Vec<_>>();
         candidates.sort_by(ranking::compare_metadata_candidates);
         candidates
             .into_iter()
             .next()
             .expect("resolved candidate cluster always contains at least one fact")
+    }
+
+    fn provider_sources_for_evidence(&self) -> Vec<CandidateProviderSource> {
+        let sources = self
+            .facts
+            .iter()
+            .map(|fact| CandidateProviderSource {
+                provider: fact.source.provider.clone(),
+                provider_id: fact.source.provider_id.clone(),
+            })
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        if sources.len() > 1 {
+            sources
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn merge_reasons_for_evidence(&self, source_count: usize) -> Vec<CandidateMergeReason> {
+        if source_count <= 1 {
+            return Vec::new();
+        }
+
+        self.shared_external_ids()
+            .into_iter()
+            .map(|external_id| CandidateMergeReason {
+                kind: "shared_external_id",
+                provider: external_id.provider,
+                source_count,
+            })
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect()
     }
 
     #[cfg(test)]
@@ -152,7 +196,6 @@ impl ResolvedCandidateCluster {
         self.facts.extend(other.facts);
     }
 
-    #[cfg(test)]
     fn shared_external_ids(&self) -> Vec<ResolvedExternalId> {
         let mut sources_by_external_id = BTreeMap::<ResolvedExternalId, BTreeSet<_>>::new();
         for fact in &self.facts {
