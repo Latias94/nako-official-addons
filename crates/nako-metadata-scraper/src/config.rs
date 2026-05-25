@@ -1,7 +1,7 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
-    douban::DoubanProviderConfig, tmdb::TmdbProviderConfig,
+    douban::DoubanProviderConfig, javdb::JavdbProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -53,6 +53,7 @@ pub enum ProviderId {
     Bangumi,
     BrowserWorker,
     Douban,
+    Javdb,
 }
 
 impl ProviderId {
@@ -64,6 +65,7 @@ impl ProviderId {
             Self::Bangumi => "bangumi",
             Self::BrowserWorker => "browser_worker",
             Self::Douban => "douban",
+            Self::Javdb => "javdb",
         }
     }
 }
@@ -132,6 +134,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn javdb(enabled: bool, config: JavdbProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Javdb,
+            enabled,
+            kind: ProviderConfigKind::Javdb(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -163,6 +174,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn javdb_config(&self) -> Option<&JavdbProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Javdb(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -177,6 +196,9 @@ impl ProviderConfig {
             ProviderId::Douban => {
                 Self::douban(enabled, DoubanProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Javdb => {
+                Self::javdb(enabled, JavdbProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -188,6 +210,7 @@ pub enum ProviderConfigKind {
     Bangumi(BangumiProviderConfig),
     BrowserWorker(BrowserWorkerProviderConfig),
     Douban(DoubanProviderConfig),
+    Javdb(JavdbProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -342,11 +365,22 @@ mod tests {
         );
         assert_eq!(douban.render_path, "/render");
         assert_eq!(douban.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[5].id, ProviderId::Javdb);
+        assert!(!config.providers[5].enabled);
+        let javdb = config.providers[5].javdb_config().unwrap();
+        assert_eq!(javdb.base_url, "https://javdb.com");
+        assert_eq!(
+            javdb.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(javdb.render_path, "/render");
+        assert_eq!(javdb.rendered_pages.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
         assert!(!config.provider_enabled(ProviderId::BrowserWorker));
         assert!(!config.provider_enabled(ProviderId::Douban));
+        assert!(!config.provider_enabled(ProviderId::Javdb));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
     }
@@ -366,6 +400,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -395,6 +430,8 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH" => Some("/render".to_owned()),
             "NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS" => Some("6500".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVDB_BASE_URL" => Some("https://javdb.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVDB_TIMEOUT_MS" => Some("5500".to_owned()),
             _ => None,
         });
 
@@ -456,6 +493,15 @@ mod tests {
         );
         assert_eq!(douban.render_path, "/render");
         assert_eq!(douban.rendered_pages.timeout_ms, 6500);
+        assert!(config.provider_enabled(ProviderId::Javdb));
+        let javdb = config.providers[5].javdb_config().unwrap();
+        assert_eq!(javdb.base_url, "https://javdb.example");
+        assert_eq!(
+            javdb.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(javdb.render_path, "/render");
+        assert_eq!(javdb.rendered_pages.timeout_ms, 5500);
     }
 
     #[test]

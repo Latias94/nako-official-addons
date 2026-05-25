@@ -10,6 +10,7 @@ pub enum ProviderOutcome {
     BangumiSubjectDegraded,
     BangumiPartialTitleVariantSearchFailure,
     DoubanRenderedHtmlParsed,
+    JavdbRenderedHtmlParsed,
 }
 
 #[must_use]
@@ -61,6 +62,9 @@ impl ProviderOutcome {
             }
             Self::DoubanRenderedHtmlParsed => {
                 "Douban candidate parsed from browser-worker rendered HTML."
+            }
+            Self::JavdbRenderedHtmlParsed => {
+                "JavDB AV candidate parsed from browser-worker rendered HTML."
             }
         }
     }

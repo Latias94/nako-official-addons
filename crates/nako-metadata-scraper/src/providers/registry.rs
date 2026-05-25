@@ -254,7 +254,7 @@ mod tests {
         assert_eq!(diagnostics.enabled, vec!["fixture"]);
         assert_eq!(
             diagnostics.disabled,
-            vec!["tmdb", "bangumi", "browser_worker", "douban"]
+            vec!["tmdb", "bangumi", "browser_worker", "douban", "javdb"]
         );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(
@@ -311,6 +311,21 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[5],
+            ProviderDescriptor {
+                id: "javdb",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "javdb_movie_search",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -349,6 +364,20 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.is_empty()
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "javdb"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"javdb_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "av_number"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"av_number")
+        }));
     }
 
     #[test]
@@ -366,6 +395,8 @@ mod tests {
             false
         )));
         assert!(!aliases.iter().any(|alias| alias.provider == "douban"));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("av_number", "av_number", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("javdb_id", "javdb", false)));
     }
 
     #[test]
@@ -380,7 +411,14 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(
             diagnostics.disabled,
-            vec!["fixture", "tmdb", "bangumi", "browser_worker", "douban"]
+            vec![
+                "fixture",
+                "tmdb",
+                "bangumi",
+                "browser_worker",
+                "douban",
+                "javdb"
+            ]
         );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(diagnostics.supported[0].status, ProviderStatus::Disabled);
@@ -422,7 +460,7 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(
             diagnostics.disabled,
-            vec!["fixture", "bangumi", "browser_worker", "douban"]
+            vec!["fixture", "bangumi", "browser_worker", "douban", "javdb"]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);

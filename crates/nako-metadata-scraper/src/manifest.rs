@@ -43,7 +43,8 @@ mod tests {
 
     #[test]
     fn addon_manifest_is_valid() {
-        let manifest = addon_manifest(&Config::default());
+        let config = Config::default();
+        let manifest = addon_manifest(&config);
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
@@ -53,7 +54,7 @@ mod tests {
                 ADDON_VERSION,
                 metadata_scraper::DEFAULT_BASE_URL,
                 metadata_scraper::DEFAULT_LANGUAGE,
-                metadata_scraper::default_provider_toggles(),
+                provider_toggles(&config),
                 Vec::new(),
             )
         );
@@ -88,6 +89,7 @@ mod tests {
         assert_eq!(provider_properties["bangumi"]["default"], false);
         assert_eq!(provider_properties["browser_worker"]["default"], false);
         assert_eq!(provider_properties["douban"]["default"], false);
+        assert_eq!(provider_properties["javdb"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
     }
 
@@ -99,6 +101,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -122,6 +125,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["douban"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["javdb"]["default"],
             true
         );
         assert_eq!(manifest.secret_reference_fields.len(), 2);
@@ -151,6 +158,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Bangumi),
                 ProviderConfig::disabled(ProviderId::BrowserWorker),
                 ProviderConfig::disabled(ProviderId::Douban),
+                ProviderConfig::disabled(ProviderId::Javdb),
             ],
             ..Config::default()
         });

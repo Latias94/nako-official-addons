@@ -1,4 +1,5 @@
 pub mod artwork;
+pub mod av;
 pub mod bulk;
 mod orchestration;
 mod outcome;
@@ -303,6 +304,41 @@ mod tests {
             "poster"
         );
         assert_eq!(response.artifacts[0].payload, response.payload);
+    }
+
+    #[tokio::test]
+    async fn runtime_exposes_redaction_safe_av_query_facts() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![Box::new(CandidateProvider {
+                provider_id: "fixture:av",
+                title: "FC2-1723984",
+                year: None,
+            })],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({
+                    "path": "D:\\Private\\FC2PPV-1723984-4K.mp4"
+                }),
+            })
+            .await;
+
+        assert_eq!(response.payload["query"]["title"], "FC2-1723984");
+        assert_eq!(response.payload["query"]["av"]["number"], "FC2-1723984");
+        assert_eq!(response.payload["query"]["av"]["route"], "fc2");
+        assert_eq!(response.payload["query"]["av"]["source"], "path");
+        assert!(
+            !serde_json::to_string(&response.payload)
+                .unwrap()
+                .contains("Private")
+        );
     }
 
     #[tokio::test]

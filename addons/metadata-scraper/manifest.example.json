@@ -47,7 +47,8 @@
           "tmdb": { "type": "boolean", "default": false },
           "bangumi": { "type": "boolean", "default": false },
           "browser_worker": { "type": "boolean", "default": false },
-          "douban": { "type": "boolean", "default": false }
+          "douban": { "type": "boolean", "default": false },
+          "javdb": { "type": "boolean", "default": false }
         },
           "additionalProperties": false
         }

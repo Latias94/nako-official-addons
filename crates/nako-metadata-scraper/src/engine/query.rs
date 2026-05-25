@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::title;
+use super::{av, title};
 
 const MIN_METADATA_YEAR: i32 = 1;
 const MAX_METADATA_YEAR: i32 = 9999;
@@ -131,19 +131,17 @@ impl MetadataQuery {
         default_language: &str,
         external_id_aliases: &[QueryExternalIdAlias],
     ) -> Self {
-        let title = title_from_payload(payload);
+        let av_facts = av::facts_from_payload(payload);
+        let title = av::title_for_query(title_from_payload(payload), av_facts.as_ref());
         let year = year_from_payload(payload);
         let language = language_from_payload(payload, default_language);
         let external_id_descriptors =
             external_id_input_descriptors_from_aliases(external_id_aliases);
-        let external_ids = external_ids_from_payload(payload, &external_id_descriptors);
+        let mut external_ids = external_ids_from_payload(payload, &external_id_descriptors);
+        av::push_av_external_id(&mut external_ids, av_facts.as_ref());
 
         Self {
-            title: if title.is_empty() {
-                "Unknown Title".to_owned()
-            } else {
-                title
-            },
+            title,
             year,
             language,
             external_ids,
@@ -156,19 +154,17 @@ impl MetadataQuery {
         default_language: &str,
         external_id_capabilities: &[ProviderExternalIdCapability],
     ) -> Self {
-        let title = title_from_payload(payload);
+        let av_facts = av::facts_from_payload(payload);
+        let title = av::title_for_query(title_from_payload(payload), av_facts.as_ref());
         let year = year_from_payload(payload);
         let language = language_from_payload(payload, default_language);
         let external_id_descriptors =
             external_id_input_descriptors_from_capabilities(external_id_capabilities);
-        let external_ids = external_ids_from_payload(payload, &external_id_descriptors);
+        let mut external_ids = external_ids_from_payload(payload, &external_id_descriptors);
+        av::push_av_external_id(&mut external_ids, av_facts.as_ref());
 
         Self {
-            title: if title.is_empty() {
-                "Unknown Title".to_owned()
-            } else {
-                title
-            },
+            title,
             year,
             language,
             external_ids,
@@ -185,10 +181,9 @@ fn normalize_query_title(title: &str) -> String {
     title.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn title_from_payload(payload: &serde_json::Value) -> String {
+fn title_from_payload(payload: &serde_json::Value) -> Option<String> {
     first_non_empty_payload_str(payload, &["title", "name", "original_title", "sort_title"])
         .map(normalize_query_title)
-        .unwrap_or_else(|| "Unknown Title".to_owned())
 }
 
 fn language_from_payload(payload: &serde_json::Value, default_language: &str) -> String {

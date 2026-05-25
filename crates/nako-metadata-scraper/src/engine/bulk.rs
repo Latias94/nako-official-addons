@@ -60,6 +60,8 @@ struct BulkMetadataScrapeTaskOutput {
 struct BulkMetadataScrapeTaskItemOutput {
     index: usize,
     request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    av: Option<Value>,
     payload: Value,
 }
 
@@ -142,9 +144,11 @@ where
                     payload,
                 })
                 .await;
+            let av = item_response.payload["query"].get("av").cloned();
             items.push(BulkMetadataScrapeTaskItemOutput {
                 index: *index,
                 request_id: item_request_id,
+                av,
                 payload: item_response.payload,
             });
         }
@@ -248,6 +252,44 @@ mod tests {
         assert_eq!(
             response.output["items"][0]["payload"]["query"]["language"],
             "en-US"
+        );
+    }
+
+    #[tokio::test]
+    async fn bulk_metadata_scrape_includes_av_planning_summary() {
+        let runtime =
+            MetadataScrapeRuntime::<crate::nako_runtime::ReqwestNakoRuntimeTransport>::new(
+                "zh-CN",
+                vec![Box::new(BulkCandidateProvider)],
+                None,
+            );
+
+        let response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-1".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "batch_size": 1,
+                    "items": [
+                        {"file_name": "[HD] ssni00644 1080p x264.mkv"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(response.output["items"][0]["av"]["number"], "SSNI-644");
+        assert_eq!(response.output["items"][0]["av"]["route"], "censored");
+        assert_eq!(
+            response.output["items"][0]["payload"]["query"]["av"]["number"],
+            "SSNI-644"
         );
     }
 

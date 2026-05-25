@@ -23,10 +23,20 @@ Current alpha provider defaults:
   rendered-page extraction when an external browser-worker URL is supplied.
 - `douban`: disabled by default; calls the companion browser worker for rendered
   HTML and keeps Douban parsing/mapping inside the Rust provider.
+- `javdb`: disabled by default; calls the companion browser worker for rendered
+  HTML and searches by normalized AV number. It emits `javdb`, `javdb_url`, and
+  `av_number` external IDs.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`. These aliases
-are derived from provider-owned external ID capabilities.
+`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, and
+`av_number`. These aliases are derived from provider-owned external ID
+capabilities.
+
+AV-oriented requests may also provide `number`, `file_name`, `filename`, or
+`path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
+`FC2PPV-1723984` before provider search. Normal scrape responses include
+redaction-safe `query.av` facts when a number is recognized; full local paths
+are not echoed.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
@@ -48,7 +58,9 @@ library.
 Bulk Metadata Scrape is declared as the `bulk-metadata-scrape` Addon Task at
 `/tasks/bulk-metadata-scrape`. Nako owns task execution, progress, retry, and
 cancellation; this crate owns the bounded batch planner and metadata/item
-scrape execution behind that task path.
+scrape execution behind that task path. Each bulk item also includes an optional
+`av` summary copied from `payload.query.av`, so batch runs can explain which AV
+number and route were used without exposing raw file paths.
 
 Optional live drift smoke checks are available for manual use only:
 

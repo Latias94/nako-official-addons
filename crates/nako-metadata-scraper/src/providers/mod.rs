@@ -8,6 +8,7 @@ pub mod browser_worker;
 pub mod douban;
 pub mod fixture;
 pub mod http_runtime;
+pub mod javdb;
 mod registry;
 mod rendered_page;
 mod search_policy;
@@ -27,6 +28,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         bangumi::catalog_entry(),
         browser_worker::catalog_entry(),
         douban::catalog_entry(),
+        javdb::catalog_entry(),
     ]
 }
 
