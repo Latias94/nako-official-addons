@@ -16,6 +16,12 @@ builds.
   metadata/artwork side-effect submission.
 - Admin-mediated smoke support for direct Nako-owned
   `bulk-metadata-scrape` Addon Task execution.
+- Initial ACK-only `nako-notification-bridge` sidecar that declares a
+  `library.scanned` event subscription and returns redaction-safe event ACKs
+  without provider fan-out.
+- `nako-notification-bridge` `http_webhook` configuration contract,
+  fixture-backed send path, and redaction-safe provider diagnostics without
+  live CI secrets.
 
 ### Changed
 

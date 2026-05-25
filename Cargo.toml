@@ -1,5 +1,8 @@
 [workspace]
-members = ["crates/nako-metadata-scraper"]
+members = [
+    "crates/nako-metadata-scraper",
+    "crates/nako-notification-bridge",
+]
 resolver = "2"
 
 [workspace.package]

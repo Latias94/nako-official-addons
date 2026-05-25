@@ -1,0 +1,17 @@
+services:
+  nako-notification-bridge:
+    build:
+      context: ../..
+      dockerfile: addons/notification-bridge/Dockerfile
+    image: ghcr.io/latias94/nako-notification-bridge:0.1.0-alpha.2
+    restart: unless-stopped
+    environment:
+      NAKO_NOTIFICATION_BRIDGE_LISTEN_ADDR: "0.0.0.0:9110"
+      NAKO_NOTIFICATION_BRIDGE_BASE_URL: "http://nako-notification-bridge:9110"
+      NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED: "false"
+      # Inject these through operator secret/config tooling. They are not
+      # stored in Nako core.
+      # NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL: "${NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL}"
+      # NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SHARED_SECRET: "${NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SHARED_SECRET}"
+    ports:
+      - "9110:9110"

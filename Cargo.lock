@@ -707,6 +707,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nako-notification-bridge"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "axum",
+ "nako-addon-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nako-official-addon-catalog"
 version = "0.1.0-alpha.2"
 dependencies = [

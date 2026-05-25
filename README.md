@@ -7,10 +7,15 @@ Current release target: `v0.1.0-alpha.2`.
 Main Nako repository: <https://github.com/Latias94/nako>.
 Official addons repository: <https://github.com/Latias94/nako-official-addons>.
 
-This repository intentionally exposes one user-installable metadata addon while
-keeping provider implementations modular inside the codebase:
+This repository intentionally keeps official Addon Sidecars small and
+capability-focused while preserving the option to package related capabilities
+as one suite later:
 
-- users install `nako-metadata-scraper` once;
+- users can install `nako-metadata-scraper` for metadata suggestions,
+  protected writeback, bulk metadata scrape, and the existing event proof;
+- users can install `nako-notification-bridge` for the first notification
+  bridge ACK proof plus sidecar-owned, fixture-tested `http_webhook` provider
+  fan-out when explicitly configured;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -33,6 +38,9 @@ keeping provider implementations modular inside the codebase:
 
 - `crates/nako-metadata-scraper`: Rust HTTP sidecar that implements the Nako
   Addon Protocol metadata resource, bulk task, and library-scanned event proof.
+- `crates/nako-notification-bridge`: Rust HTTP sidecar that implements the
+  first ACK-only notification bridge proof for scheduled `library.scanned`
+  Addon Events and redaction-safe `http_webhook` provider sends.
 
 ## Development
 
@@ -40,9 +48,13 @@ keeping provider implementations modular inside the codebase:
 cargo fmt --all
 cargo nextest run --workspace --no-fail-fast
 cargo run -p nako-metadata-scraper
+cargo run -p nako-notification-bridge
 ```
 
-Default listen address: `127.0.0.1:9100`.
+Default listen addresses:
+
+- metadata scraper: `127.0.0.1:9100`
+- notification bridge: `127.0.0.1:9110`
 
 Provider defaults:
 
@@ -59,6 +71,11 @@ Provider defaults:
 - `douban`: disabled by default; uses the companion browser worker `POST /render`
   contract through `NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL`, with
   provider-specific parsing kept in the Rust sidecar.
+- `notification_bridge.http_webhook`: disabled by default; configured through
+  `NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_*` sidecar environment variables and
+  reported only through redaction-safe diagnostics. When enabled with a valid
+  URL, it sends a fixed JSON summary containing event facts and payload keys
+  only.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -71,6 +88,9 @@ Local sidecar smoke:
 ```powershell
 pwsh -File addons/metadata-scraper/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9100
+
+pwsh -File addons/notification-bridge/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9110
 ```
 
 Optional Nako Admin-mediated smoke:
