@@ -509,7 +509,8 @@ mod tests {
                 "bangumi",
                 "browser_worker",
                 "douban",
-                "javdb"
+                "javdb",
+                "fc2"
             ])
         );
         assert_eq!(

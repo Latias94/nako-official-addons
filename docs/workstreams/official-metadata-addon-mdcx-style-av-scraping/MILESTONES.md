@@ -21,6 +21,7 @@ Status: Complete
 
 - JavDB provider can be enabled through config.
 - Synthetic rendered HTML tests cover search, detail parsing, mapping, and artwork.
+- FC2 provider can be enabled through config and handles route-specific direct article lookup for FC2 numbers.
 
 ## M3 - Bulk Diagnostics
 

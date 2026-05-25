@@ -26,10 +26,13 @@ Current alpha provider defaults:
 - `javdb`: disabled by default; calls the companion browser worker for rendered
   HTML and searches by normalized AV number. It emits `javdb`, `javdb_url`, and
   `av_number` external IDs.
+- `fc2`: disabled by default; calls the companion browser worker for rendered
+  HTML and uses FC2 AV numbers for direct article lookup. It emits `fc2`,
+  `fc2_url`, and `av_number` external IDs.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, and
-`av_number`. These aliases are derived from provider-owned external ID
+`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `fc2_id`,
+and `av_number`. These aliases are derived from provider-owned external ID
 capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or

@@ -254,7 +254,14 @@ mod tests {
         assert_eq!(diagnostics.enabled, vec!["fixture"]);
         assert_eq!(
             diagnostics.disabled,
-            vec!["tmdb", "bangumi", "browser_worker", "douban", "javdb"]
+            vec![
+                "tmdb",
+                "bangumi",
+                "browser_worker",
+                "douban",
+                "javdb",
+                "fc2"
+            ]
         );
         assert!(diagnostics.unavailable.is_empty());
         assert_eq!(
@@ -326,6 +333,21 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[6],
+            ProviderDescriptor {
+                id: "fc2",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "fc2_direct_lookup",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -378,6 +400,13 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"av_number")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "fc2"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"fc2_id")
+        }));
     }
 
     #[test]
@@ -397,6 +426,7 @@ mod tests {
         assert!(!aliases.iter().any(|alias| alias.provider == "douban"));
         assert!(aliases.contains(&QueryExternalIdAlias::new("av_number", "av_number", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javdb_id", "javdb", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("fc2_id", "fc2", false)));
     }
 
     #[test]
@@ -417,7 +447,8 @@ mod tests {
                 "bangumi",
                 "browser_worker",
                 "douban",
-                "javdb"
+                "javdb",
+                "fc2"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -460,7 +491,14 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(
             diagnostics.disabled,
-            vec!["fixture", "bangumi", "browser_worker", "douban", "javdb"]
+            vec![
+                "fixture",
+                "bangumi",
+                "browser_worker",
+                "douban",
+                "javdb",
+                "fc2"
+            ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);

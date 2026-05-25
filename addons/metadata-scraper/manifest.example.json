@@ -48,7 +48,8 @@
           "bangumi": { "type": "boolean", "default": false },
           "browser_worker": { "type": "boolean", "default": false },
           "douban": { "type": "boolean", "default": false },
-          "javdb": { "type": "boolean", "default": false }
+          "javdb": { "type": "boolean", "default": false },
+          "fc2": { "type": "boolean", "default": false }
         },
           "additionalProperties": false
         }

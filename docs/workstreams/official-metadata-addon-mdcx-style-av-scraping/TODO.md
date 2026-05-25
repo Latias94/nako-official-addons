@@ -28,6 +28,11 @@ Prefix: OMAV
   - Report per-item `reused_from_index` and `safe_failure_reason: no_candidates`.
   - Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`
 
+- [x] OMAV-060 - Add route-specific FC2 provider lane
+  - Use shared AV facts to route `fc2` numbers to a browser-worker rendered direct article lookup provider.
+  - Emit FC2 metadata, poster artwork, and `fc2`/`fc2_url`/`av_number` external IDs.
+  - Validation: `cargo nextest run -p nako-metadata-scraper fc2 --no-fail-fast`
+
 ## Active
 
 - [ ] OMAV-050 - Verify and close implementation
@@ -36,8 +41,8 @@ Prefix: OMAV
 
 ## Follow-Up Candidates
 
-- [ ] OMAV-060 - Add multi-provider AV routing lane
-  - Use the shared AV facts to route FC2, censored, uncensored, amateur, western, and domestic families to provider groups.
+- [ ] OMAV-090 - Add broader multi-provider AV routing lane
+  - Use the shared AV facts to route censored, uncensored, amateur, western, and domestic families to provider groups.
   - Keep provider failures isolated and preserve per-provider field provenance.
 
 - [ ] OMAV-080 - Add resumable batch failure accounting lane

@@ -11,6 +11,7 @@
     "OMAV-020",
     "OMAV-030",
     "OMAV-040",
+    "OMAV-060",
     "OMAV-070"
   ],
   "validation": {
@@ -40,7 +41,7 @@
   ],
   "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, or structure.",
   "follow_up_candidates": [
-    "OMAV-060",
-    "OMAV-080"
+    "OMAV-080",
+    "OMAV-090"
   ]
 }

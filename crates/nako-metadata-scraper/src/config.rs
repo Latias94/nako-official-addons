@@ -1,7 +1,8 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
-    douban::DoubanProviderConfig, javdb::JavdbProviderConfig, tmdb::TmdbProviderConfig,
+    douban::DoubanProviderConfig, fc2::Fc2ProviderConfig, javdb::JavdbProviderConfig,
+    tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -54,6 +55,7 @@ pub enum ProviderId {
     BrowserWorker,
     Douban,
     Javdb,
+    Fc2,
 }
 
 impl ProviderId {
@@ -66,6 +68,7 @@ impl ProviderId {
             Self::BrowserWorker => "browser_worker",
             Self::Douban => "douban",
             Self::Javdb => "javdb",
+            Self::Fc2 => "fc2",
         }
     }
 }
@@ -143,6 +146,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn fc2(enabled: bool, config: Fc2ProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Fc2,
+            enabled,
+            kind: ProviderConfigKind::Fc2(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -182,6 +194,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn fc2_config(&self) -> Option<&Fc2ProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Fc2(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -199,6 +219,7 @@ impl ProviderConfig {
             ProviderId::Javdb => {
                 Self::javdb(enabled, JavdbProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Fc2 => Self::fc2(enabled, Fc2ProviderConfig::from_env_lookup(|_| None)),
         }
     }
 }
@@ -211,6 +232,7 @@ pub enum ProviderConfigKind {
     BrowserWorker(BrowserWorkerProviderConfig),
     Douban(DoubanProviderConfig),
     Javdb(JavdbProviderConfig),
+    Fc2(Fc2ProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -375,12 +397,23 @@ mod tests {
         );
         assert_eq!(javdb.render_path, "/render");
         assert_eq!(javdb.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[6].id, ProviderId::Fc2);
+        assert!(!config.providers[6].enabled);
+        let fc2 = config.providers[6].fc2_config().unwrap();
+        assert_eq!(fc2.base_url, "https://adult.contents.fc2.com");
+        assert_eq!(
+            fc2.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(fc2.render_path, "/render");
+        assert_eq!(fc2.rendered_pages.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
         assert!(!config.provider_enabled(ProviderId::BrowserWorker));
         assert!(!config.provider_enabled(ProviderId::Douban));
         assert!(!config.provider_enabled(ProviderId::Javdb));
+        assert!(!config.provider_enabled(ProviderId::Fc2));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
     }
@@ -401,6 +434,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -432,6 +466,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS" => Some("6500".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVDB_BASE_URL" => Some("https://javdb.example".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVDB_TIMEOUT_MS" => Some("5500".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS" => Some("4500".to_owned()),
             _ => None,
         });
 
@@ -502,6 +538,15 @@ mod tests {
         );
         assert_eq!(javdb.render_path, "/render");
         assert_eq!(javdb.rendered_pages.timeout_ms, 5500);
+        assert!(config.provider_enabled(ProviderId::Fc2));
+        let fc2 = config.providers[6].fc2_config().unwrap();
+        assert_eq!(fc2.base_url, "https://fc2.example");
+        assert_eq!(
+            fc2.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(fc2.render_path, "/render");
+        assert_eq!(fc2.rendered_pages.timeout_ms, 4500);
     }
 
     #[test]
