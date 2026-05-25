@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-fact-resolver",
+  "title": "Official Metadata Addon Provider Fact Resolver",
+  "status": "active",
+  "updated": "2026-05-25",
+  "scope_kind": "execution",
+  "problem": "nako-metadata-scraper ranks isolated provider candidates and only exact-dedupes provider/provider_id pairs, so shared external IDs cannot merge provider facts before final ranking.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-010",
+      "summary": "Provider fact resolver implementation lane opened with license guardrails."
+    }
+  ],
+  "research_refs": [
+    "docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md",
+    "docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "next_task": "OMAPFR-020",
+    "notes": "Implement the internal resolver model while preserving provider outputs and public response compatibility."
+  }
+}
