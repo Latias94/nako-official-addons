@@ -3,6 +3,7 @@ pub mod config;
 pub mod discord_webhook;
 pub mod http_webhook;
 pub mod manifest;
+pub mod provider_registry;
 pub mod routes;
 pub mod template;
 

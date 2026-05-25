@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "slug": "official-notification-bridge-provider-extensibility",
+  "title": "Official Notification Bridge Provider Extensibility",
+  "status": "active",
+  "updated": "2026-05-25",
+  "scope_kind": "architecture_execution",
+  "problem": "The notification bridge has two working providers, but provider orchestration, diagnostics, and future test-send behavior are still route-local and will not scale cleanly to more providers.",
+  "task_prefix": "ONBPE",
+  "current_task": "ONBPE-030",
+  "completed_tasks": [
+    "ONBPE-010",
+    "ONBPE-020"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-notification-bridge-provider-extensibility/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-notification-bridge-provider-extensibility/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-notification-bridge-provider-extensibility/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-notification-bridge-provider-extensibility/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-notification-bridge-provider-extensibility/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-notification-bridge provider health diagnostics --no-fail-fast",
+    "cargo nextest run -p nako-notification-bridge test_send provider diagnostics --no-fail-fast",
+    "cargo nextest run -p nako-notification-bridge --no-fail-fast",
+    "cargo clippy -p nako-notification-bridge --all-targets -- -D warnings",
+    "cargo fmt --package nako-notification-bridge --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "ONBPE-010",
+      "summary": "Opened provider-extensibility lane, scoped registry seam, safe test-send, and provider extension proof tasks."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "ONBPE-020",
+      "summary": "Added provider_registry seam for provider diagnostics, configuration status, selected-provider output, and generic attempt-history mapping. Routes now consume registry facts while preserving HTTP and Discord webhook behavior; targeted/package nextest, clippy, fmt, and diff gates passed."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "depends_on": [
+    "docs/workstreams/official-metadata-addon-fearless-refactor",
+    "docs/workstreams/official-addon-contract-smoke-provider-hardening",
+    "docs/workstreams/official-addons-cross-repo-fearless-refactor"
+  ],
+  "non_goals": [
+    "publishing crates or container images",
+    "changing Addon Protocol runtime compatibility",
+    "persisting provider attempt history",
+    "provider retry queues or scheduler ownership",
+    "raw secret or payload exposure in diagnostics"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "next_task": "ONBPE-030",
+    "notes": "Continue with safe provider test-send. Split concrete Telegram/Home Assistant/email provider implementation if the registry/test-send scope grows."
+  }
+}

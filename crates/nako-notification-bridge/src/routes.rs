@@ -13,19 +13,18 @@ use tower_http::trace::TraceLayer;
 
 use crate::{
     Config,
-    attempt_history::{ProviderAttemptHistory, ProviderAttemptRecord},
-    discord_webhook::{
-        DISCORD_WEBHOOK_PROVIDER_ID, DiscordWebhookClient, DiscordWebhookSendError,
-        DiscordWebhookSendOutcome,
-    },
-    http_webhook::{
-        HTTP_WEBHOOK_PROVIDER_ID, HttpWebhookClient, HttpWebhookSendError, HttpWebhookSendOutcome,
-    },
+    attempt_history::ProviderAttemptHistory,
+    discord_webhook::DiscordWebhookClient,
+    http_webhook::HttpWebhookClient,
     manifest::{
         ADDON_ID, ADDON_VERSION, DIAGNOSTICS_PATH, LIBRARY_SCANNED_EVENT_KIND,
         LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID, addon_manifest,
     },
-    template::{DEFAULT_SUMMARY_TEMPLATE, TemplateContext, render_template},
+    provider_registry::{
+        NotificationProviderRegistry, record_provider_error, record_provider_outcome,
+        select_primary_provider_output,
+    },
+    template::{TemplateContext, render_template},
 };
 
 #[derive(Clone)]
@@ -62,16 +61,16 @@ async fn health(
     State(state): State<AppState>,
     Json(request): Json<AddonHealthCheckRequest>,
 ) -> Json<AddonHealthCheckResponse> {
-    let configuration_status = notification_configuration_status(&state.config);
+    let providers = NotificationProviderRegistry::new(&state.config);
+    let configuration_status = providers.configuration_status();
     let expected_status = if request.manifest_id == ADDON_ID && !configuration_status.is_degraded()
     {
         AddonHealthStatus::Ok
     } else {
         AddonHealthStatus::Degraded
     };
-    let http_webhook = &state.config.http_webhook;
-    let discord_webhook = &state.config.discord_webhook;
     let template = &state.config.template;
+    let provider_diagnostics = providers.diagnostics();
 
     Json(AddonHealthCheckResponse {
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -85,8 +84,8 @@ async fn health(
         diagnostics: serde_json::json!({
             "safe_note": "notification bridge sidecar is reachable",
             "mode": "ack_only",
-            "provider_fan_out": http_webhook.send_path_enabled() || discord_webhook.send_path_enabled(),
-            "provider_send_path_count": provider_send_path_count(&state.config),
+            "provider_fan_out": providers.send_path_configured(),
+            "provider_send_path_count": providers.send_path_count(),
             "configuration_status": configuration_status.as_str(),
             "template": {
                 "summary_template_configured": template.summary_template_configured(),
@@ -97,28 +96,7 @@ async fn health(
                 "capacity": state.provider_attempt_history.capacity(),
                 "recent": state.provider_attempt_history.snapshot()
             },
-            "providers": [
-                {
-                    "id": "http_webhook",
-                    "enabled": http_webhook.enabled,
-                    "status": http_webhook.status().as_str(),
-                    "target_url_configured": http_webhook.target_url_configured(),
-                    "target_url_valid": http_webhook.target_url_valid(),
-                    "custom_secret_header_name_configured": http_webhook.custom_secret_header_name_configured(),
-                    "shared_secret_configured": http_webhook.shared_secret_configured(),
-                    "timeout_ms": http_webhook.timeout_ms,
-                    "send_path_enabled": http_webhook.send_path_enabled()
-                },
-                {
-                    "id": "discord_webhook",
-                    "enabled": discord_webhook.enabled,
-                    "status": discord_webhook.status().as_str(),
-                    "webhook_url_configured": discord_webhook.webhook_url_configured(),
-                    "webhook_url_valid": discord_webhook.webhook_url_valid(),
-                    "timeout_ms": discord_webhook.timeout_ms,
-                    "send_path_enabled": discord_webhook.send_path_enabled()
-                }
-            ]
+            "providers": provider_diagnostics.to_json_array()
         }),
     })
 }
@@ -149,25 +127,12 @@ async fn library_scanned_event(
             keys
         })
         .unwrap_or_default();
-    if state.config.http_webhook.send_path_enabled()
-        && state.config.discord_webhook.send_path_enabled()
-    {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "safe_error_code": "multiple_notification_provider_send_paths_configured",
-                "retryable": false
-            })),
-        ));
+    let providers = NotificationProviderRegistry::new(&state.config);
+    if let Some(error) = providers.multiple_send_paths_error() {
+        return Err((StatusCode::BAD_REQUEST, Json(error)));
     }
-    let summary_template =
-        if state.config.http_webhook.enabled || state.config.discord_webhook.enabled {
-            state.config.template.summary_template.as_str()
-        } else {
-            DEFAULT_SUMMARY_TEMPLATE
-        };
     let summary = render_template(
-        summary_template,
+        providers.summary_template(),
         &TemplateContext {
             request: &request,
             payload_keys: &payload_keys,
@@ -186,11 +151,11 @@ async fn library_scanned_event(
         .await
     {
         Ok(outcome) => {
-            record_http_webhook_outcome(&state.provider_attempt_history, &request, &outcome);
+            record_provider_outcome(&state.provider_attempt_history, &request, &outcome);
             outcome
         }
         Err(error) => {
-            record_http_webhook_error(&state.provider_attempt_history, &request, &error);
+            record_provider_error(&state.provider_attempt_history, &request, &error);
             return Err((error.status_code(), Json(error.safe_body())));
         }
     };
@@ -205,11 +170,11 @@ async fn library_scanned_event(
         .await
     {
         Ok(outcome) => {
-            record_discord_webhook_outcome(&state.provider_attempt_history, &request, &outcome);
+            record_provider_outcome(&state.provider_attempt_history, &request, &outcome);
             outcome
         }
         Err(error) => {
-            record_discord_webhook_error(&state.provider_attempt_history, &request, &error);
+            record_provider_error(&state.provider_attempt_history, &request, &error);
             return Err((error.status_code(), Json(error.safe_body())));
         }
     };
@@ -217,11 +182,7 @@ async fn library_scanned_event(
         provider_outcome.provider_output(),
         discord_provider_outcome.provider_output(),
     ];
-    let primary_provider_output = provider_outputs
-        .iter()
-        .find(|provider| provider["send_path_enabled"] == true)
-        .cloned()
-        .unwrap_or_else(|| provider_outputs[0].clone());
+    let primary_provider_output = select_primary_provider_output(&provider_outputs);
     let mode = if provider_outcome.mode() == "provider_send"
         || discord_provider_outcome.mode() == "provider_send"
     {
@@ -250,23 +211,23 @@ async fn library_scanned_event(
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
-    let http_webhook = &state.config.http_webhook;
-    let discord_webhook = &state.config.discord_webhook;
+    let providers = NotificationProviderRegistry::new(&state.config);
+    let provider_diagnostics = providers.diagnostics();
+    let http_webhook = provider_diagnostics.http_webhook;
+    let discord_webhook = provider_diagnostics.discord_webhook;
     let template = &state.config.template;
     let http_webhook_enabled = yes_no_label(http_webhook.enabled);
-    let http_webhook_target_configured = yes_no_label(http_webhook.target_url_configured());
-    let http_webhook_target_valid = yes_no_label(http_webhook.target_url_valid());
-    let http_webhook_shared_secret_configured =
-        yes_no_label(http_webhook.shared_secret_configured());
-    let http_webhook_send_path_enabled = yes_no_label(http_webhook.send_path_enabled());
+    let http_webhook_target_configured = yes_no_label(http_webhook.target_url_configured);
+    let http_webhook_target_valid = yes_no_label(http_webhook.target_url_valid);
+    let http_webhook_shared_secret_configured = yes_no_label(http_webhook.shared_secret_configured);
+    let http_webhook_send_path_enabled = yes_no_label(http_webhook.send_path_enabled);
     let discord_webhook_enabled = yes_no_label(discord_webhook.enabled);
-    let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured());
-    let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid());
-    let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled());
-    let provider_send_configured =
-        yes_no_label(http_webhook.send_path_enabled() || discord_webhook.send_path_enabled());
-    let provider_send_path_count = provider_send_path_count(&state.config);
-    let configuration_status = notification_configuration_status(&state.config);
+    let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured);
+    let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid);
+    let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled);
+    let provider_send_configured = yes_no_label(providers.send_path_configured());
+    let provider_send_path_count = providers.send_path_count();
+    let configuration_status = providers.configuration_status();
     let summary_template_configured = yes_no_label(template.summary_template_configured());
     let summary_template_valid = yes_no_label(template.summary_template_valid());
     let provider_attempt_history_count = state.provider_attempt_history.snapshot().len();
@@ -304,8 +265,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         state.config.base_url,
         configuration_status.as_str(),
         template.status().as_str(),
-        http_webhook.status().as_str(),
-        discord_webhook.status().as_str()
+        http_webhook.status,
+        discord_webhook.status
     ))
 }
 
@@ -322,132 +283,8 @@ fn invalid_template_error(
     )
 }
 
-fn record_http_webhook_outcome(
-    history: &ProviderAttemptHistory,
-    request: &AddonEventRequest,
-    outcome: &HttpWebhookSendOutcome,
-) {
-    if matches!(outcome, HttpWebhookSendOutcome::SkippedDisabled) {
-        return;
-    }
-
-    history.record(ProviderAttemptRecord::new(
-        HTTP_WEBHOOK_PROVIDER_ID,
-        request,
-        outcome.provider_status(),
-        false,
-        outcome.provider_http_status(),
-    ));
-}
-
-fn record_http_webhook_error(
-    history: &ProviderAttemptHistory,
-    request: &AddonEventRequest,
-    error: &HttpWebhookSendError,
-) {
-    history.record(ProviderAttemptRecord::new(
-        HTTP_WEBHOOK_PROVIDER_ID,
-        request,
-        error.provider_status(),
-        error.is_retryable(),
-        error.provider_http_status(),
-    ));
-}
-
-fn record_discord_webhook_outcome(
-    history: &ProviderAttemptHistory,
-    request: &AddonEventRequest,
-    outcome: &DiscordWebhookSendOutcome,
-) {
-    if matches!(outcome, DiscordWebhookSendOutcome::SkippedDisabled) {
-        return;
-    }
-
-    history.record(ProviderAttemptRecord::new(
-        DISCORD_WEBHOOK_PROVIDER_ID,
-        request,
-        outcome.provider_status(),
-        false,
-        outcome.provider_http_status(),
-    ));
-}
-
-fn record_discord_webhook_error(
-    history: &ProviderAttemptHistory,
-    request: &AddonEventRequest,
-    error: &DiscordWebhookSendError,
-) {
-    history.record(ProviderAttemptRecord::new(
-        DISCORD_WEBHOOK_PROVIDER_ID,
-        request,
-        error.provider_status(),
-        error.is_retryable(),
-        error.provider_http_status(),
-    ));
-}
-
 const fn yes_no_label(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum NotificationConfigurationStatus {
-    AckOnly,
-    ProviderSendReady,
-    ProviderConfigurationInvalid,
-    MultipleProviderSendPathsConfigured,
-    TemplateInvalid,
-}
-
-impl NotificationConfigurationStatus {
-    const fn as_str(self) -> &'static str {
-        match self {
-            Self::AckOnly => "ack_only",
-            Self::ProviderSendReady => "provider_send_ready",
-            Self::ProviderConfigurationInvalid => "provider_configuration_invalid",
-            Self::MultipleProviderSendPathsConfigured => "multiple_provider_send_paths_configured",
-            Self::TemplateInvalid => "template_invalid",
-        }
-    }
-
-    const fn is_degraded(self) -> bool {
-        matches!(
-            self,
-            Self::ProviderConfigurationInvalid
-                | Self::MultipleProviderSendPathsConfigured
-                | Self::TemplateInvalid
-        )
-    }
-}
-
-fn notification_configuration_status(config: &Config) -> NotificationConfigurationStatus {
-    let send_path_count = provider_send_path_count(config);
-    if send_path_count > 1 {
-        return NotificationConfigurationStatus::MultipleProviderSendPathsConfigured;
-    }
-
-    let provider_configuration_invalid = (config.http_webhook.enabled
-        && !config.http_webhook.send_path_enabled())
-        || (config.discord_webhook.enabled && !config.discord_webhook.send_path_enabled());
-    if provider_configuration_invalid {
-        return NotificationConfigurationStatus::ProviderConfigurationInvalid;
-    }
-
-    let provider_enabled = config.http_webhook.enabled || config.discord_webhook.enabled;
-    if provider_enabled && !config.template.summary_template_valid() {
-        return NotificationConfigurationStatus::TemplateInvalid;
-    }
-
-    if send_path_count == 1 {
-        NotificationConfigurationStatus::ProviderSendReady
-    } else {
-        NotificationConfigurationStatus::AckOnly
-    }
-}
-
-fn provider_send_path_count(config: &Config) -> usize {
-    (config.http_webhook.send_path_enabled() as usize)
-        + (config.discord_webhook.send_path_enabled() as usize)
 }
 
 #[cfg(test)]
