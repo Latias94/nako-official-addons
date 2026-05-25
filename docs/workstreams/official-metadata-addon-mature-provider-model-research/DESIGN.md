@@ -1,6 +1,6 @@
 # Official Metadata Addon Mature Provider Model Research
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Why This Lane Exists
@@ -82,3 +82,18 @@ This lane can close when:
 - `REFACTOR_CANDIDATES.md` ranks follow-on work;
 - gates prove workstream docs are valid and the production tree remains clean;
 - follow-on implementation work is either split or explicitly deferred.
+
+## Closeout
+
+Closed on 2026-05-25.
+
+Result:
+
+- Reference repositories are ignored under `repo-ref/` and were used only as
+  read-only research material.
+- `FINDINGS.md` records mature-system and local architecture findings with
+  source anchors.
+- `REFACTOR_CANDIDATES.md` ranks follow-on work.
+- No production Rust code changed in this research lane.
+- Follow-on implementation is deferred to a new workstream, recommended scope:
+  sidecar-local provider fact resolver plus external ID capability catalog.

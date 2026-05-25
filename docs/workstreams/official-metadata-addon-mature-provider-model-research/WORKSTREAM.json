@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-mature-provider-model-research",
   "title": "Official Metadata Addon Mature Provider Model Research",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-25",
   "scope_kind": "research",
   "problem": "The metadata scraper provider architecture is now extensible, but the next fearless refactor should be informed by mature metadata provider systems instead of local intuition alone.",
@@ -39,6 +39,11 @@
       "date": "2026-05-25",
       "task": "OMAPMR-040",
       "summary": "Current nako-metadata-scraper architecture compared against mature provider findings; resolver-first refactor candidates ranked."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPMR-050",
+      "summary": "Research lane closed with no production code changes; follow-on resolver and external ID capability workstream deferred."
     }
   ],
   "reference_repos": [
@@ -49,8 +54,7 @@
     "repo-ref/kodi-metadata-themoviedb-python"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "next_task": "OMAPMR-050",
-    "notes": "Close the research lane or split a concrete implementation workstream for the sidecar resolver and external ID capability catalog."
+    "default_action": "closed",
+    "notes": "Research is complete. Recommended follow-on is a new implementation workstream for the sidecar provider fact resolver and external ID capability catalog; host-owned refresh, local metadata, locked fields, and final merge policy stay out of this sidecar lane."
   }
 }

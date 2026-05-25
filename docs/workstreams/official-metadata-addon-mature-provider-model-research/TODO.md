@@ -1,6 +1,6 @@
 # Official Metadata Addon Mature Provider Model Research - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Research Lane Setup
@@ -41,9 +41,9 @@ Last updated: 2026-05-25
 
 ## M4 - Close Or Split
 
-- [ ] OMAPMR-050 [owner=planner] [deps=OMAPMR-040] [scope=docs/workstreams/official-metadata-addon-mature-provider-model-research]
+- [x] OMAPMR-050 [owner=planner] [deps=OMAPMR-040] [scope=docs/workstreams/official-metadata-addon-mature-provider-model-research]
   Goal: Close the research lane or split a concrete implementation workstream.
   Validation: `cargo fmt --all -- --check`; `git diff --check`; `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`.
   Review: Confirm no production code changed in this research lane unless explicitly justified.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `git diff --name-status fbd8546..HEAD`; `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`; `cargo fmt --all -- --check`; `git diff --check`.
+  Handoff: DONE. Research lane closed; open a follow-on implementation workstream for provider fact resolver plus external ID capability catalog when ready to implement.
