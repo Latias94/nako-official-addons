@@ -1,6 +1,6 @@
 # Official Notification Bridge Provider Extensibility - TODO
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-25
 
 Task IDs use the `ONBPE` prefix.
@@ -78,10 +78,15 @@ Task IDs use the `ONBPE` prefix.
 
 ## M4 - Closeout
 
-- [ ] ONBPE-050 [owner=planner] [deps=ONBPE-030,ONBPE-040] [scope=docs/workstreams/official-notification-bridge-provider-extensibility]
+- [x] ONBPE-050 [owner=planner] [deps=ONBPE-030,ONBPE-040] [scope=docs/workstreams/official-notification-bridge-provider-extensibility]
   Goal: Verify final evidence, record residual risks, and close the lane or
   split any remaining provider-specific work.
   Validation: verify-rust-workstream records fresh final gate evidence.
   Review: review-workstream has no blocking findings.
   Evidence: EVIDENCE_AND_GATES.md, WORKSTREAM.json, HANDOFF.md.
-  Handoff: Summarize next provider recommendations and release-readiness impact.
+  Result: DONE 2026-05-25.
+  Evidence: Full workspace nextest passed 183/183 with 2 skipped; package
+  clippy, package fmt, and diff checks passed. Review gate has no blocking
+  findings.
+  Handoff: Lane closed. Split provider-runtime catalog generalization only if a
+  future provider repeats the remaining route-helper wiring.

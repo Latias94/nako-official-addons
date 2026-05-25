@@ -2,17 +2,18 @@
   "schema_version": 1,
   "slug": "official-notification-bridge-provider-extensibility",
   "title": "Official Notification Bridge Provider Extensibility",
-  "status": "active",
+  "status": "closed",
   "updated": "2026-05-25",
   "scope_kind": "architecture_execution",
-  "problem": "The notification bridge provider-extensibility lane has delivered the registry seam, safe test-send, and a Telegram provider proof; remaining work is closeout and residual provider-runtime follow-on decisions.",
+  "problem": "The notification bridge provider-extensibility lane delivered the registry seam, safe test-send, and a Telegram provider proof; residual provider-runtime catalog generalization is deferred as a follow-on decision.",
   "task_prefix": "ONBPE",
-  "current_task": "ONBPE-050",
+  "current_task": null,
   "completed_tasks": [
     "ONBPE-010",
     "ONBPE-020",
     "ONBPE-030",
-    "ONBPE-040"
+    "ONBPE-040",
+    "ONBPE-050"
   ],
   "authoritative_docs": [
     {
@@ -65,6 +66,11 @@
       "date": "2026-05-25",
       "task": "ONBPE-040",
       "summary": "Added default-disabled Telegram provider proof with fixture-backed library.scanned and provider test-send delivery, safe health/diagnostics/config reporting, and operator docs. Targeted/package nextest, clippy, fmt, and diff gates passed."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "ONBPE-050",
+      "summary": "Closed the provider-extensibility lane after fresh workspace nextest, package clippy, fmt, diff, and review gates. Deferred provider-runtime catalog generalization as a future follow-on decision."
     }
   ],
   "adr_refs": [
@@ -85,8 +91,8 @@
     "raw secret or payload exposure in diagnostics"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "next_task": "ONBPE-050",
-    "notes": "Continue with closeout. Decide whether provider-runtime catalog generalization should be split into a follow-on."
+    "default_action": "closed",
+    "next_task": null,
+    "notes": "Lane closed. Split provider-runtime catalog generalization only if a future provider repeats the remaining route-helper wiring."
   }
 }

@@ -1,6 +1,6 @@
 # Official Notification Bridge Provider Extensibility - Handoff
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-25
 
 ## Current State
@@ -21,14 +21,10 @@ enabled-provider templates.
 
 ## Active Task
 
-- Task ID: ONBPE-050
-- Owner: planner
-- Files: `docs/workstreams/official-notification-bridge-provider-extensibility`
-- Validation: verify final gate evidence and review notes before closing.
-- Status: NEEDS_CONTEXT
-- Review: Close the lane or split any residual provider-runtime generalization
-  into a follow-on.
-- Evidence: To be recorded in `EVIDENCE_AND_GATES.md`.
+- Task ID: none
+- Status: CLOSED
+- Evidence: `EVIDENCE_AND_GATES.md` records final workspace nextest, package
+  clippy, package fmt, diff check, and review gate.
 
 ## Decisions Since Last Update
 
@@ -49,11 +45,18 @@ enabled-provider templates.
 
 ## Blockers
 
-- None for ONBPE-050.
-- Remaining potential provider-runtime generalization is a follow-on decision,
-  not a blocker for this lane.
+- None.
 
-## Next Recommended Action
+## Follow-Ons
 
-- Execute ONBPE-050 closeout: verify final evidence, record residual risks, and
-  decide whether provider-runtime catalog generalization belongs in a follow-on.
+- Consider a provider-runtime catalog if the next provider repeats the same
+  route-helper send wiring.
+- Keep live Telegram/Discord/HTTP provider verification opt-in and
+  operator-local; default CI should remain fixture-backed and secret-free.
+
+## Closeout
+
+The lane is closed. The shipped release-readiness surface is a default-disabled
+HTTP webhook, Discord webhook, and Telegram provider set with exactly-one
+provider enforcement, safe test-send, bounded safe attempt history, and
+redaction-safe health/diagnostics.

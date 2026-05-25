@@ -1,6 +1,6 @@
 # Official Notification Bridge Provider Extensibility - Evidence And Gates
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-25
 
 ## Smallest Current Repro
@@ -100,8 +100,11 @@ smoke, or docs example must not expose:
 | 2026-05-25 | ONBPE-040 | `cargo fmt --package nako-notification-bridge --check`; `git diff --check` | Pass |
 | 2026-05-25 | ONBPE-040 | Review gate | Pass: no blocking workstream-compliance or code-quality findings. Residual live Telegram delivery remains operator-local, fixture-backed by default. |
 | 2026-05-25 | ONBPE-040 | `cargo nextest run --workspace --no-fail-fast` | Skipped: changed Rust scope is limited to `nako-notification-bridge`; package nextest plus clippy/fmt/diff gates prove the task-local behavior and compile surface. |
+| 2026-05-25 | ONBPE-050 | `cargo nextest run --workspace --no-fail-fast` | Pass: 183 passed, 2 skipped |
+| 2026-05-25 | ONBPE-050 | `cargo clippy -p nako-notification-bridge --all-targets -- -D warnings` | Pass |
+| 2026-05-25 | ONBPE-050 | `cargo fmt --package nako-notification-bridge --check`; `git diff --check` | Pass |
+| 2026-05-25 | ONBPE-050 | Review gate | Pass: no blocking workstream-compliance, code-quality, or missing-gate findings. Provider-runtime catalog generalization is deferred as a follow-on decision. |
 
 ## Notes
 
-Fresh verification is required before marking a task, Codex goal, or lane
-complete.
+Lane closed 2026-05-25 after fresh workspace verification.

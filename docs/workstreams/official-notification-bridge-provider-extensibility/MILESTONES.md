@@ -1,6 +1,6 @@
 # Official Notification Bridge Provider Extensibility - Milestones
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-25
 
 ## M0 - Scope And Evidence Freeze
@@ -72,3 +72,10 @@ Exit criteria:
 - Gate set is recorded with fresh evidence.
 - Remaining work is completed, deferred, or split into follow-ons.
 - `WORKSTREAM.json` and `HANDOFF.md` reflect the actual continuation state.
+
+Result:
+
+- Done 2026-05-25.
+- Full workspace nextest passed 183/183 with 2 skipped.
+- Remaining provider-runtime catalog generalization is deferred as a follow-on
+  decision, not retained in this lane.

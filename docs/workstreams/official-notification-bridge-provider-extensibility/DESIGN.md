@@ -1,6 +1,6 @@
 # Official Notification Bridge Provider Extensibility
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-25
 
 ## Why This Lane Exists
@@ -111,3 +111,25 @@ This lane can close when:
   attempt history;
 - targeted `nako-notification-bridge` gates pass;
 - docs reflect the shipped operator workflow.
+
+## Closeout Summary
+
+Closed on 2026-05-25.
+
+Delivered:
+
+- provider-local registry facts for diagnostics, configuration status,
+  selected-provider output, fail-closed multi-provider checks, and
+  attempt-history mapping;
+- sidecar-local `POST /providers/test-send` for a single configured provider;
+- default-disabled Telegram provider proof with fixture-backed
+  `library.scanned` and test-send delivery;
+- redaction-safe health, diagnostics, provider output, attempt history, docs,
+  and tests for HTTP webhook, Discord webhook, and Telegram.
+
+Residual follow-on:
+
+- Provider send execution still requires one explicit route-helper call per
+  provider client. That is acceptable for three small providers, but a
+  provider-runtime catalog can be split out if the next provider would repeat
+  the same route wiring.
