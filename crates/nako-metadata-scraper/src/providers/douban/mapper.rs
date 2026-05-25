@@ -2,7 +2,7 @@ use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 
 use crate::engine::{
     MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
-    ProviderExternalId, ProviderMetadataCandidate,
+    ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
 };
 
 use super::{DOUBAN_PROVIDER_ID, parser::DoubanDetailFacts};
@@ -65,9 +65,8 @@ impl DoubanDetailFacts {
                         value: self.url,
                     },
                 ],
-                provider_note: Some(
-                    "Douban candidate parsed from browser-worker rendered HTML.".to_owned(),
-                ),
+                provider_outcomes: vec![ProviderOutcome::DoubanRenderedHtmlParsed],
+                provider_note: None,
             },
             artwork_candidates,
         }

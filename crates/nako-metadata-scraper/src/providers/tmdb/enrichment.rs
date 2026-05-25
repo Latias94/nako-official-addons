@@ -1,8 +1,8 @@
-use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
+use crate::engine::{MetadataQuery, ProviderMetadataCandidate, ProviderOutcome};
 
 use super::{
     TMDB_PROVIDER_ID, TmdbMetadataProvider,
-    mapper::{TmdbMovieCandidate, TmdbMovieSearchResult, append_provider_note},
+    mapper::{TmdbMovieCandidate, TmdbMovieSearchResult},
     search::{tmdb_query_imdb_ids, tmdb_query_movie_ids},
 };
 use crate::providers::{
@@ -11,13 +11,11 @@ use crate::providers::{
 };
 
 const TMDB_DETAIL_ENRICHMENT_LIMIT: usize = 3;
-const TMDB_PARTIAL_SEARCH_NOTE: &str =
-    "TMDB provider preserved candidates after partial title-variant search failure.";
 const TMDB_SEARCH_POLICY: SearchEnrichmentPolicy = SearchEnrichmentPolicy::new(
     TMDB_PROVIDER_ID,
     "TMDB",
     TMDB_DETAIL_ENRICHMENT_LIMIT,
-    TMDB_PARTIAL_SEARCH_NOTE,
+    ProviderOutcome::TmdbPartialTitleVariantSearchFailure,
 );
 
 impl<T> TmdbMetadataProvider<T>
@@ -69,7 +67,7 @@ where
             },
             |result: &TmdbMovieSearchResult| result.id,
             |result| result.into_degraded_candidate(query),
-            |candidate, note| append_provider_note(&mut candidate.facts.provider_note, note),
+            |candidate, outcome| candidate.facts.provider_outcomes.push(outcome),
             |result| async move { self.enrich_movie_candidate(query, result).await },
         )
         .await

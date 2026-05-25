@@ -465,6 +465,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: Some("bulk test candidate".to_owned()),
                 },
                 artwork_candidates: vec![ProviderArtworkCandidate {

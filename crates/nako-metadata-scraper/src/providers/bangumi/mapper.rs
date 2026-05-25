@@ -2,7 +2,7 @@ use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 
 use crate::engine::{
     MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
-    ProviderExternalId, ProviderMetadataCandidate,
+    ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
 };
 
 use super::{
@@ -144,29 +144,15 @@ impl BangumiSubjectCandidate {
                     provider: BANGUMI_PROVIDER_ID.to_owned(),
                     value: subject_id.to_string(),
                 }],
-                provider_note: Some(
-                    if self.degraded {
-                        "Bangumi subject candidate degraded from search response after enrichment failure."
-                    } else {
-                        "Bangumi subject candidate enriched with search and detail responses."
-                    }
-                    .to_owned(),
-                ),
+                provider_outcomes: vec![if self.degraded {
+                    ProviderOutcome::BangumiSubjectDegraded
+                } else {
+                    ProviderOutcome::BangumiSubjectEnriched
+                }],
+                provider_note: None,
             },
             artwork_candidates,
         }
-    }
-}
-
-pub(super) fn append_provider_note(note: &mut Option<String>, fragment: &str) {
-    match note {
-        Some(value) => {
-            if !value.ends_with(' ') {
-                value.push(' ');
-            }
-            value.push_str(fragment);
-        }
-        None => *note = Some(fragment.to_owned()),
     }
 }
 

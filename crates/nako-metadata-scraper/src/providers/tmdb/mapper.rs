@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::engine::{
     MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
-    ProviderExternalId, ProviderMetadataCandidate,
+    ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
 };
 
 use super::{
@@ -130,10 +130,8 @@ impl TmdbMovieSearchResult {
                     provider: TMDB_PROVIDER_ID.to_owned(),
                     value: id.to_string(),
                 }],
-                provider_note: Some(
-                    "TMDB movie candidate degraded from search response after enrichment failure."
-                        .to_owned(),
-                ),
+                provider_outcomes: vec![ProviderOutcome::TmdbMovieDegraded],
+                provider_note: None,
             },
             artwork_candidates,
         }
@@ -240,29 +238,15 @@ impl TmdbMovieCandidate {
                     .map(|value| (value * 100.0).round().clamp(0.0, 1000.0) as u16),
                 community_vote_count: vote_count,
                 external_ids,
-                provider_note: Some(
-                    if self.partial_enrichment {
-                        "TMDB movie candidate partially enriched with search and detail responses after secondary enrichment failure."
-                    } else {
-                        "TMDB movie candidate enriched with search, detail, and external ID responses."
-                    }
-                    .to_owned(),
-                ),
+                provider_outcomes: vec![if self.partial_enrichment {
+                    ProviderOutcome::TmdbMoviePartiallyEnriched
+                } else {
+                    ProviderOutcome::TmdbMovieEnriched
+                }],
+                provider_note: None,
             },
             artwork_candidates,
         }
-    }
-}
-
-pub(super) fn append_provider_note(note: &mut Option<String>, fragment: &str) {
-    match note {
-        Some(value) => {
-            if !value.ends_with(' ') {
-                value.push(' ');
-            }
-            value.push_str(fragment);
-        }
-        None => *note = Some(fragment.to_owned()),
     }
 }
 

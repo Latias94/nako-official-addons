@@ -45,18 +45,27 @@ OMAPAD-040 completed:
 - The shared policy is closure-driven so raw TMDB/Bangumi result types are not
   promoted into a public shared trait contract.
 
+OMAPAD-050 completed:
+
+- `engine/outcome.rs` defines typed `ProviderOutcome` facts and renders the
+  existing public `provider_note` evidence text from one redaction-safe module.
+- TMDB, Bangumi, Douban, Fixture, BrowserWorker, and shared search policy now
+  emit outcomes instead of provider-local note prose.
+- `ProviderCandidateFacts.provider_note` remains as a compatibility fallback
+  for tests and non-migrated providers, but current built-in providers no
+  longer use it for diagnostic prose.
+
 ## Next Task
 
-Start OMAPAD-050.
+Start OMAPAD-060.
 
 Recommended next implementation focus:
 
-- replace provider-local `provider_note` prose with internal typed outcome
-  facts;
-- keep the public payload shape compatible unless an intentional schema change
-  is documented;
-- preserve redaction-safe rendering and current TMDB/Bangumi/Douban diagnostic
-  text semantics while moving note composition behind one Module.
+- split browser-worker support into a rendered-page runtime support Seam;
+- decide whether `browser_worker` remains a metadata provider identity or is
+  demoted to support infrastructure;
+- preserve Douban behavior while removing direct worker HTTP details from the
+  Douban provider boundary where practical.
 
 ## Risks
 
@@ -75,3 +84,4 @@ OMAPAD-010 passed with `python -m json.tool docs/workstreams/official-metadata-a
 OMAPAD-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider registry config addon_manifest --no-fail-fast`, and `git diff --check`.
 OMAPAD-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider health_endpoint diagnostics --no-fail-fast`, and `git diff --check`.
 OMAPAD-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`, and `git diff --check`.
+OMAPAD-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`, and `git diff --check`.

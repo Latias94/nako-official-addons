@@ -1,16 +1,13 @@
-use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
+use crate::engine::{MetadataQuery, ProviderMetadataCandidate, ProviderOutcome};
 
 use super::{
     BANGUMI_PROVIDER_ID, BangumiMetadataProvider,
-    mapper::{BangumiSubjectCandidate, append_provider_note},
+    mapper::BangumiSubjectCandidate,
     parser::{
         BangumiSubject, BangumiSubjectSearchFilter, BangumiSubjectSearchRequest,
         BangumiSubjectSearchResponse,
     },
-    search::{
-        BANGUMI_DETAIL_ENRICHMENT_LIMIT, BANGUMI_PARTIAL_SEARCH_NOTE, bangumi_air_date_filter,
-        bangumi_query_subject_ids,
-    },
+    search::{BANGUMI_DETAIL_ENRICHMENT_LIMIT, bangumi_air_date_filter, bangumi_query_subject_ids},
 };
 use crate::providers::{
     http_runtime::ProviderHttpTransport,
@@ -21,7 +18,7 @@ const BANGUMI_SEARCH_POLICY: SearchEnrichmentPolicy = SearchEnrichmentPolicy::ne
     BANGUMI_PROVIDER_ID,
     "Bangumi",
     BANGUMI_DETAIL_ENRICHMENT_LIMIT,
-    BANGUMI_PARTIAL_SEARCH_NOTE,
+    ProviderOutcome::BangumiPartialTitleVariantSearchFailure,
 );
 
 impl<T> BangumiMetadataProvider<T>
@@ -56,7 +53,7 @@ where
             },
             |subject: &BangumiSubject| subject.id,
             |subject| subject.into_degraded_candidate(query),
-            |candidate, note| append_provider_note(&mut candidate.facts.provider_note, note),
+            |candidate, outcome| candidate.facts.provider_outcomes.push(outcome),
             |subject| async move { self.enrich_subject_candidate(query, subject).await },
         )
         .await

@@ -49,6 +49,11 @@
       "date": "2026-05-25",
       "task": "OMAPAD-040",
       "summary": "TMDB and Bangumi now share a provider-private search policy module for direct lookup, title-variant search, dedupe, ranking-budget selection, partial-search preservation, and degraded fallback."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-050",
+      "summary": "Provider diagnostics now flow through typed ProviderOutcome facts rendered by one redaction-safe engine outcome module while preserving the public provider_note payload field."
     }
   ],
   "adr_refs": [

@@ -5,8 +5,6 @@ use crate::engine::MetadataQuery;
 use super::BANGUMI_PROVIDER_ID;
 
 pub(super) const BANGUMI_DETAIL_ENRICHMENT_LIMIT: usize = 3;
-pub(super) const BANGUMI_PARTIAL_SEARCH_NOTE: &str =
-    "Bangumi provider preserved candidates after partial title-variant search failure.";
 
 pub(super) fn bangumi_query_subject_ids(query: &MetadataQuery) -> impl Iterator<Item = u64> + '_ {
     let mut seen = HashSet::new();

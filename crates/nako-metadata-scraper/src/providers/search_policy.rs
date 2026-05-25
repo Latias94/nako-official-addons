@@ -1,13 +1,13 @@
 use std::{collections::HashSet, future::Future, hash::Hash};
 
-use crate::engine::{MetadataQuery, ProviderMetadataCandidate, ranking};
+use crate::engine::{MetadataQuery, ProviderMetadataCandidate, ProviderOutcome, ranking};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct SearchEnrichmentPolicy {
     provider_id: &'static str,
     provider_name: &'static str,
     enrichment_limit: usize,
-    partial_search_note: &'static str,
+    partial_search_outcome: ProviderOutcome,
 }
 
 impl SearchEnrichmentPolicy {
@@ -16,13 +16,13 @@ impl SearchEnrichmentPolicy {
         provider_id: &'static str,
         provider_name: &'static str,
         enrichment_limit: usize,
-        partial_search_note: &'static str,
+        partial_search_outcome: ProviderOutcome,
     ) -> Self {
         Self {
             provider_id,
             provider_name,
             enrichment_limit,
-            partial_search_note,
+            partial_search_outcome,
         }
     }
 }
@@ -70,7 +70,7 @@ pub(crate) async fn search_and_enrich<
     SearchFuture,
     SearchResultKeyFn,
     DegradedCandidate,
-    AppendProviderNote,
+    AppendProviderOutcome,
     EnrichSearchResult,
     EnrichFuture,
 >(
@@ -79,7 +79,7 @@ pub(crate) async fn search_and_enrich<
     mut search_title_variant: SearchTitleVariant,
     mut search_result_key: SearchResultKeyFn,
     mut degraded_candidate: DegradedCandidate,
-    mut append_provider_note: AppendProviderNote,
+    mut append_provider_outcome: AppendProviderOutcome,
     mut enrich_search_result: EnrichSearchResult,
 ) -> anyhow::Result<Vec<ProviderMetadataCandidate>>
 where
@@ -89,7 +89,7 @@ where
     SearchFuture: Future<Output = anyhow::Result<Vec<SearchResult>>> + Send,
     SearchResultKeyFn: FnMut(&SearchResult) -> SearchResultKey,
     DegradedCandidate: FnMut(SearchResult) -> ProviderMetadataCandidate,
-    AppendProviderNote: FnMut(&mut ProviderMetadataCandidate, &'static str),
+    AppendProviderOutcome: FnMut(&mut ProviderMetadataCandidate, ProviderOutcome),
     EnrichSearchResult: FnMut(SearchResult) -> EnrichFuture,
     EnrichFuture: Future<Output = anyhow::Result<ProviderMetadataCandidate>> + Send,
 {
@@ -138,7 +138,7 @@ where
         match enrich_search_result(result.clone()).await {
             Ok(mut candidate) => {
                 if partial_search {
-                    append_provider_note(&mut candidate, policy.partial_search_note);
+                    append_provider_outcome(&mut candidate, policy.partial_search_outcome);
                 }
                 candidates.push(candidate);
             }
@@ -151,7 +151,7 @@ where
                 );
                 let mut candidate = degraded_candidate(result);
                 if partial_search {
-                    append_provider_note(&mut candidate, policy.partial_search_note);
+                    append_provider_outcome(&mut candidate, policy.partial_search_outcome);
                 }
                 candidates.push(candidate);
             }
@@ -173,7 +173,7 @@ mod tests {
         "fixture",
         "Fixture",
         2,
-        "Fixture provider preserved candidates after partial title-variant search failure.",
+        ProviderOutcome::TmdbPartialTitleVariantSearchFailure,
     );
 
     #[derive(Clone, Debug)]
@@ -215,12 +215,8 @@ mod tests {
             },
             |result| result.id,
             |result| candidate(&query, result.id, result.title, "degraded"),
-            |candidate, note| {
-                candidate
-                    .facts
-                    .provider_note
-                    .get_or_insert_with(String::new)
-                    .push_str(note);
+            |candidate, outcome| {
+                candidate.facts.provider_outcomes.push(outcome);
             },
             |result| {
                 let query = &query;
@@ -246,18 +242,26 @@ mod tests {
         assert!(
             candidates[0]
                 .facts
-                .provider_note
-                .as_deref()
-                .is_some_and(|note| note.contains("degraded")
-                    && note.contains("partial title-variant search failure"))
+                .provider_outcomes
+                .contains(&ProviderOutcome::TmdbMovieDegraded)
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .provider_outcomes
+                .contains(&ProviderOutcome::TmdbPartialTitleVariantSearchFailure)
         );
         assert!(
             candidates[1]
                 .facts
-                .provider_note
-                .as_deref()
-                .is_some_and(|note| note.contains("enriched")
-                    && note.contains("partial title-variant search failure"))
+                .provider_outcomes
+                .contains(&ProviderOutcome::TmdbMovieEnriched)
+        );
+        assert!(
+            candidates[1]
+                .facts
+                .provider_outcomes
+                .contains(&ProviderOutcome::TmdbPartialTitleVariantSearchFailure)
         );
     }
 
@@ -315,6 +319,11 @@ mod tests {
                     provider: "fixture".to_owned(),
                     value: id.to_string(),
                 }],
+                provider_outcomes: match note {
+                    "degraded" => vec![ProviderOutcome::TmdbMovieDegraded],
+                    "enriched" => vec![ProviderOutcome::TmdbMovieEnriched],
+                    _ => Vec::new(),
+                },
                 provider_note: Some(note.to_owned()),
             },
             artwork_candidates: Vec::new(),

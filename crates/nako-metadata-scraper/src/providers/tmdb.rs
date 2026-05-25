@@ -2379,7 +2379,11 @@ mod tests {
             candidates[0].patch.overview.as_deref(),
             Some("Detail result.")
         );
-        let provider_note = candidates[0].facts.provider_note.as_deref().unwrap();
+        let provider_note = crate::engine::render_provider_note(
+            &candidates[0].facts.provider_outcomes,
+            candidates[0].facts.provider_note.as_deref(),
+        )
+        .unwrap();
         assert!(provider_note.contains("partial title-variant search failure"));
         assert!(!provider_note.contains("503"));
         assert!(!provider_note.contains("temporarily unavailable"));
@@ -2560,13 +2564,11 @@ mod tests {
                 .iter()
                 .any(|id| id.provider == "tmdb" && id.value == "10")
         );
-        assert!(
-            candidates[0]
-                .facts
-                .provider_note
-                .as_deref()
-                .is_some_and(|note| note.contains("degraded"))
+        let provider_note = crate::engine::render_provider_note(
+            &candidates[0].facts.provider_outcomes,
+            candidates[0].facts.provider_note.as_deref(),
         );
+        assert!(provider_note.is_some_and(|note| note.contains("degraded")));
         assert!(
             candidates[0]
                 .artwork_candidates
@@ -2682,13 +2684,11 @@ mod tests {
                 .iter()
                 .any(|title| title == "Detail Alias")
         );
-        assert!(
-            candidates[0]
-                .facts
-                .provider_note
-                .as_deref()
-                .is_some_and(|note| note.contains("partial"))
+        let provider_note = crate::engine::render_provider_note(
+            &candidates[0].facts.provider_outcomes,
+            candidates[0].facts.provider_note.as_deref(),
         );
+        assert!(provider_note.is_some_and(|note| note.contains("partial")));
         assert!(
             candidates[0]
                 .artwork_candidates

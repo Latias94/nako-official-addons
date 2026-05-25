@@ -1,6 +1,7 @@
 pub mod artwork;
 pub mod bulk;
 mod orchestration;
+mod outcome;
 mod query;
 pub mod ranking;
 mod response;
@@ -14,6 +15,7 @@ pub use artwork::{
     ArtworkCandidate, ArtworkWritebackResult, ArtworkWritebackStatus, ProviderArtworkCandidate,
     ProviderArtworkCandidateFacts,
 };
+pub use outcome::{ProviderOutcome, render_provider_note};
 pub use query::{MetadataQuery, QueryExternalId};
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
@@ -82,6 +84,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: Some("test candidate".to_owned()),
                 },
                 artwork_candidates: vec![ProviderArtworkCandidate {
@@ -148,6 +151,7 @@ mod tests {
                         community_score_milli: None,
                         community_vote_count: None,
                         external_ids: Vec::new(),
+                        provider_outcomes: Vec::new(),
                         provider_note: None,
                     },
                     artwork_candidates: Vec::new(),

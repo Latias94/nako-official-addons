@@ -4,7 +4,7 @@ use nako_addon_protocol::AddonMetadataPatch;
 use crate::{
     Config,
     config::{ProviderConfig, ProviderId},
-    engine::{MetadataQuery, ProviderCandidateFacts, ProviderMetadataCandidate},
+    engine::{MetadataQuery, ProviderCandidateFacts, ProviderMetadataCandidate, ProviderOutcome},
     providers::{MetadataProvider, ProviderBuildStatus, ProviderCatalogEntry, ProviderConfigInput},
 };
 
@@ -83,9 +83,8 @@ impl MetadataProvider for FixtureProvider {
                 community_score_milli: None,
                 community_vote_count: None,
                 external_ids: Vec::new(),
-                provider_note: Some(
-                    "Fixture provider echoes normalized title for smoke testing.".to_owned(),
-                ),
+                provider_outcomes: vec![ProviderOutcome::FixtureStaticCandidate],
+                provider_note: None,
             },
             artwork_candidates: Vec::new(),
         }])

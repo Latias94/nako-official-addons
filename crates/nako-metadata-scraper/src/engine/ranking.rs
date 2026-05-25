@@ -4,6 +4,7 @@ use serde::Serialize;
 use super::{
     MetadataQuery, QueryExternalId,
     artwork::{ArtworkCandidate, ProviderArtworkCandidate},
+    outcome::{ProviderOutcome, render_provider_note},
     title::normalize_title,
 };
 
@@ -25,6 +26,7 @@ pub struct ProviderCandidateFacts {
     pub community_score_milli: Option<u16>,
     pub community_vote_count: Option<u32>,
     pub external_ids: Vec<ProviderExternalId>,
+    pub provider_outcomes: Vec<ProviderOutcome>,
     pub provider_note: Option<String>,
 }
 
@@ -138,6 +140,11 @@ pub fn rank_candidate(
     push_reason(&mut reasons, community_score_reason(community_score));
     score += community_score;
 
+    let provider_note = render_provider_note(
+        &candidate.facts.provider_outcomes,
+        candidate.facts.provider_note.as_deref(),
+    );
+
     MetadataCandidate {
         provider: candidate.provider,
         provider_id: candidate.provider_id,
@@ -159,7 +166,7 @@ pub fn rank_candidate(
             language_match,
             external_id_match,
             score_reasons: reasons,
-            provider_note: candidate.facts.provider_note,
+            provider_note,
         },
     }
 }
@@ -467,6 +474,7 @@ mod tests {
                         provider: "tmdb".to_owned(),
                         value: "603".to_owned(),
                     }],
+                    provider_outcomes: Vec::new(),
                     provider_note: Some("synthetic test candidate".to_owned()),
                 },
                 artwork_candidates: Vec::new(),
@@ -512,6 +520,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -547,6 +556,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -581,6 +591,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -617,6 +628,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -659,6 +671,7 @@ mod tests {
                         provider: "imdb".to_owned(),
                         value: "tt0133093".to_owned(),
                     }],
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -701,6 +714,7 @@ mod tests {
                         provider: "imdb".to_owned(),
                         value: "tt0234215".to_owned(),
                     }],
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -740,6 +754,7 @@ mod tests {
                         provider: "tmdb".to_owned(),
                         value: "1".to_owned(),
                     }],
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -789,6 +804,7 @@ mod tests {
                         provider: "tmdb".to_owned(),
                         value: "secret-external-id".to_owned(),
                     }],
+                    provider_outcomes: Vec::new(),
                     provider_note: Some("safe note".to_owned()),
                 },
                 artwork_candidates: Vec::new(),
@@ -826,6 +842,7 @@ mod tests {
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
@@ -846,6 +863,7 @@ mod tests {
                     community_score_milli: Some(880),
                     community_vote_count: Some(12_000),
                     external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),

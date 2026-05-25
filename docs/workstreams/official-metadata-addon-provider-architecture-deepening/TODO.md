@@ -36,12 +36,12 @@ Last updated: 2026-05-25
   Evidence: `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
   Handoff: DONE. `providers/search_policy.rs` now owns direct lookup, title-variant search, dedupe, ranking-budget selection, partial-search preservation, and degraded fallback orchestration; TMDB/Bangumi keep raw parsing, endpoint calls, ID extraction, and mapping provider-local.
 
-- [ ] OMAPAD-050 [owner=codex] [deps=OMAPAD-040] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers]
+- [x] OMAPAD-050 [owner=codex] [deps=OMAPAD-040] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers]
   Goal: Replace provider-local diagnostic prose with typed provider outcome facts rendered through one redaction-safe Module.
   Validation: cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast
   Review: Confirm public payload compatibility or document any intentional schema change.
-  Evidence: crates/nako-metadata-scraper/src/engine/ranking.rs
-  Handoff: Final status must be DONE, DONE_WITH_CONCERNS, BLOCKED, or NEEDS_CONTEXT.
+  Evidence: `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. `engine/outcome.rs` now owns redaction-safe provider note rendering from typed `ProviderOutcome` facts; providers emit outcomes instead of provider-local diagnostic prose, with legacy `provider_note` preserved only as a compatibility fallback.
 
 ## M3 - Rendered Page Support Seam
 

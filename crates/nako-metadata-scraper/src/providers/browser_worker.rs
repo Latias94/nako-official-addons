@@ -7,6 +7,7 @@ use crate::{
     config::{BrowserWorkerProviderConfig, ProviderConfig, ProviderId},
     engine::{
         MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
+        ProviderOutcome,
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -225,9 +226,8 @@ impl BrowserWorkerExtractResponse {
                     provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
                     value: rendered_url,
                 }],
-                provider_note: Some(
-                    "Browser worker rendered a page and returned normalized text.".to_owned(),
-                ),
+                provider_outcomes: vec![ProviderOutcome::BrowserWorkerRenderedText],
+                provider_note: None,
             },
             artwork_candidates: Vec::new(),
         }
