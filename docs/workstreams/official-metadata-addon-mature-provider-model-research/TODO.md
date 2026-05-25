@@ -32,12 +32,12 @@ Last updated: 2026-05-25
 
 ## M3 - Local Architecture Comparison
 
-- [ ] OMAPMR-040 [owner=codex] [deps=OMAPMR-020,OMAPMR-030] [scope=crates/nako-metadata-scraper,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md,docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md]
+- [x] OMAPMR-040 [owner=codex] [deps=OMAPMR-020,OMAPMR-030] [scope=crates/nako-metadata-scraper,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md,docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md]
   Goal: Compare mature-system patterns against current `nako-metadata-scraper` and rank refactor candidates.
   Validation: `REFACTOR_CANDIDATES.md` contains ranked recommendations with risks, affected modules, and suggested gates.
   Review: Confirm candidates increase locality and leverage without smuggling host responsibilities into the sidecar.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: local source anchor `rg` commands against `crates/nako-metadata-scraper/src`; `REFACTOR_CANDIDATES.md` review for ranked recommendations, risks, affected modules, and suggested gates.
+  Handoff: DONE. Local comparison recorded; start OMAPMR-050 to close this research lane or split a resolver implementation workstream.
 
 ## M4 - Close Or Split
 

@@ -34,6 +34,11 @@
       "date": "2026-05-25",
       "task": "OMAPMR-010",
       "summary": "Research lane opened, repo-ref ignored, and selected mature metadata reference repositories cloned for read-only study."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPMR-040",
+      "summary": "Current nako-metadata-scraper architecture compared against mature provider findings; resolver-first refactor candidates ranked."
     }
   ],
   "reference_repos": [
@@ -45,7 +50,7 @@
   ],
   "continue_policy": {
     "default_action": "continue",
-    "next_task": "OMAPMR-020",
-    "notes": "Study Jellyfin core provider model first, then compare plugin and scraper patterns before proposing local refactor candidates."
+    "next_task": "OMAPMR-050",
+    "notes": "Close the research lane or split a concrete implementation workstream for the sidecar resolver and external ID capability catalog."
   }
 }

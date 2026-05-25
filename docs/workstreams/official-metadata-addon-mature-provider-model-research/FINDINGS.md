@@ -319,3 +319,162 @@ Nako implication:
   distinguish network config from result-shaping policy.
 - Result-shaping policy probably belongs in Nako request/library context rather
   than static sidecar environment variables.
+
+## OMAPMR-040 - Local Architecture Comparison
+
+### Finding 12 - The local sidecar already has provider-local integration seams
+
+`nako-metadata-scraper` is not a single monolithic scraper anymore. It has a
+catalog-backed registry, typed provider config, provider-local clients,
+provider-local parsers/mappers, a shared HTTP runtime, a rendered-page runtime,
+and redaction-safe diagnostics.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/providers/mod.rs:34`
+- `crates/nako-metadata-scraper/src/providers/registry.rs:12`
+- `crates/nako-metadata-scraper/src/providers/registry.rs:108`
+- `crates/nako-metadata-scraper/src/providers/registry.rs:176`
+- `crates/nako-metadata-scraper/src/config.rs:72`
+- `crates/nako-metadata-scraper/src/providers/http_runtime.rs:15`
+- `crates/nako-metadata-scraper/src/providers/rendered_page.rs:25`
+- `crates/nako-metadata-scraper/src/routes.rs:37`
+
+Nako implication:
+
+- The next refactor should not restart around another generic provider trait.
+  The current provider registry and provider-local module split are useful.
+- The stronger opportunity is the missing middle between provider outputs and
+  final suggestions: a resolver that owns cross-provider deduplication,
+  provider-fact merging, and ranked proposal assembly.
+
+### Finding 13 - Current orchestration ranks isolated candidates
+
+The sidecar currently asks each enabled provider for suggestions, immediately
+ranks every provider candidate, sorts all ranked candidates together, and then
+deduplicates only exact `(provider, provider_id)` pairs.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/engine/orchestration.rs:7`
+- `crates/nako-metadata-scraper/src/engine/orchestration.rs:35`
+- `crates/nako-metadata-scraper/src/engine/ranking.rs:21`
+- `crates/nako-metadata-scraper/src/engine/ranking.rs:104`
+
+Nako implication:
+
+- This is correct for a simple suggestion sidecar, but it cannot merge a TMDB
+  movie and another provider result that share an IMDB ID.
+- Mature systems deduplicate by shared provider IDs before final ranking. Nako
+  should introduce a resolver that clusters provider facts by external IDs,
+  keeps provenance, then ranks clusters instead of isolated provider rows.
+
+### Finding 14 - External ID support is input parsing, not a capability model
+
+Provider catalog entries expose top-level external ID aliases, and query parsing
+uses those aliases to normalize payload fields into `QueryExternalId` values.
+Provider-specific direct lookups are implemented inside provider search modules.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/providers/registry.rs:90`
+- `crates/nako-metadata-scraper/src/providers/registry.rs:182`
+- `crates/nako-metadata-scraper/src/engine/query.rs:51`
+- `crates/nako-metadata-scraper/src/engine/query.rs:198`
+- `crates/nako-metadata-scraper/src/providers/tmdb/search.rs:5`
+- `crates/nako-metadata-scraper/src/providers/bangumi/search.rs:9`
+
+Nako implication:
+
+- Aliases were the right first move, but mature lookup needs descriptors for
+  what each provider can consume, translate, and emit.
+- This capability model should feed both provider direct lookup and resolver
+  deduplication, while leaving final library/provider policy to Nako core.
+
+### Finding 15 - Artwork is modeled as metadata-candidate decoration
+
+Providers return artwork inside `ProviderMetadataCandidate`, and the engine
+maps those into `ArtworkCandidate` values using the metadata candidate's final
+confidence. Artwork writeback then selects by artwork kind, metadata
+confidence, image area, and stable provider tie-breakers.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/engine/artwork.rs:14`
+- `crates/nako-metadata-scraper/src/engine/artwork.rs:104`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:162`
+- `crates/nako-metadata-scraper/src/providers/tmdb/mapper.rs:309`
+- `crates/nako-metadata-scraper/src/providers/bangumi/mapper.rs:330`
+- `crates/nako-metadata-scraper/src/providers/douban/mapper.rs:21`
+
+Nako implication:
+
+- This is a pragmatic first model and works for poster/backdrop proposals.
+- It will become too coarse when local artwork, per-kind image priority,
+  language preference, and multi-image limits matter. Split artwork discovery
+  internally before exposing more protocol surface.
+
+### Finding 16 - Shared HTTP runtime lacks provider-specific operational policy
+
+`ProviderHttpRuntime` centralizes timeout, retry attempts, response size limits,
+backoff, proxy use, redacted error handling, and bounded response reads. Provider
+clients pass their static config into this runtime.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/providers/http_runtime.rs:15`
+- `crates/nako-metadata-scraper/src/providers/http_runtime.rs:117`
+- `crates/nako-metadata-scraper/src/providers/tmdb/client.rs:20`
+- `crates/nako-metadata-scraper/src/providers/bangumi/client.rs:13`
+- `crates/nako-metadata-scraper/src/providers/douban/client.rs:14`
+
+Nako implication:
+
+- The shared runtime is valuable, but Jellyfin plugin references show that
+  mature providers need cache keys, TTLs, token refresh locks, upstream-specific
+  rate limits, and `Retry-After` handling.
+- These policies should remain provider-local inputs to the shared runtime, not
+  become one global hard-coded metadata-scraper policy.
+
+### Finding 17 - Writeback is authority-gated but not field-policy-aware
+
+The sidecar only submits side effects when explicit writeback payloads are
+present, Nako runtime is configured, and Nako access checks allow metadata or
+artwork writes. The payload sent to Nako is still the selected candidate patch;
+there is no local locked-field, local-metadata, or per-field merge policy.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/engine/runtime.rs:57`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:59`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:97`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:132`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:209`
+- `crates/nako-metadata-scraper/src/engine/writeback.rs:238`
+
+Nako implication:
+
+- This boundary is mostly correct: Nako core should remain authoritative for
+  locked fields, local metadata, and final merge semantics.
+- A future protocol/request policy can tell the sidecar which fields are useful
+  to propose, but the sidecar should not independently become the host merge
+  engine.
+
+### Finding 18 - Bulk scraping is a batch planner, not a refresh engine
+
+The bulk task accepts a bounded item list, cursor, and batch size, then calls the
+same resource scrape path for each item. Library scanned events are accepted and
+redacted, but they do not implement a provider refresh state machine.
+
+Source anchors:
+
+- `crates/nako-metadata-scraper/src/engine/bulk.rs:101`
+- `crates/nako-metadata-scraper/src/routes.rs:113`
+- `crates/nako-metadata-scraper/src/routes.rs:126`
+
+Nako implication:
+
+- This should stay lightweight in the sidecar.
+- Mature refresh modes, local-first scans, replace-all behaviour, retries, and
+  scheduling belong in Nako core. The sidecar should accept refresh context and
+  produce deterministic suggestions for that context.

@@ -16,16 +16,18 @@ Reference repositories were cloned under ignored `repo-ref/` paths:
 - `repo-ref/jellyfin-plugin-anilist`
 - `repo-ref/kodi-metadata-themoviedb-python`
 
-OMAPMR-010 is complete. `repo-ref/` is ignored and external source is not part
-of the commit surface.
+OMAPMR-010 through OMAPMR-040 are complete. `repo-ref/` is ignored and external
+source is not part of the commit surface.
 
 ## Next Task
 
-Start OMAPMR-040:
+Start OMAPMR-050:
 
-- compare recorded findings against current `nako-metadata-scraper` modules;
-- write `REFACTOR_CANDIDATES.md` with ranked recommendations;
-- keep production code unchanged in this research lane.
+- close the research lane, or split a concrete implementation workstream;
+- recommended split: sidecar-local provider fact resolver plus external ID
+  capability catalog;
+- keep production code unchanged in this research lane unless explicitly
+  justified.
 
 ## Risks
 
@@ -41,3 +43,4 @@ Start OMAPMR-040:
 OMAPMR-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`, reference repo `rev-parse --short HEAD` checks, and `git diff --check`.
 OMAPMR-020 passed by recording Jellyfin core provider model source anchors in `FINDINGS.md`.
 OMAPMR-030 passed by recording Jellyfin plugin and Kodi scraper source anchors in `FINDINGS.md`.
+OMAPMR-040 passed by recording current `nako-metadata-scraper` source anchors in `FINDINGS.md` and ranked recommendations in `REFACTOR_CANDIDATES.md`.
