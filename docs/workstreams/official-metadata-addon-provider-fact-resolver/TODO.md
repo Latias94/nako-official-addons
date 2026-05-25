@@ -14,12 +14,12 @@ Last updated: 2026-05-25
 
 ## M1 - Resolver Model
 
-- [ ] OMAPFR-020 [owner=codex] [deps=OMAPFR-010] [scope=crates/nako-metadata-scraper/src/engine]
+- [x] OMAPFR-020 [owner=codex] [deps=OMAPFR-010] [scope=crates/nako-metadata-scraper/src/engine]
   Goal: Add an internal resolver model that adapts current `ProviderMetadataCandidate` values into provenance-preserving facts and candidate clusters without changing provider outputs.
   Validation: `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`.
   Review: Confirm the model is local, minimal, redaction-safe, and does not copy mature-project implementation structure.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`.
+  Handoff: DONE. Resolver model exists and is intentionally not yet wired into orchestration; start OMAPFR-030.
 
 ## M2 - Resolver-Backed Orchestration
 

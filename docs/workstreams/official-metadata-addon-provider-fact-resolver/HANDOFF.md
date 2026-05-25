@@ -11,11 +11,11 @@ capability catalog.
 
 ## Next Task
 
-Start OMAPFR-020:
+Start OMAPFR-030:
 
-- add the internal resolver model under `crates/nako-metadata-scraper/src/engine`;
-- adapt existing `ProviderMetadataCandidate` values into resolver facts;
-- keep provider outputs and public response shape unchanged.
+- route `suggest_candidates` through resolver clustering;
+- preserve `/metadata` response shape and deterministic ordering;
+- remove the temporary resolver `dead_code` allow once orchestration consumes it.
 
 ## License Guardrails
 
@@ -34,3 +34,4 @@ Start OMAPFR-020:
 ## Validation Memory
 
 OMAPFR-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`, `cargo fmt --all -- --check`, `git diff --check`, and ignored `repo-ref/` status confirmation.
+OMAPFR-020 passed with `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.

@@ -34,6 +34,11 @@
       "date": "2026-05-25",
       "task": "OMAPFR-010",
       "summary": "Provider fact resolver implementation lane opened with license guardrails."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-020",
+      "summary": "Internal resolver model added for provider facts, exact provider identity clustering, shared external ID clustering, and redaction-safe cluster evidence."
     }
   ],
   "research_refs": [
@@ -42,7 +47,7 @@
   ],
   "continue_policy": {
     "default_action": "continue",
-    "next_task": "OMAPFR-020",
-    "notes": "Implement the internal resolver model while preserving provider outputs and public response compatibility."
+    "next_task": "OMAPFR-030",
+    "notes": "Route orchestration through resolver clustering while preserving public response compatibility."
   }
 }

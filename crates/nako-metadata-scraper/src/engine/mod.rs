@@ -4,6 +4,7 @@ mod orchestration;
 mod outcome;
 mod query;
 pub mod ranking;
+pub(crate) mod resolver;
 mod response;
 mod runtime;
 pub mod title;
