@@ -12,7 +12,9 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 use crate::{
     Config,
     config::{ProviderConfig, ProviderId, non_empty_trimmed, parse_bool},
-    engine::{MetadataQuery, ProviderMetadataCandidate, QueryExternalIdAlias},
+    engine::{
+        ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderMetadataCandidate,
+    },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
@@ -35,8 +37,15 @@ use search::{bangumi_air_date_filter, bangumi_query_subject_ids};
 use test_support::FakeTransport;
 
 pub const BANGUMI_PROVIDER_ID: &str = "bangumi";
-const BANGUMI_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] =
-    &[QueryExternalIdAlias::new("bangumi_id", "bangumi", true)];
+const BANGUMI_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] =
+    &[ProviderExternalIdCapability::new(
+        "bangumi",
+        ExternalIdValueKind::Numeric,
+        true,
+        true,
+        &["bangumi_id"],
+        true,
+    )];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BangumiProviderConfig {
@@ -113,7 +122,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             ),
             false,
         )),
-        external_id_aliases: BANGUMI_EXTERNAL_ID_ALIASES,
+        external_id_capabilities: BANGUMI_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: bangumi_proxy_configured,
         network_policy_key: Some("bangumi_proxy_configured"),

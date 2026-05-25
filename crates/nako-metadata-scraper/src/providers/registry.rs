@@ -5,7 +5,7 @@ use serde::Serialize;
 use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::config::{ProviderConfig, ProviderId};
-use crate::engine::QueryExternalIdAlias;
+use crate::engine::{ProviderExternalIdCapability, QueryExternalIdAlias};
 use crate::{Config, providers::MetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -90,7 +90,28 @@ impl ProviderRegistry {
     pub fn external_id_aliases(&self) -> Vec<QueryExternalIdAlias> {
         self.catalog
             .iter()
-            .flat_map(|entry| entry.external_id_aliases.iter().copied())
+            .flat_map(|entry| {
+                entry
+                    .external_id_capabilities
+                    .iter()
+                    .flat_map(|capability| {
+                        capability.top_level_fields.iter().map(|top_level_field| {
+                            QueryExternalIdAlias::new(
+                                *top_level_field,
+                                capability.provider,
+                                capability.reject_non_positive_numeric,
+                            )
+                        })
+                    })
+            })
+            .collect()
+    }
+
+    #[must_use]
+    pub fn external_id_capabilities(&self) -> Vec<ProviderExternalIdCapability> {
+        self.catalog
+            .iter()
+            .flat_map(|entry| entry.external_id_capabilities.iter().copied())
             .collect()
     }
 
@@ -179,7 +200,7 @@ pub struct ProviderCatalogEntry {
     pub(crate) enabled_env_var: &'static str,
     pub(crate) capabilities: &'static [&'static str],
     pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
-    pub(crate) external_id_aliases: &'static [QueryExternalIdAlias],
+    pub(crate) external_id_capabilities: &'static [ProviderExternalIdCapability],
     pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
     pub(crate) proxy_configured: fn(&ProviderConfig) -> bool,
     pub(crate) network_policy_key: Option<&'static str>,
@@ -202,6 +223,7 @@ mod tests {
     use crate::config::{
         BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig, TmdbProviderConfig,
     };
+    use crate::engine::ExternalIdValueKind;
 
     #[test]
     fn registry_builds_enabled_available_providers() {
@@ -289,6 +311,61 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+    }
+
+    #[test]
+    fn registry_exposes_provider_external_id_capabilities() {
+        let registry = ProviderRegistry::from_config(Config::default());
+
+        let capabilities = registry.external_id_capabilities();
+
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "tmdb"
+                && capability.value_kind == ExternalIdValueKind::Numeric
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"tmdb_id")
+                && capability.reject_non_positive_numeric
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "imdb"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"imdb_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "browser_worker"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"browser_worker_url")
+                && !capability.reject_non_positive_numeric
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "douban"
+                && capability.value_kind == ExternalIdValueKind::Numeric
+                && !capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.is_empty()
+        }));
+    }
+
+    #[test]
+    fn registry_derives_legacy_external_id_aliases_from_capabilities() {
+        let registry = ProviderRegistry::from_config(Config::default());
+
+        let aliases = registry.external_id_aliases();
+
+        assert!(aliases.contains(&QueryExternalIdAlias::new("tmdb_id", "tmdb", true)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("imdb_id", "imdb", true)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("bangumi_id", "bangumi", true)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "browser_worker_url",
+            "browser_worker",
+            false
+        )));
+        assert!(!aliases.iter().any(|alias| alias.provider == "douban"));
     }
 
     #[test]

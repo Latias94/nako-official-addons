@@ -5,8 +5,8 @@ use crate::{
     Config,
     config::{ProviderConfig, ProviderId},
     engine::{
-        MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
-        ProviderOutcome, QueryExternalIdAlias,
+        ExternalIdValueKind, MetadataQuery, ProviderCandidateFacts, ProviderExternalId,
+        ProviderExternalIdCapability, ProviderMetadataCandidate, ProviderOutcome,
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -21,11 +21,15 @@ use crate::{
 
 pub const BROWSER_WORKER_PROVIDER_ID: &str = "browser_worker";
 const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction";
-const BROWSER_WORKER_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[QueryExternalIdAlias::new(
-    "browser_worker_url",
-    BROWSER_WORKER_PROVIDER_ID,
-    false,
-)];
+const BROWSER_WORKER_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] =
+    &[ProviderExternalIdCapability::new(
+        BROWSER_WORKER_PROVIDER_ID,
+        ExternalIdValueKind::Url,
+        true,
+        true,
+        &["browser_worker_url"],
+        false,
+    )];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BrowserWorkerProviderConfig {
@@ -71,7 +75,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             BROWSER_WORKER_RENDERED_PAGE_CAPABILITY,
         ],
         secret_reference: None,
-        external_id_aliases: BROWSER_WORKER_EXTERNAL_ID_ALIASES,
+        external_id_capabilities: BROWSER_WORKER_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,

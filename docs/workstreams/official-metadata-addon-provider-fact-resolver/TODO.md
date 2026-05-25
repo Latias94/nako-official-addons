@@ -32,12 +32,12 @@ Last updated: 2026-05-25
 
 ## M3 - External ID Capability Catalog
 
-- [ ] OMAPFR-040 [owner=codex] [deps=OMAPFR-030] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/engine/query.rs]
+- [x] OMAPFR-040 [owner=codex] [deps=OMAPFR-030] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/resolver.rs,crates/nako-metadata-scraper/src/engine/orchestration.rs,crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/routes.rs]
   Goal: Replace alias-only external ID descriptors with executable provider external ID capabilities while preserving current top-level alias parsing and numeric validation behaviour.
   Validation: `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker resolver --no-fail-fast`.
   Review: Confirm descriptors are used by behaviour, not just documentation, and provider quirks stay provider-local.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker resolver --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`.
+  Handoff: DONE. Provider catalog now owns external ID capabilities, runtime query parsing uses capabilities, legacy aliases are derived for compatibility, and resolver clustering respects emitted external ID capabilities when catalog data is available; start OMAPFR-050 integration and docs.
 
 ## M4 - Integration And Docs
 

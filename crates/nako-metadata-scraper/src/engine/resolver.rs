@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use super::{
-    MetadataCandidate, MetadataQuery, ProviderExternalId, ProviderMetadataCandidate, ranking,
+    MetadataCandidate, MetadataQuery, ProviderExternalId, ProviderExternalIdCapability,
+    ProviderMetadataCandidate, ranking,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -14,9 +15,13 @@ pub(crate) struct ResolvedProviderFact {
 }
 
 impl ResolvedProviderFact {
-    fn from_candidate(candidate: ProviderMetadataCandidate) -> Self {
+    fn from_candidate(
+        candidate: ProviderMetadataCandidate,
+        external_id_capabilities: &[ProviderExternalIdCapability],
+    ) -> Self {
         let source = ProviderFactSource::from_candidate(&candidate);
-        let external_ids = resolved_external_ids(&candidate.facts.external_ids);
+        let external_ids =
+            resolved_external_ids(&candidate.facts.external_ids, external_id_capabilities);
 
         Self {
             source,
@@ -185,11 +190,12 @@ pub(crate) struct ResolverMergeReason {
 #[must_use]
 pub(crate) fn resolve_provider_candidates(
     candidates: Vec<ProviderMetadataCandidate>,
+    external_id_capabilities: &[ProviderExternalIdCapability],
 ) -> Vec<ResolvedCandidateCluster> {
     let mut clusters = Vec::<ResolvedCandidateCluster>::new();
 
     for candidate in candidates {
-        let fact = ResolvedProviderFact::from_candidate(candidate);
+        let fact = ResolvedProviderFact::from_candidate(candidate, external_id_capabilities);
         let matching_cluster_indexes = clusters
             .iter()
             .enumerate()
@@ -211,13 +217,29 @@ pub(crate) fn resolve_provider_candidates(
     clusters
 }
 
-fn resolved_external_ids(external_ids: &[ProviderExternalId]) -> Vec<ResolvedExternalId> {
+fn resolved_external_ids(
+    external_ids: &[ProviderExternalId],
+    external_id_capabilities: &[ProviderExternalIdCapability],
+) -> Vec<ResolvedExternalId> {
     external_ids
         .iter()
+        .filter(|external_id| {
+            emitted_external_id_supported(&external_id.provider, external_id_capabilities)
+        })
         .filter_map(ResolvedExternalId::from_external_id)
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
+}
+
+fn emitted_external_id_supported(
+    provider: &str,
+    external_id_capabilities: &[ProviderExternalIdCapability],
+) -> bool {
+    external_id_capabilities.is_empty()
+        || external_id_capabilities.iter().any(|capability| {
+            capability.emits && provider.eq_ignore_ascii_case(capability.provider)
+        })
 }
 
 fn normalize_provider(value: &str) -> String {
@@ -233,25 +255,29 @@ mod tests {
     use nako_addon_protocol::AddonMetadataPatch;
 
     use crate::engine::{
-        ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
+        ExternalIdValueKind, ProviderCandidateFacts, ProviderExternalId,
+        ProviderExternalIdCapability, ProviderMetadataCandidate,
         resolver::resolve_provider_candidates,
     };
 
     #[test]
     fn resolver_clusters_candidates_that_share_external_ids() {
-        let clusters = resolve_provider_candidates(vec![
-            candidate(
-                "tmdb",
-                "tmdb:movie:603",
-                &[("tmdb", "603"), ("imdb", "tt0133093")],
-            ),
-            candidate(
-                "douban",
-                "douban:subject:1291843",
-                &[("imdb", "TT0133093"), ("douban", "1291843")],
-            ),
-            candidate("bangumi", "bangumi:subject:265", &[("bangumi", "265")]),
-        ]);
+        let clusters = resolve_provider_candidates(
+            vec![
+                candidate(
+                    "tmdb",
+                    "tmdb:movie:603",
+                    &[("tmdb", "603"), ("imdb", "tt0133093")],
+                ),
+                candidate(
+                    "douban",
+                    "douban:subject:1291843",
+                    &[("imdb", "TT0133093"), ("douban", "1291843")],
+                ),
+                candidate("bangumi", "bangumi:subject:265", &[("bangumi", "265")]),
+            ],
+            &[],
+        );
 
         assert_eq!(clusters.len(), 2);
         assert_eq!(clusters[0].sources().len(), 2);
@@ -266,10 +292,13 @@ mod tests {
 
     #[test]
     fn resolver_deduplicates_exact_provider_identity() {
-        let clusters = resolve_provider_candidates(vec![
-            candidate("tmdb", "tmdb:movie:603", &[("tmdb", "603")]),
-            candidate("tmdb", "tmdb:movie:603", &[("tmdb", "603")]),
-        ]);
+        let clusters = resolve_provider_candidates(
+            vec![
+                candidate("tmdb", "tmdb:movie:603", &[("tmdb", "603")]),
+                candidate("tmdb", "tmdb:movie:603", &[("tmdb", "603")]),
+            ],
+            &[],
+        );
 
         assert_eq!(clusters.len(), 1);
         assert_eq!(clusters[0].facts().len(), 2);
@@ -278,10 +307,13 @@ mod tests {
 
     #[test]
     fn resolver_evidence_does_not_serialize_raw_external_id_values() {
-        let clusters = resolve_provider_candidates(vec![
-            candidate("tmdb", "tmdb:movie:603", &[("imdb", "tt0133093")]),
-            candidate("douban", "douban:subject:1291843", &[("imdb", "tt0133093")]),
-        ]);
+        let clusters = resolve_provider_candidates(
+            vec![
+                candidate("tmdb", "tmdb:movie:603", &[("imdb", "tt0133093")]),
+                candidate("douban", "douban:subject:1291843", &[("imdb", "tt0133093")]),
+            ],
+            &[],
+        );
 
         let evidence = clusters[0].evidence();
         let text = serde_json::to_string(&evidence).unwrap();
@@ -290,6 +322,36 @@ mod tests {
         assert!(text.contains("imdb"));
         assert!(!text.contains("tt0133093"));
         assert!(!text.contains("The Matrix"));
+    }
+
+    #[test]
+    fn resolver_uses_emitted_external_id_capabilities_when_catalog_is_provided() {
+        let clusters = resolve_provider_candidates(
+            vec![
+                candidate("tmdb", "tmdb:movie:unlisted", &[("unlisted", "shared")]),
+                candidate(
+                    "douban",
+                    "douban:subject:1291843",
+                    &[("unlisted", "shared")],
+                ),
+                candidate("bangumi", "bangumi:subject:265", &[("imdb", "tt0133093")]),
+                candidate("tmdb", "tmdb:movie:603", &[("imdb", "TT0133093")]),
+            ],
+            &[ProviderExternalIdCapability::new(
+                "imdb",
+                ExternalIdValueKind::Opaque,
+                true,
+                true,
+                &["imdb_id"],
+                true,
+            )],
+        );
+
+        assert_eq!(clusters.len(), 3);
+        assert_eq!(clusters[0].facts().len(), 1);
+        assert_eq!(clusters[1].facts().len(), 1);
+        assert_eq!(clusters[2].facts().len(), 2);
+        assert_eq!(clusters[2].shared_external_id_providers(), vec!["imdb"]);
     }
 
     fn candidate(

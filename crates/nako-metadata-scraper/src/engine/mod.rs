@@ -17,7 +17,10 @@ pub use artwork::{
     ProviderArtworkCandidateFacts,
 };
 pub use outcome::{ProviderOutcome, render_provider_note};
-pub use query::{MetadataQuery, QueryExternalId, QueryExternalIdAlias};
+pub use query::{
+    ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, QueryExternalId,
+    QueryExternalIdAlias,
+};
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
     ProviderMetadataCandidate,
@@ -52,6 +55,40 @@ mod tests {
         QueryExternalIdAlias::new("imdb_id", "imdb", true),
         QueryExternalIdAlias::new("bangumi_id", "bangumi", true),
         QueryExternalIdAlias::new("browser_worker_url", "browser_worker", false),
+    ];
+    const TEST_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
+        ProviderExternalIdCapability::new(
+            "tmdb",
+            ExternalIdValueKind::Numeric,
+            true,
+            true,
+            &["tmdb_id"],
+            true,
+        ),
+        ProviderExternalIdCapability::new(
+            "imdb",
+            ExternalIdValueKind::Opaque,
+            true,
+            true,
+            &["imdb_id"],
+            true,
+        ),
+        ProviderExternalIdCapability::new(
+            "bangumi",
+            ExternalIdValueKind::Numeric,
+            true,
+            true,
+            &["bangumi_id"],
+            true,
+        ),
+        ProviderExternalIdCapability::new(
+            "browser_worker",
+            ExternalIdValueKind::Url,
+            true,
+            true,
+            &["browser_worker_url"],
+            false,
+        ),
     ];
 
     struct CandidateProvider {
@@ -337,8 +374,9 @@ mod tests {
 
     #[tokio::test]
     async fn resolver_runtime_clusters_candidates_with_shared_external_ids() {
-        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
             "en-US",
+            TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
             vec![
                 Box::new(ExternalIdCandidateProvider {
                     candidate_provider: "douban",
@@ -871,6 +909,46 @@ mod tests {
                 provider: "browser_worker".to_owned(),
                 value: "https://example.test/page".to_owned(),
             }]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_external_id_capabilities() {
+        let query = MetadataQuery::from_payload_with_external_id_capabilities(
+            &serde_json::json!({
+                "title": "Movie",
+                "external_ids": {
+                    "tmdb": [0, "603"],
+                    "imdb": 0
+                },
+                "tmdb_id": 604,
+                "bangumi_id": "265",
+                "browser_worker_url": " https://example.test/page "
+            }),
+            "en-US",
+            TEST_EXTERNAL_ID_CAPABILITIES,
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "603".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "tmdb".to_owned(),
+                    value: "604".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "bangumi".to_owned(),
+                    value: "265".to_owned(),
+                },
+                QueryExternalId {
+                    provider: "browser_worker".to_owned(),
+                    value: "https://example.test/page".to_owned(),
+                }
+            ]
         );
     }
 

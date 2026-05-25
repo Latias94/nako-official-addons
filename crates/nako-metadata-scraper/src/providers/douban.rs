@@ -10,7 +10,9 @@ use async_trait::async_trait;
 use crate::{
     Config,
     config::{ProviderConfig, ProviderId},
-    engine::{MetadataQuery, ProviderMetadataCandidate},
+    engine::{
+        ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderMetadataCandidate,
+    },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
@@ -26,6 +28,15 @@ use test_support::FakeTransport;
 
 pub const DOUBAN_PROVIDER_ID: &str = "douban";
 const DOUBAN_DETAIL_ENRICHMENT_LIMIT: usize = 1;
+const DOUBAN_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] =
+    &[ProviderExternalIdCapability::new(
+        DOUBAN_PROVIDER_ID,
+        ExternalIdValueKind::Numeric,
+        false,
+        true,
+        &[],
+        true,
+    )];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DoubanProviderConfig {
@@ -84,7 +95,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         secret_reference: None,
-        external_id_aliases: &[],
+        external_id_capabilities: DOUBAN_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,

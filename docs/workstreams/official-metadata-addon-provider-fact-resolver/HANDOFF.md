@@ -9,14 +9,20 @@ This workstream implements the follow-on chosen by the mature provider model
 research lane: a sidecar-local provider fact resolver plus external ID
 capability catalog.
 
+OMAPFR-040 is complete. Provider catalog entries now own executable external ID
+capabilities, runtime query parsing uses those capabilities, legacy alias
+exposure is derived from the catalog for compatibility, and resolver clustering
+uses declared emitted external IDs when catalog data is available.
+
 ## Next Task
 
-Start OMAPFR-040:
+Start OMAPFR-050:
 
-- replace alias-only external ID descriptors with executable provider
-  external ID capabilities;
-- preserve existing top-level alias parsing and positive numeric validation;
-- keep provider quirks provider-local.
+- run the full `nako-metadata-scraper` package gate;
+- update user-facing docs only if resolver or external ID capability behaviour
+  needs explanation;
+- confirm no public protocol break, no reference-source copy, and no host policy
+  moved into the sidecar.
 
 ## License Guardrails
 
@@ -37,3 +43,4 @@ Start OMAPFR-040:
 OMAPFR-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`, `cargo fmt --all -- --check`, `git diff --check`, and ignored `repo-ref/` status confirmation.
 OMAPFR-020 passed with `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPFR-030 passed with `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
+OMAPFR-040 passed with `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.

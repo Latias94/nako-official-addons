@@ -44,6 +44,11 @@
       "date": "2026-05-25",
       "task": "OMAPFR-030",
       "summary": "Metadata orchestration now resolves provider candidates into clusters before final ranking while preserving response compatibility."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-040",
+      "summary": "Provider catalog now owns external ID capabilities for query parsing, legacy alias compatibility, and emitted-ID resolver clustering."
     }
   ],
   "research_refs": [
@@ -52,7 +57,7 @@
   ],
   "continue_policy": {
     "default_action": "continue",
-    "next_task": "OMAPFR-040",
-    "notes": "Implement external ID capability catalog while preserving current alias parsing and numeric validation behaviour."
+    "next_task": "OMAPFR-050",
+    "notes": "Run integration validation and update user-facing docs only if resolver or capability behaviour needs clarification."
   }
 }

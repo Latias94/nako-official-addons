@@ -12,7 +12,9 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 use crate::{
     Config,
     config::{ProviderConfig, ProviderId, non_empty_trimmed, parse_bool},
-    engine::{MetadataQuery, ProviderMetadataCandidate, QueryExternalIdAlias},
+    engine::{
+        ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderMetadataCandidate,
+    },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
@@ -36,9 +38,23 @@ use search::tmdb_query_movie_ids;
 use test_support::FakeTransport;
 
 pub const TMDB_PROVIDER_ID: &str = "tmdb";
-const TMDB_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
-    QueryExternalIdAlias::new("tmdb_id", "tmdb", true),
-    QueryExternalIdAlias::new("imdb_id", "imdb", true),
+const TMDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
+    ProviderExternalIdCapability::new(
+        "tmdb",
+        ExternalIdValueKind::Numeric,
+        true,
+        true,
+        &["tmdb_id"],
+        true,
+    ),
+    ProviderExternalIdCapability::new(
+        "imdb",
+        ExternalIdValueKind::Opaque,
+        true,
+        true,
+        &["imdb_id"],
+        true,
+    ),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -91,7 +107,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             ),
             true,
         )),
-        external_id_aliases: TMDB_EXTERNAL_ID_ALIASES,
+        external_id_capabilities: TMDB_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: tmdb_proxy_configured,
         network_policy_key: Some("tmdb_proxy_configured"),

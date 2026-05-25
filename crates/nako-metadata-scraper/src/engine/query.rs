@@ -41,6 +41,84 @@ impl QueryExternalIdAlias {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExternalIdValueKind {
+    Numeric,
+    Opaque,
+    Url,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProviderExternalIdCapability {
+    pub provider: &'static str,
+    pub value_kind: ExternalIdValueKind,
+    pub accepts_direct_lookup: bool,
+    pub emits: bool,
+    pub top_level_fields: &'static [&'static str],
+    pub reject_non_positive_numeric: bool,
+}
+
+impl ProviderExternalIdCapability {
+    #[must_use]
+    pub const fn new(
+        provider: &'static str,
+        value_kind: ExternalIdValueKind,
+        accepts_direct_lookup: bool,
+        emits: bool,
+        top_level_fields: &'static [&'static str],
+        reject_non_positive_numeric: bool,
+    ) -> Self {
+        Self {
+            provider,
+            value_kind,
+            accepts_direct_lookup,
+            emits,
+            top_level_fields,
+            reject_non_positive_numeric,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ExternalIdInputDescriptor<'a> {
+    provider: &'a str,
+    top_level_field: Option<&'a str>,
+    reject_non_positive_numeric: bool,
+}
+
+impl<'a> ExternalIdInputDescriptor<'a> {
+    fn from_alias(alias: &'a QueryExternalIdAlias) -> Self {
+        Self {
+            provider: alias.provider,
+            top_level_field: Some(alias.top_level_field),
+            reject_non_positive_numeric: alias.reject_non_positive_numeric,
+        }
+    }
+
+    fn from_capability(
+        capability: &'a ProviderExternalIdCapability,
+        top_level_field: Option<&'a str>,
+    ) -> Self {
+        Self {
+            provider: capability.provider,
+            top_level_field,
+            reject_non_positive_numeric: capability.reject_non_positive_numeric,
+        }
+    }
+
+    fn rejects_value_for(self, provider: &str, value: &str) -> bool {
+        self.provider.eq_ignore_ascii_case(provider) && self.rejects_value(value)
+    }
+
+    fn rejects_value(self, value: &str) -> bool {
+        if !self.reject_non_positive_numeric {
+            return false;
+        }
+
+        value.parse::<i128>().is_ok_and(|value| value <= 0)
+    }
+}
+
 impl MetadataQuery {
     #[must_use]
     pub fn from_payload(payload: &serde_json::Value, default_language: &str) -> Self {
@@ -56,7 +134,34 @@ impl MetadataQuery {
         let title = title_from_payload(payload);
         let year = year_from_payload(payload);
         let language = language_from_payload(payload, default_language);
-        let external_ids = external_ids_from_payload(payload, external_id_aliases);
+        let external_id_descriptors =
+            external_id_input_descriptors_from_aliases(external_id_aliases);
+        let external_ids = external_ids_from_payload(payload, &external_id_descriptors);
+
+        Self {
+            title: if title.is_empty() {
+                "Unknown Title".to_owned()
+            } else {
+                title
+            },
+            year,
+            language,
+            external_ids,
+        }
+    }
+
+    #[must_use]
+    pub fn from_payload_with_external_id_capabilities(
+        payload: &serde_json::Value,
+        default_language: &str,
+        external_id_capabilities: &[ProviderExternalIdCapability],
+    ) -> Self {
+        let title = title_from_payload(payload);
+        let year = year_from_payload(payload);
+        let language = language_from_payload(payload, default_language);
+        let external_id_descriptors =
+            external_id_input_descriptors_from_capabilities(external_id_capabilities);
+        let external_ids = external_ids_from_payload(payload, &external_id_descriptors);
 
         Self {
             title: if title.is_empty() {
@@ -156,18 +261,44 @@ fn first_non_empty_payload_str<'a>(
     })
 }
 
+fn external_id_input_descriptors_from_aliases(
+    aliases: &[QueryExternalIdAlias],
+) -> Vec<ExternalIdInputDescriptor<'_>> {
+    aliases
+        .iter()
+        .map(ExternalIdInputDescriptor::from_alias)
+        .collect()
+}
+
+fn external_id_input_descriptors_from_capabilities(
+    capabilities: &[ProviderExternalIdCapability],
+) -> Vec<ExternalIdInputDescriptor<'_>> {
+    let mut descriptors = Vec::new();
+    for capability in capabilities {
+        if capability.top_level_fields.is_empty() {
+            descriptors.push(ExternalIdInputDescriptor::from_capability(capability, None));
+            continue;
+        }
+
+        descriptors.extend(capability.top_level_fields.iter().map(|top_level_field| {
+            ExternalIdInputDescriptor::from_capability(capability, Some(*top_level_field))
+        }));
+    }
+    descriptors
+}
+
 fn external_ids_from_payload(
     payload: &serde_json::Value,
-    aliases: &[QueryExternalIdAlias],
+    descriptors: &[ExternalIdInputDescriptor<'_>],
 ) -> Vec<QueryExternalId> {
-    let mut external_ids = explicit_external_ids_from_payload(payload, aliases);
-    push_top_level_external_id_aliases(&mut external_ids, payload, aliases);
+    let mut external_ids = explicit_external_ids_from_payload(payload, descriptors);
+    push_top_level_external_ids(&mut external_ids, payload, descriptors);
     external_ids
 }
 
 fn explicit_external_ids_from_payload(
     payload: &serde_json::Value,
-    aliases: &[QueryExternalIdAlias],
+    descriptors: &[ExternalIdInputDescriptor<'_>],
 ) -> Vec<QueryExternalId> {
     if let Some(values) = payload
         .get("external_ids")
@@ -175,7 +306,7 @@ fn explicit_external_ids_from_payload(
     {
         let mut external_ids = Vec::new();
         for (provider, value) in values {
-            push_external_ids_from_object_value(&mut external_ids, provider, value, aliases);
+            push_external_ids_from_object_value(&mut external_ids, provider, value, descriptors);
         }
         return external_ids;
     }
@@ -189,22 +320,25 @@ fn explicit_external_ids_from_payload(
             query_external_id(
                 value.get("provider")?.as_str()?,
                 external_id_array_object_value(value)?,
-                aliases,
+                descriptors,
             )
         })
         .collect()
 }
 
-fn push_top_level_external_id_aliases(
+fn push_top_level_external_ids(
     external_ids: &mut Vec<QueryExternalId>,
     payload: &serde_json::Value,
-    aliases: &[QueryExternalIdAlias],
+    descriptors: &[ExternalIdInputDescriptor<'_>],
 ) {
-    for alias in aliases {
+    for descriptor in descriptors {
+        let Some(top_level_field) = descriptor.top_level_field else {
+            continue;
+        };
         if let Some(value) = payload
-            .get(alias.top_level_field)
+            .get(top_level_field)
             .and_then(external_id_scalar_value)
-            && let Some(external_id) = query_external_id(alias.provider, &value, aliases)
+            && let Some(external_id) = query_external_id(descriptor.provider, &value, descriptors)
         {
             external_ids.push(external_id);
         }
@@ -230,16 +364,14 @@ fn external_id_scalar_value(value: &serde_json::Value) -> Option<String> {
 fn query_external_id(
     provider: &str,
     value: &str,
-    aliases: &[QueryExternalIdAlias],
+    descriptors: &[ExternalIdInputDescriptor<'_>],
 ) -> Option<QueryExternalId> {
     let provider = provider.trim();
     let value = value.trim();
     if provider.is_empty() || value.is_empty() {
         return None;
     }
-    if rejects_non_positive_numeric(provider, aliases)
-        && value.parse::<i128>().is_ok_and(|value| value <= 0)
-    {
+    if rejects_external_id_value(provider, value, descriptors) {
         return None;
     }
 
@@ -249,20 +381,24 @@ fn query_external_id(
     })
 }
 
-fn rejects_non_positive_numeric(provider: &str, aliases: &[QueryExternalIdAlias]) -> bool {
-    aliases.iter().any(|alias| {
-        alias.reject_non_positive_numeric && provider.eq_ignore_ascii_case(alias.provider)
-    })
+fn rejects_external_id_value(
+    provider: &str,
+    value: &str,
+    descriptors: &[ExternalIdInputDescriptor<'_>],
+) -> bool {
+    descriptors
+        .iter()
+        .any(|descriptor| descriptor.rejects_value_for(provider, value))
 }
 
 fn push_external_ids_from_object_value(
     external_ids: &mut Vec<QueryExternalId>,
     provider: &str,
     value: &serde_json::Value,
-    aliases: &[QueryExternalIdAlias],
+    descriptors: &[ExternalIdInputDescriptor<'_>],
 ) {
     if let Some(value) = external_id_scalar_value(value) {
-        if let Some(external_id) = query_external_id(provider, &value, aliases) {
+        if let Some(external_id) = query_external_id(provider, &value, descriptors) {
             external_ids.push(external_id);
         }
         return;
@@ -271,7 +407,7 @@ fn push_external_ids_from_object_value(
     if let Some(values) = value.as_array() {
         external_ids.extend(values.iter().filter_map(|value| {
             let parsed_value = external_id_scalar_value(value)?;
-            query_external_id(provider, &parsed_value, aliases)
+            query_external_id(provider, &parsed_value, descriptors)
         }));
     }
 }
