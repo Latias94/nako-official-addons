@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-extension-decentralization",
+  "title": "Official Metadata Addon Provider Extension Decentralization",
+  "status": "active",
+  "updated": "2026-05-25",
+  "scope_kind": "execution",
+  "problem": "Provider extension still leaks provider-specific config, external ID alias, and rendered-page support facts through central modules.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-010",
+      "summary": "Workstream opened from user-approved follow-on provider extension refactor Goal."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "notes": "Continue through provider config decentralization, provider-owned external ID aliases, rendered-page support semantics, cleanup, integration, and closeout. Do not add live smoke or release work to this lane."
+  }
+}
