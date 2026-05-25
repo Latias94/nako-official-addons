@@ -11,11 +11,12 @@ capability catalog.
 
 ## Next Task
 
-Start OMAPFR-030:
+Start OMAPFR-040:
 
-- route `suggest_candidates` through resolver clustering;
-- preserve `/metadata` response shape and deterministic ordering;
-- remove the temporary resolver `dead_code` allow once orchestration consumes it.
+- replace alias-only external ID descriptors with executable provider
+  external ID capabilities;
+- preserve existing top-level alias parsing and positive numeric validation;
+- keep provider quirks provider-local.
 
 ## License Guardrails
 
@@ -35,3 +36,4 @@ Start OMAPFR-030:
 
 OMAPFR-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`, `cargo fmt --all -- --check`, `git diff --check`, and ignored `repo-ref/` status confirmation.
 OMAPFR-020 passed with `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
+OMAPFR-030 passed with `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.

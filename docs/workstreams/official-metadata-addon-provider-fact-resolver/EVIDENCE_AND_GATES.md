@@ -20,6 +20,7 @@ Last updated: 2026-05-25
 | --- | --- | --- | --- |
 | 2026-05-25 | OMAPFR-010 scope | Workstream opened with explicit license guardrails: reference repositories are research-only, no copied source/comments/tests/fixtures/structure, implementation must be authored from local Nako domain model. Validated `WORKSTREAM.json`, ran `cargo fmt --all -- --check`, ran `git diff --check`, and confirmed `repo-ref/` remains ignored. | Pass |
 | 2026-05-25 | OMAPFR-020 resolver model | Added local `engine::resolver` model that adapts `ProviderMetadataCandidate` values into resolver facts, clusters exact provider identities and shared external IDs, and emits redaction-safe cluster evidence without raw external ID values. Validation: `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
+| 2026-05-25 | OMAPFR-030 resolver-backed orchestration | Routed `suggest_candidates` through resolver clustering before final ranking. Shared external IDs now collapse to one selected ranked candidate, exact provider identity dedupe remains covered, and the existing `/metadata` candidate response shape is preserved. Validation: `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
 
 ## Notes
 

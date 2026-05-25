@@ -1,10 +1,10 @@
-#![allow(dead_code)]
+#[cfg(test)]
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
-use std::collections::{BTreeMap, BTreeSet};
-
-use serde::Serialize;
-
-use super::{ProviderExternalId, ProviderMetadataCandidate};
+use super::{
+    MetadataCandidate, MetadataQuery, ProviderExternalId, ProviderMetadataCandidate, ranking,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ResolvedProviderFact {
@@ -24,24 +24,10 @@ impl ResolvedProviderFact {
             candidate,
         }
     }
-
-    #[must_use]
-    pub(crate) const fn source(&self) -> &ProviderFactSource {
-        &self.source
-    }
-
-    #[must_use]
-    pub(crate) fn external_ids(&self) -> &[ResolvedExternalId] {
-        &self.external_ids
-    }
-
-    #[must_use]
-    pub(crate) const fn candidate(&self) -> &ProviderMetadataCandidate {
-        &self.candidate
-    }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub(crate) struct ProviderFactSource {
     pub provider: String,
     pub provider_id: String,
@@ -81,10 +67,26 @@ impl ResolvedCandidateCluster {
     }
 
     #[must_use]
+    pub(crate) fn into_ranked_candidate(self, query: &MetadataQuery) -> MetadataCandidate {
+        let mut candidates = self
+            .facts
+            .into_iter()
+            .map(|fact| ranking::rank_candidate(query, fact.candidate))
+            .collect::<Vec<_>>();
+        candidates.sort_by(ranking::compare_metadata_candidates);
+        candidates
+            .into_iter()
+            .next()
+            .expect("resolved candidate cluster always contains at least one fact")
+    }
+
+    #[cfg(test)]
+    #[must_use]
     pub(crate) fn facts(&self) -> &[ResolvedProviderFact] {
         &self.facts
     }
 
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn sources(&self) -> Vec<ProviderFactSource> {
         self.facts
@@ -95,6 +97,7 @@ impl ResolvedCandidateCluster {
             .collect()
     }
 
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn shared_external_id_providers(&self) -> Vec<String> {
         self.shared_external_ids()
@@ -105,6 +108,7 @@ impl ResolvedCandidateCluster {
             .collect()
     }
 
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn evidence(&self) -> ResolverClusterEvidence {
         let sources = self.sources();
@@ -143,6 +147,7 @@ impl ResolvedCandidateCluster {
         self.facts.extend(other.facts);
     }
 
+    #[cfg(test)]
     fn shared_external_ids(&self) -> Vec<ResolvedExternalId> {
         let mut sources_by_external_id = BTreeMap::<ResolvedExternalId, BTreeSet<_>>::new();
         for fact in &self.facts {
@@ -161,14 +166,16 @@ impl ResolvedCandidateCluster {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[cfg(test)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 pub(crate) struct ResolverClusterEvidence {
     pub source_count: usize,
     pub sources: Vec<ProviderFactSource>,
     pub merge_reasons: Vec<ResolverMergeReason>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[cfg(test)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 pub(crate) struct ResolverMergeReason {
     pub kind: &'static str,
     pub provider: String,

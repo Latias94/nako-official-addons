@@ -39,6 +39,11 @@
       "date": "2026-05-25",
       "task": "OMAPFR-020",
       "summary": "Internal resolver model added for provider facts, exact provider identity clustering, shared external ID clustering, and redaction-safe cluster evidence."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-030",
+      "summary": "Metadata orchestration now resolves provider candidates into clusters before final ranking while preserving response compatibility."
     }
   ],
   "research_refs": [
@@ -47,7 +52,7 @@
   ],
   "continue_policy": {
     "default_action": "continue",
-    "next_task": "OMAPFR-030",
-    "notes": "Route orchestration through resolver clustering while preserving public response compatibility."
+    "next_task": "OMAPFR-040",
+    "notes": "Implement external ID capability catalog while preserving current alias parsing and numeric validation behaviour."
   }
 }

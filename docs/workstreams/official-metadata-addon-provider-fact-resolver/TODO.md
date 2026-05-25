@@ -23,12 +23,12 @@ Last updated: 2026-05-25
 
 ## M2 - Resolver-Backed Orchestration
 
-- [ ] OMAPFR-030 [owner=codex] [deps=OMAPFR-020] [scope=crates/nako-metadata-scraper/src/engine/orchestration.rs,crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/engine]
+- [x] OMAPFR-030 [owner=codex] [deps=OMAPFR-020] [scope=crates/nako-metadata-scraper/src/engine/orchestration.rs,crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/engine]
   Goal: Route `suggest_candidates` through resolver clustering so exact provider IDs and shared external IDs are resolved before final ranking while preserving the `/metadata` response shape.
   Validation: `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`.
   Review: Confirm output compatibility, deterministic ordering, and raw provider provenance are preserved.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`.
+  Handoff: DONE. Orchestration now resolves provider facts before ranking; start OMAPFR-040 external ID capability catalog.
 
 ## M3 - External ID Capability Catalog
 

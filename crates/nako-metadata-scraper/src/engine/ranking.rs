@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use nako_addon_protocol::AddonMetadataPatch;
 use serde::Serialize;
 
@@ -169,6 +171,17 @@ pub fn rank_candidate(
             provider_note,
         },
     }
+}
+
+pub(crate) fn compare_metadata_candidates(
+    left: &MetadataCandidate,
+    right: &MetadataCandidate,
+) -> Ordering {
+    right
+        .confidence_milli
+        .cmp(&left.confidence_milli)
+        .then_with(|| left.provider.cmp(&right.provider))
+        .then_with(|| left.provider_id.cmp(&right.provider_id))
 }
 
 #[must_use]

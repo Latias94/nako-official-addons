@@ -116,6 +116,14 @@ mod tests {
         candidate_count: usize,
     }
 
+    struct ExternalIdCandidateProvider {
+        candidate_provider: &'static str,
+        provider_id: &'static str,
+        title: &'static str,
+        year: Option<i32>,
+        external_ids: &'static [(&'static str, &'static str)],
+    }
+
     #[async_trait]
     impl MetadataProvider for FailingProvider {
         fn id(&self) -> ProviderId {
@@ -167,6 +175,53 @@ mod tests {
             }
 
             Ok(candidates)
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for ExternalIdCandidateProvider {
+        fn id(&self) -> ProviderId {
+            ProviderId::Fixture
+        }
+
+        async fn suggest(
+            &self,
+            _query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            Ok(vec![ProviderMetadataCandidate {
+                provider: self.candidate_provider.to_owned(),
+                provider_id: self.provider_id.to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some(self.title.to_owned()),
+                    original_title: None,
+                    sort_title: None,
+                    overview: None,
+                    release_date: self.year.map(|year| format!("{year}-01-01")),
+                    runtime_minutes: None,
+                    tagline: None,
+                    genres: None,
+                    tags: None,
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some(self.title.to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: self.year,
+                    language: Some("en-US".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: self
+                        .external_ids
+                        .iter()
+                        .map(|(provider, value)| ProviderExternalId {
+                            provider: (*provider).to_owned(),
+                            value: (*value).to_owned(),
+                        })
+                        .collect(),
+                    provider_outcomes: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: Vec::new(),
+            }])
         }
     }
 
@@ -278,6 +333,46 @@ mod tests {
             let provider_id = candidate["provider_id"].as_str().unwrap().to_owned();
             assert!(provider_ids.insert(provider_id));
         }
+    }
+
+    #[tokio::test]
+    async fn resolver_runtime_clusters_candidates_with_shared_external_ids() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "en-US",
+            vec![
+                Box::new(ExternalIdCandidateProvider {
+                    candidate_provider: "douban",
+                    provider_id: "douban:subject:1291843",
+                    title: "Other Movie",
+                    year: Some(2001),
+                    external_ids: &[("imdb", "TT0133093"), ("douban", "1291843")],
+                }),
+                Box::new(ExternalIdCandidateProvider {
+                    candidate_provider: "tmdb",
+                    provider_id: "tmdb:movie:603",
+                    title: "The Matrix",
+                    year: Some(1999),
+                    external_ids: &[("tmdb", "603"), ("imdb", "tt0133093")],
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"title": "The Matrix", "year": 1999}),
+            })
+            .await;
+
+        let candidates = response.payload["candidates"].as_array().unwrap();
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0]["provider"], "tmdb");
+        assert_eq!(candidates[0]["provider_id"], "tmdb:movie:603");
+        assert_eq!(candidates[0]["patch"]["title"], "The Matrix");
     }
 
     #[test]
