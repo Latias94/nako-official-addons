@@ -2,6 +2,7 @@
 
 Status: Blocked on publish approval
 Last updated: 2026-05-24
+Last refreshed: 2026-05-25
 
 ## Current State
 
@@ -15,10 +16,11 @@ The first E2E preflight passed before Docker daemon availability was checked.
 A direct `docker version` command then proved the daemon was not reachable.
 The E2E script now has a daemon preflight guard.
 
-`cargo publish --dry-run` for `nako-metadata-scraper` failed because the package
-verified against already published `0.1.0-alpha.1` SDK crates. The local path
-dependencies contain new APIs, but the registry crates do not. This requires an
-alpha.2 package release line.
+`cargo publish --dry-run` for `nako-metadata-scraper` and
+`nako-notification-bridge` fails because the packages verify against already
+published `0.1.0-alpha.1` SDK crates. The local path dependencies contain new
+APIs, but the registry crates do not. This requires an alpha.2 package release
+line.
 
 ## Active Task
 
@@ -29,7 +31,7 @@ alpha.2 package release line.
 
 ```powershell
 cargo metadata --format-version 1 --no-deps
-cargo nextest run -p nako-metadata-scraper manifest routes task bulk nako_runtime writeback artwork --no-fail-fast
+cargo nextest run --workspace --no-fail-fast
 cargo fmt --all -- --check
 ```
 
@@ -37,7 +39,9 @@ After user approval, publish in this order:
 
 1. `cargo publish -p nako-addon-protocol --locked`
 2. `cargo publish -p nako-addon-client --locked`
-3. `cargo publish -p nako-metadata-scraper --locked`
+3. `cargo publish -p nako-official-addon-catalog --locked`
+4. `cargo publish -p nako-notification-bridge --locked`
+5. `cargo publish -p nako-metadata-scraper --locked`
 
 Then re-run metadata scraper package dry-run or publish verification.
 
@@ -46,12 +50,20 @@ Then re-run metadata scraper package dry-run or publish verification.
 - Full live Docker/server smoke is blocked until Docker daemon is running.
 - `nako-addon-client` dry-run is blocked until `nako-addon-protocol
   0.1.0-alpha.2` is published to crates.io.
-- `nako-metadata-scraper` dry-run is blocked until `nako-addon-client
+- `nako-official-addon-catalog` dry-run is blocked until
+  `nako-addon-protocol 0.1.0-alpha.2` is published to crates.io.
+- `nako-notification-bridge` dry-run is blocked until `nako-addon-protocol
   0.1.0-alpha.2` is published to crates.io.
+- `nako-metadata-scraper` dry-run is blocked until `nako-addon-client
+  0.1.0-alpha.2` and `nako-official-addon-catalog 0.1.0-alpha.2` are published
+  to crates.io.
 
 ## Evidence
 
-- `cargo metadata --format-version 1 --no-deps` passed in both repositories.
+- `cargo metadata --format-version 1 --no-deps` passed in both repositories;
+  2026-05-25 refresh passed in `nako-official-addons`.
+- `cargo nextest run --workspace --no-fail-fast` in `nako-official-addons`
+  passed: 183 passed, 2 skipped.
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed: 138
   passed, 2 skipped.
 - `cargo nextest run -p nako-addon-client runtime --no-fail-fast` passed: 6
@@ -59,13 +71,23 @@ Then re-run metadata scraper package dry-run or publish verification.
 - `cargo nextest run -p nako-addon-protocol protected_write_payload_contracts_keep_wire_shape --no-fail-fast`
   passed: 1 passed, 10 skipped.
 - `cargo publish -p nako-addon-protocol --locked --dry-run --allow-dirty`
-  passed.
+  passed in both the original check and 2026-05-25 refresh.
+- `cargo publish -p nako-addon-client --locked --dry-run --allow-dirty` remains
+  blocked on missing `nako-addon-protocol 0.1.0-alpha.2` in crates.io.
+- `cargo publish -p nako-official-addon-catalog --locked --dry-run --allow-dirty`
+  remains blocked on missing `nako-addon-protocol 0.1.0-alpha.2` in crates.io.
+- `cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty`
+  is blocked on missing `nako-addon-protocol 0.1.0-alpha.2` in crates.io.
+- `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty`
+  is blocked on missing `nako-addon-client 0.1.0-alpha.2` in crates.io; it will
+  also require `nako-official-addon-catalog 0.1.0-alpha.2`.
 - `npm test` in `addons/browser-worker` passed: 1 passed.
 - `cargo fmt --all -- --check` passed in both repositories.
 - `git diff --check` passed in both repositories with LF/CRLF warnings.
 
 ## Dirty Worktree Notes
 
-- `nako-official-addons` has completed uncommitted refactor changes.
+- `nako-official-addons` is ahead of `origin/main` with committed release and
+  notification-bridge work.
 - `../nako` has unrelated dirty server/library/playback and workstream files.
   Do not restore or stage unrelated files.

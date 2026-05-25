@@ -2,6 +2,7 @@
 
 Status: Blocked on publish approval
 Last updated: 2026-05-24
+Last refreshed: 2026-05-25
 
 ## Gates
 
@@ -10,6 +11,7 @@ cargo metadata --format-version 1 --no-deps
 cargo nextest run -p nako-metadata-scraper manifest routes task bulk nako_runtime writeback artwork --no-fail-fast
 cargo fmt --all -- --check
 cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty
+cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty
 git diff --check
 ```
 
@@ -20,6 +22,7 @@ cargo nextest run -p nako-addon-client runtime --no-fail-fast
 cargo nextest run -p nako-addon-protocol protected_write_payload_contracts_keep_wire_shape --no-fail-fast
 cargo publish -p nako-addon-protocol --locked --dry-run --allow-dirty
 cargo publish -p nako-addon-client --locked --dry-run --allow-dirty
+cargo publish -p nako-official-addon-catalog --locked --dry-run --allow-dirty
 ```
 
 Smoke gates:
@@ -52,6 +55,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 | 2026-05-24 | OAR2-040 | `pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\SourceCodes\Rust\nako-official-addons -AddonBinarySource workspace -PreflightOnly` | Blocked as intended: now fails early with Docker daemon diagnostic |
 | 2026-05-24 | OAR2-040 | `cargo fmt --all -- --check` in both repositories | Pass |
 | 2026-05-24 | OAR2-040 | `git diff --check` in both repositories | Pass with existing LF/CRLF warnings |
+| 2026-05-25 | OAR2-030 | `cargo metadata --format-version 1 --no-deps` in `nako-official-addons` | Pass: `nako-metadata-scraper` and `nako-notification-bridge` are `0.1.0-alpha.2`; local SDK dependencies require `^0.1.0-alpha.2` |
+| 2026-05-25 | OAR2-030 | `cargo nextest run --workspace --no-fail-fast` in `nako-official-addons` | Pass: 183 passed, 2 skipped |
+| 2026-05-25 | OAR2-030 | `cargo fmt --all -- --check`; `git diff --check` in `nako-official-addons` | Pass |
+| 2026-05-25 | OAR2-030 | `cargo publish -p nako-addon-protocol --locked --dry-run --allow-dirty` in `../nako` | Pass: packaged and verified `nako-addon-protocol v0.1.0-alpha.2`; dry-run aborted before upload |
+| 2026-05-25 | OAR2-030 | `cargo publish -p nako-addon-client --locked --dry-run --allow-dirty` in `../nako` | Blocked: crates.io has `nako-addon-protocol 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until protocol alpha.2 is published |
+| 2026-05-25 | OAR2-030 | `cargo publish -p nako-official-addon-catalog --locked --dry-run --allow-dirty` in `../nako` | Blocked: crates.io has `nako-addon-protocol 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until protocol alpha.2 is published |
+| 2026-05-25 | OAR2-030 | `cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty` | Blocked: crates.io has `nako-addon-protocol 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until protocol alpha.2 is published |
+| 2026-05-25 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty` | Blocked: crates.io has `nako-addon-client 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until client alpha.2 is published; `nako-official-addon-catalog 0.1.0-alpha.2` will also be required before metadata scraper publish |
 
 ## Known Constraints
 
@@ -60,6 +71,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
   intentionally changed.
 - Docker live smoke requires a reachable Docker daemon.
 - `../nako` has unrelated dirty files; stage only files touched for this lane.
-- Publish order after approval: `nako-addon-protocol 0.1.0-alpha.2`,
-  `nako-addon-client 0.1.0-alpha.2`, then `nako-metadata-scraper
-  0.1.0-alpha.2`.
+- Publish order after approval: `nako-addon-protocol 0.1.0-alpha.2`, then
+  `nako-addon-client 0.1.0-alpha.2` and `nako-official-addon-catalog
+  0.1.0-alpha.2`, then `nako-notification-bridge 0.1.0-alpha.2` and
+  `nako-metadata-scraper 0.1.0-alpha.2`.

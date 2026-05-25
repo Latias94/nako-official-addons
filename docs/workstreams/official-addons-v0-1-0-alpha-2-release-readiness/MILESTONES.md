@@ -2,6 +2,7 @@
 
 Status: Blocked on publish approval
 Last updated: 2026-05-24
+Last refreshed: 2026-05-25
 
 ## M0 - Lane Open
 
@@ -26,13 +27,14 @@ Exit criteria:
 
 - SDK crate package dry-runs pass or are blocked by a concrete publish-order
   constraint.
-- Metadata scraper package dry-run passes once registry-shaped dependencies are
-  available.
+- Metadata scraper and notification bridge package dry-runs pass once
+  registry-shaped dependencies are available.
 
-Status: Blocked 2026-05-24.
+Status: Blocked 2026-05-24; refreshed 2026-05-25.
 
-The protocol crate dry-run passes. The client and metadata scraper package
-dry-runs require publishing upstream alpha.2 crates first.
+The protocol crate dry-run passes. The client, official addon catalog,
+notification bridge, and metadata scraper package dry-runs require publishing
+upstream alpha.2 crates first.
 
 ## M3 - Release Evidence
 
@@ -43,5 +45,6 @@ Exit criteria:
   availability.
 - Handoff states the next release action.
 
-Status: Done for local gates 2026-05-24. Live Docker/server smoke remains
-blocked by Docker daemon availability.
+Status: Done for local gates 2026-05-24; refreshed 2026-05-25 with workspace
+nextest 183/183 passing. Live Docker/server smoke remains blocked by Docker
+daemon availability.
