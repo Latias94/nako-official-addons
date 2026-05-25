@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
 
 use super::{
@@ -11,81 +9,57 @@ use super::{
     },
     search::{
         BANGUMI_DETAIL_ENRICHMENT_LIMIT, BANGUMI_PARTIAL_SEARCH_NOTE, bangumi_air_date_filter,
-        bangumi_query_subject_ids, bangumi_ranked_enrichment_subjects,
+        bangumi_query_subject_ids,
     },
 };
+use crate::providers::{
+    http_runtime::ProviderHttpTransport,
+    search_policy::{SearchEnrichmentPolicy, first_direct_lookup, search_and_enrich},
+};
+
+const BANGUMI_SEARCH_POLICY: SearchEnrichmentPolicy = SearchEnrichmentPolicy::new(
+    BANGUMI_PROVIDER_ID,
+    "Bangumi",
+    BANGUMI_DETAIL_ENRICHMENT_LIMIT,
+    BANGUMI_PARTIAL_SEARCH_NOTE,
+);
 
 impl<T> BangumiMetadataProvider<T>
 where
-    T: crate::providers::http_runtime::ProviderHttpTransport,
+    T: ProviderHttpTransport,
 {
     pub(super) async fn suggest_candidates(
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
-        for subject_id in bangumi_query_subject_ids(query) {
-            match self.enrich_subject_candidate_by_id(query, subject_id).await {
-                Ok(candidate) => return Ok(vec![candidate]),
-                Err(error) => {
-                    tracing::warn!(provider = BANGUMI_PROVIDER_ID, %error, "Bangumi direct subject lookup failed; falling back to title search");
-                }
-            }
-        }
-
-        let mut search_subjects = Vec::new();
-        let mut seen_subject_ids = HashSet::new();
-        let mut last_search_error = None;
-
-        for search_title in query.search_title_variants() {
-            let search = match self.search_subjects(query, &search_title).await {
-                Ok(search) => search,
-                Err(error) => {
-                    tracing::warn!(provider = BANGUMI_PROVIDER_ID, %error, "Bangumi title-variant search failed");
-                    last_search_error = Some(error);
-                    continue;
-                }
-            };
-            for subject in search.data {
-                if seen_subject_ids.insert(subject.id) {
-                    search_subjects.push(subject);
-                }
-            }
-        }
-        if search_subjects.is_empty()
-            && let Some(error) = last_search_error.take()
+        if let Some(candidate) = first_direct_lookup(
+            BANGUMI_SEARCH_POLICY,
+            bangumi_query_subject_ids(query),
+            |subject_id| async move {
+                self.enrich_subject_candidate_by_id(query, subject_id)
+                    .await
+                    .map(Some)
+            },
+        )
+        .await
         {
-            return Err(error);
-        }
-        let partial_search = last_search_error.is_some();
-        search_subjects = bangumi_ranked_enrichment_subjects(query, search_subjects);
-
-        let mut candidates = Vec::new();
-        for subject in search_subjects {
-            match self.enrich_subject_candidate(query, subject.clone()).await {
-                Ok(mut candidate) => {
-                    if partial_search {
-                        append_provider_note(
-                            &mut candidate.facts.provider_note,
-                            BANGUMI_PARTIAL_SEARCH_NOTE,
-                        );
-                    }
-                    candidates.push(candidate);
-                }
-                Err(error) => {
-                    tracing::warn!(provider = BANGUMI_PROVIDER_ID, %error, "returning degraded Bangumi candidate after enrichment failure");
-                    let mut candidate = subject.into_degraded_candidate(query);
-                    if partial_search {
-                        append_provider_note(
-                            &mut candidate.facts.provider_note,
-                            BANGUMI_PARTIAL_SEARCH_NOTE,
-                        );
-                    }
-                    candidates.push(candidate);
-                }
-            }
+            return Ok(vec![candidate]);
         }
 
-        Ok(candidates)
+        search_and_enrich(
+            BANGUMI_SEARCH_POLICY,
+            query,
+            |search_title| async move {
+                self.search_subjects(query, &search_title)
+                    .await
+                    .map(|search| search.data)
+            },
+            |subject: &BangumiSubject| subject.id,
+            |subject| subject.into_degraded_candidate(query),
+            |candidate, note| append_provider_note(&mut candidate.facts.provider_note, note),
+            |subject| async move { self.enrich_subject_candidate(query, subject).await },
+        )
+        .await
     }
 
     pub(super) async fn search_subjects(

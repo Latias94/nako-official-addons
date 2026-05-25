@@ -44,6 +44,11 @@
       "date": "2026-05-25",
       "task": "OMAPAD-030",
       "summary": "ProviderRegistry now exposes one ProviderAssembly for ready adapters, diagnostics, and provider-owned network policy facts consumed by routes."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-040",
+      "summary": "TMDB and Bangumi now share a provider-private search policy module for direct lookup, title-variant search, dedupe, ranking-budget selection, partial-search preservation, and degraded fallback."
     }
   ],
   "adr_refs": [

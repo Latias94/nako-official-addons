@@ -29,12 +29,12 @@ Last updated: 2026-05-25
 
 ## M2 - Shared Provider Search Policy And Outcomes
 
-- [ ] OMAPAD-040 [owner=codex] [deps=OMAPAD-030] [scope=crates/nako-metadata-scraper/src/providers/tmdb,crates/nako-metadata-scraper/src/providers/bangumi,crates/nako-metadata-scraper/src/engine/ranking.rs]
+- [x] OMAPAD-040 [owner=codex] [deps=OMAPAD-030] [scope=crates/nako-metadata-scraper/src/providers/tmdb,crates/nako-metadata-scraper/src/providers/bangumi,crates/nako-metadata-scraper/src/engine/ranking.rs]
   Goal: Extract a shared search-enrichment policy Module for direct ID attempts, title variants, dedupe, relevance budget, partial-search preservation, and degraded fallback while keeping raw provider parsing provider-local.
   Validation: cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast
   Review: Confirm the new Module hides policy complexity without pulling raw provider schemas across the Seam.
-  Evidence: crates/nako-metadata-scraper/src/providers
-  Handoff: Final status must be DONE, DONE_WITH_CONCERNS, BLOCKED, or NEEDS_CONTEXT.
+  Evidence: `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. `providers/search_policy.rs` now owns direct lookup, title-variant search, dedupe, ranking-budget selection, partial-search preservation, and degraded fallback orchestration; TMDB/Bangumi keep raw parsing, endpoint calls, ID extraction, and mapping provider-local.
 
 - [ ] OMAPAD-050 [owner=codex] [deps=OMAPAD-040] [scope=crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/providers]
   Goal: Replace provider-local diagnostic prose with typed provider outcome facts rendered through one redaction-safe Module.

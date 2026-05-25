@@ -16,9 +16,7 @@ refactoring for provider/plugin extensibility:
 
 This workstream is the authoritative execution lane for that Goal.
 
-## Next Task
-
-Start OMAPAD-040.
+## Completed
 
 OMAPAD-020 completed:
 
@@ -29,13 +27,36 @@ OMAPAD-020 completed:
 - Targeted provider/config/manifest tests, format check, and diff hygiene
   passed.
 
+OMAPAD-030 completed:
+
+- `ProviderRegistry` exposes one `ProviderAssembly` for ready adapters,
+  diagnostics, and provider-owned network policy facts.
+- Routes consume provider diagnostics instead of reading provider-specific
+  proxy facts from `Config`.
+
+OMAPAD-040 completed:
+
+- `providers/search_policy.rs` owns the common direct-lookup, title-variant
+  search, dedupe, ranking-budget, partial-search, and degraded-fallback
+  orchestration.
+- TMDB and Bangumi pass provider-local callbacks for HTTP search, raw response
+  parsing, result IDs, enrichment, degraded candidate mapping, and provider
+  notes.
+- The shared policy is closure-driven so raw TMDB/Bangumi result types are not
+  promoted into a public shared trait contract.
+
+## Next Task
+
+Start OMAPAD-050.
+
 Recommended next implementation focus:
 
-- extract the shared TMDB/Bangumi search-enrichment policy without moving raw
-  provider payload parsing across the Seam;
-- preserve direct ID lookup behavior, title-variant fallback, partial-search
-  preservation, relevance budget ordering, and degraded candidate fallback;
-- keep public payloads unchanged.
+- replace provider-local `provider_note` prose with internal typed outcome
+  facts;
+- keep the public payload shape compatible unless an intentional schema change
+  is documented;
+- preserve redaction-safe rendering and current TMDB/Bangumi/Douban diagnostic
+  text semantics while moving note composition behind one Module.
 
 ## Risks
 
@@ -53,3 +74,4 @@ Recommended next implementation focus:
 OMAPAD-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-architecture-deepening/WORKSTREAM.json > $null`.
 OMAPAD-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider registry config addon_manifest --no-fail-fast`, and `git diff --check`.
 OMAPAD-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider health_endpoint diagnostics --no-fail-fast`, and `git diff --check`.
+OMAPAD-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`, and `git diff --check`.

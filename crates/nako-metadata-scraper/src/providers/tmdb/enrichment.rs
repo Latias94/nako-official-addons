@@ -1,109 +1,78 @@
-use std::collections::HashSet;
-
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate};
 
 use super::{
     TMDB_PROVIDER_ID, TmdbMetadataProvider,
     mapper::{TmdbMovieCandidate, TmdbMovieSearchResult, append_provider_note},
-    search::{tmdb_query_imdb_ids, tmdb_query_movie_ids, tmdb_ranked_enrichment_results},
+    search::{tmdb_query_imdb_ids, tmdb_query_movie_ids},
+};
+use crate::providers::{
+    http_runtime::ProviderHttpTransport,
+    search_policy::{SearchEnrichmentPolicy, first_direct_lookup, search_and_enrich},
 };
 
+const TMDB_DETAIL_ENRICHMENT_LIMIT: usize = 3;
 const TMDB_PARTIAL_SEARCH_NOTE: &str =
     "TMDB provider preserved candidates after partial title-variant search failure.";
+const TMDB_SEARCH_POLICY: SearchEnrichmentPolicy = SearchEnrichmentPolicy::new(
+    TMDB_PROVIDER_ID,
+    "TMDB",
+    TMDB_DETAIL_ENRICHMENT_LIMIT,
+    TMDB_PARTIAL_SEARCH_NOTE,
+);
 
 impl<T> TmdbMetadataProvider<T>
 where
-    T: crate::providers::http_runtime::ProviderHttpTransport,
+    T: ProviderHttpTransport,
 {
     pub(super) async fn suggest_candidates(
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
-        for movie_id in tmdb_query_movie_ids(query) {
-            match self.enrich_movie_candidate_by_id(query, movie_id).await {
-                Ok(candidate) => return Ok(vec![candidate]),
-                Err(error) => {
-                    tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "TMDB direct movie lookup failed; falling back to title search");
-                }
-            }
-        }
-        for imdb_id in tmdb_query_imdb_ids(query) {
-            match self.find_movie_id_by_imdb_id(&imdb_id).await {
-                Ok(Some(movie_id)) => {
-                    match self.enrich_movie_candidate_by_id(query, movie_id).await {
-                        Ok(candidate) => return Ok(vec![candidate]),
-                        Err(error) => {
-                            tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "TMDB IMDb find movie enrichment failed; falling back to title search");
-                        }
-                    }
-                }
-                Ok(None) => {
-                    tracing::warn!(
-                        provider = TMDB_PROVIDER_ID,
-                        imdb_id,
-                        "TMDB IMDb find returned no movie results; trying next IMDb ID"
-                    );
-                }
-                Err(error) => {
-                    tracing::warn!(provider = TMDB_PROVIDER_ID, %error, imdb_id, "TMDB IMDb find failed; trying next IMDb ID");
-                }
-            }
-        }
-
-        let mut search_results = Vec::new();
-        let mut seen_movie_ids = HashSet::new();
-        let mut last_search_error = None;
-
-        for search_title in query.search_title_variants() {
-            let search = match self.search_movies(query, &search_title).await {
-                Ok(search) => search,
-                Err(error) => {
-                    tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "TMDB title-variant search failed");
-                    last_search_error = Some(error);
-                    continue;
-                }
-            };
-            for result in search.results {
-                if seen_movie_ids.insert(result.id) {
-                    search_results.push(result);
-                }
-            }
-        }
-        if search_results.is_empty()
-            && let Some(error) = last_search_error.take()
+        if let Some(candidate) = first_direct_lookup(
+            TMDB_SEARCH_POLICY,
+            tmdb_query_movie_ids(query),
+            |movie_id| async move {
+                self.enrich_movie_candidate_by_id(query, movie_id)
+                    .await
+                    .map(Some)
+            },
+        )
+        .await
         {
-            return Err(error);
+            return Ok(vec![candidate]);
         }
-        let partial_search = last_search_error.is_some();
-        search_results = tmdb_ranked_enrichment_results(query, search_results);
+        if let Some(candidate) = first_direct_lookup(
+            TMDB_SEARCH_POLICY,
+            tmdb_query_imdb_ids(query),
+            |imdb_id| async move {
+                let Some(movie_id) = self.find_movie_id_by_imdb_id(&imdb_id).await? else {
+                    return Ok(None);
+                };
 
-        let mut candidates = Vec::new();
-        for result in search_results {
-            match self.enrich_movie_candidate(query, result.clone()).await {
-                Ok(mut candidate) => {
-                    if partial_search {
-                        append_provider_note(
-                            &mut candidate.facts.provider_note,
-                            TMDB_PARTIAL_SEARCH_NOTE,
-                        );
-                    }
-                    candidates.push(candidate);
-                }
-                Err(error) => {
-                    tracing::warn!(provider = TMDB_PROVIDER_ID, %error, "returning degraded TMDB candidate after enrichment failure");
-                    let mut candidate = result.into_degraded_candidate(query);
-                    if partial_search {
-                        append_provider_note(
-                            &mut candidate.facts.provider_note,
-                            TMDB_PARTIAL_SEARCH_NOTE,
-                        );
-                    }
-                    candidates.push(candidate);
-                }
-            }
+                self.enrich_movie_candidate_by_id(query, movie_id)
+                    .await
+                    .map(Some)
+            },
+        )
+        .await
+        {
+            return Ok(vec![candidate]);
         }
 
-        Ok(candidates)
+        search_and_enrich(
+            TMDB_SEARCH_POLICY,
+            query,
+            |search_title| async move {
+                self.search_movies(query, &search_title)
+                    .await
+                    .map(|search| search.results)
+            },
+            |result: &TmdbMovieSearchResult| result.id,
+            |result| result.into_degraded_candidate(query),
+            |candidate, note| append_provider_note(&mut candidate.facts.provider_note, note),
+            |result| async move { self.enrich_movie_candidate(query, result).await },
+        )
+        .await
     }
 
     pub(super) async fn enrich_movie_candidate(

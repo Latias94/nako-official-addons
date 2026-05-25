@@ -1,24 +1,12 @@
 use std::collections::HashSet;
 
-use crate::engine::{MetadataQuery, ranking};
+use crate::engine::MetadataQuery;
 
-use super::{BANGUMI_PROVIDER_ID, parser::BangumiSubject};
+use super::BANGUMI_PROVIDER_ID;
 
 pub(super) const BANGUMI_DETAIL_ENRICHMENT_LIMIT: usize = 3;
 pub(super) const BANGUMI_PARTIAL_SEARCH_NOTE: &str =
     "Bangumi provider preserved candidates after partial title-variant search failure.";
-
-pub(super) fn bangumi_ranked_enrichment_subjects(
-    query: &MetadataQuery,
-    subjects: Vec<BangumiSubject>,
-) -> Vec<BangumiSubject> {
-    ranking::select_ranked_provider_inputs(
-        query,
-        subjects,
-        BANGUMI_DETAIL_ENRICHMENT_LIMIT,
-        |subject| subject.clone().into_degraded_candidate(query),
-    )
-}
 
 pub(super) fn bangumi_query_subject_ids(query: &MetadataQuery) -> impl Iterator<Item = u64> + '_ {
     let mut seen = HashSet::new();

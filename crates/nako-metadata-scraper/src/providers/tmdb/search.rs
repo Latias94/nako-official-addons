@@ -1,19 +1,6 @@
 use std::collections::HashSet;
 
-use crate::engine::{MetadataQuery, ranking};
-
-use super::mapper::TmdbMovieSearchResult;
-
-const TMDB_DETAIL_ENRICHMENT_LIMIT: usize = 3;
-
-pub(super) fn tmdb_ranked_enrichment_results(
-    query: &MetadataQuery,
-    results: Vec<TmdbMovieSearchResult>,
-) -> Vec<TmdbMovieSearchResult> {
-    ranking::select_ranked_provider_inputs(query, results, TMDB_DETAIL_ENRICHMENT_LIMIT, |result| {
-        result.clone().into_degraded_candidate(query)
-    })
-}
+use crate::engine::MetadataQuery;
 
 pub(super) fn tmdb_query_movie_ids(query: &MetadataQuery) -> impl Iterator<Item = u64> + '_ {
     let mut seen = HashSet::new();

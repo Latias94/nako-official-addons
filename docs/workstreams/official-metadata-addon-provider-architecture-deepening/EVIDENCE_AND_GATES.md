@@ -24,6 +24,7 @@ Last updated: 2026-05-25
 | 2026-05-25 | OMAPAD-010 planning | Opened this workstream from the architecture review and user-approved five-refactor Goal. Validated `WORKSTREAM.json` with `python -m json.tool docs/workstreams/official-metadata-addon-provider-architecture-deepening/WORKSTREAM.json > $null`. | Pass |
 | 2026-05-25 | OMAPAD-020 provider descriptor ownership | Moved provider default enablement, enablement env vars, provider config loading, and proxy health facts into provider catalog entries. Ran `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper provider registry config addon_manifest --no-fail-fast`; `git diff --check`. | Pass |
 | 2026-05-25 | OMAPAD-030 single provider assembly | Added `ProviderAssembly`, made registry providers/diagnostics derive from assembly, and moved route network policy output to provider diagnostics. Ran `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper provider health_endpoint diagnostics --no-fail-fast`; `git diff --check`. | Pass |
+| 2026-05-25 | OMAPAD-040 shared search policy | Added `providers/search_policy.rs` for direct lookup, title-variant search, dedupe, ranking-budget selection, partial-search preservation, and degraded fallback orchestration. TMDB/Bangumi adapters now pass provider-local HTTP/search/enrichment/degraded callbacks into the shared policy. Ran `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`; `git diff --check`. | Pass |
 
 ## Notes
 
