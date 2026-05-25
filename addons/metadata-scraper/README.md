@@ -258,6 +258,9 @@ The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB and
 Bangumi proxy policy is configured. They intentionally expose only boolean
 policy state, not proxy URLs or credentials.
 
+Metadata requests may provide explicit `external_ids` or top-level aliases:
+`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`.
+
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
 companion service is reachable through

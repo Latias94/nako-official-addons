@@ -52,14 +52,24 @@ OMAPED-040 completed:
   rendered-page URL extraction.
 - Existing browser-worker env var names and defaults are preserved.
 
+OMAPED-050 completed:
+
+- Full `nako-metadata-scraper` package gate passed after the provider config,
+  external ID alias, and rendered-page support refactors.
+- `crates/nako-metadata-scraper/README.md` and
+  `addons/metadata-scraper/README.md` now mention explicit `external_ids` and
+  top-level aliases, including `browser_worker_url`.
+
 ## Next Task
 
-Start OMAPED-050.
+Start OMAPED-060 closeout.
 
 Recommended next implementation focus:
 
-- run the full metadata scraper package gate and clean any stale docs or tests
-  that remain after OMAPED-020 through OMAPED-040.
+- run `review-workstream` for workstream compliance and code quality;
+- perform final verification against the provider extension decentralization
+  target state;
+- close the lane or split only concrete follow-ons.
 
 ## Risks
 
@@ -76,3 +86,4 @@ OMAPED-010 passed with `python -m json.tool docs/workstreams/official-metadata-a
 OMAPED-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast`, and `git diff --check`.
 OMAPED-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast`, and `git diff --check`.
 OMAPED-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban rendered --no-fail-fast`, and `git diff --check`.
+OMAPED-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.

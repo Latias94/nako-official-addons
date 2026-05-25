@@ -22,6 +22,9 @@ Current alpha provider defaults:
 - `douban`: disabled by default; calls the companion browser worker for rendered
   HTML and keeps Douban parsing/mapping inside the Rust provider.
 
+Metadata requests may provide explicit `external_ids` or top-level aliases:
+`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`.
+
 Runtime candidate shaping deduplicates exact duplicate provider candidates,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.

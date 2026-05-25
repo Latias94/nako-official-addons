@@ -41,12 +41,12 @@ Last updated: 2026-05-25
 
 ## M4 - Cleanup And Integration
 
-- [ ] OMAPED-050 [owner=codex] [deps=OMAPED-030,OMAPED-040] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-extension-decentralization]
+- [x] OMAPED-050 [owner=codex] [deps=OMAPED-030,OMAPED-040] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-extension-decentralization]
   Goal: Clean stale tests/docs discovered during the refactor and run the full metadata scraper package gate.
   Validation: cargo nextest run -p nako-metadata-scraper --no-fail-fast
   Review: review-workstream before accepting completion.
-  Evidence: EVIDENCE_AND_GATES.md
-  Handoff: Prepare closeout.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. Full package gate passed and README docs now mention explicit external IDs plus the top-level aliases including `browser_worker_url`.
 
 ## M5 - Closeout
 

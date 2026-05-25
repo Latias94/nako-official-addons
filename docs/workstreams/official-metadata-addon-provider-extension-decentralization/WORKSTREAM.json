@@ -49,6 +49,11 @@
       "date": "2026-05-25",
       "task": "OMAPED-040",
       "summary": "Browser_worker and Douban now share explicit RenderedPageSupportConfig while preserving existing browser-worker env vars and metadata provider semantics."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-050",
+      "summary": "Full nako-metadata-scraper package validation passed and README docs now mention explicit external IDs plus provider-owned top-level aliases."
     }
   ],
   "adr_refs": [
