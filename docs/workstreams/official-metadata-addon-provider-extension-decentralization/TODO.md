@@ -23,12 +23,12 @@ Last updated: 2026-05-25
 
 ## M2 - Provider-Owned External ID Aliases
 
-- [ ] OMAPED-030 [owner=codex] [deps=OMAPED-020] [scope=crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers]
+- [x] OMAPED-030 [owner=codex] [deps=OMAPED-020] [scope=crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers]
   Goal: Move top-level external ID alias declarations and known numeric validation into provider-owned descriptors or a provider extension seam.
   Validation: cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast
   Review: Confirm existing payload aliases still parse and query parsing does not import provider implementation details directly.
-  Evidence: EVIDENCE_AND_GATES.md
-  Handoff: Adding a provider alias no longer requires editing query parsing logic.
+  Evidence: `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. Query parsing now receives descriptor-provided external ID aliases from the provider registry; adding a top-level provider alias no longer requires editing query parsing logic.
 
 ## M3 - Rendered Page Support Semantics
 

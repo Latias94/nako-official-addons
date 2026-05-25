@@ -16,7 +16,7 @@ pub use artwork::{
     ProviderArtworkCandidateFacts,
 };
 pub use outcome::{ProviderOutcome, render_provider_note};
-pub use query::{MetadataQuery, QueryExternalId};
+pub use query::{MetadataQuery, QueryExternalId, QueryExternalIdAlias};
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
     ProviderMetadataCandidate,
@@ -45,6 +45,13 @@ mod tests {
         },
         providers::MetadataProvider,
     };
+
+    const TEST_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
+        QueryExternalIdAlias::new("tmdb_id", "tmdb", true),
+        QueryExternalIdAlias::new("imdb_id", "imdb", true),
+        QueryExternalIdAlias::new("bangumi_id", "bangumi", true),
+        QueryExternalIdAlias::new("browser_worker_url", "browser_worker", false),
+    ];
 
     struct CandidateProvider {
         provider_id: &'static str,
@@ -243,8 +250,9 @@ mod tests {
 
     #[tokio::test]
     async fn ranking_evidence_runtime_deduplicates_and_caps_candidates() {
-        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_aliases(
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES.to_vec(),
             vec![Box::new(DuplicateProvider {
                 candidate_count: 14,
             })],
@@ -452,7 +460,7 @@ mod tests {
 
     #[test]
     fn ranking_evidence_metadata_query_parses_external_ids() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": {
@@ -461,6 +469,7 @@ mod tests {
                 }
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -480,7 +489,7 @@ mod tests {
 
     #[test]
     fn metadata_query_parses_external_id_object_arrays() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": {
@@ -490,6 +499,7 @@ mod tests {
                 }
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -525,7 +535,7 @@ mod tests {
 
     #[test]
     fn metadata_query_parses_external_id_array_object_value_aliases() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": [
@@ -536,6 +546,7 @@ mod tests {
                 ]
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -559,7 +570,7 @@ mod tests {
 
     #[test]
     fn metadata_query_trims_external_ids_and_skips_empty_entries() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": [
@@ -570,6 +581,7 @@ mod tests {
                 ]
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -589,7 +601,7 @@ mod tests {
 
     #[test]
     fn metadata_query_parses_top_level_external_id_aliases() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "tmdb_id": " 603 ",
@@ -597,6 +609,7 @@ mod tests {
                 "bangumi_id": " 265 "
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -620,7 +633,7 @@ mod tests {
 
     #[test]
     fn metadata_query_preserves_external_ids_before_top_level_aliases() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": {
@@ -629,6 +642,7 @@ mod tests {
                 "tmdb_id": "604"
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -648,7 +662,7 @@ mod tests {
 
     #[test]
     fn metadata_query_parses_numeric_top_level_external_id_aliases() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "tmdb_id": 603,
@@ -656,6 +670,7 @@ mod tests {
                 "imdb_id": "tt0133093"
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -679,7 +694,7 @@ mod tests {
 
     #[test]
     fn metadata_query_parses_numeric_external_id_values() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": {
@@ -688,6 +703,7 @@ mod tests {
                 }
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -711,7 +727,7 @@ mod tests {
 
     #[test]
     fn metadata_query_skips_non_positive_numeric_external_ids() {
-        let query = MetadataQuery::from_payload(
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
             &serde_json::json!({
                 "title": "Movie",
                 "external_ids": {
@@ -724,6 +740,7 @@ mod tests {
                 "imdb_id": 0
             }),
             "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
         );
 
         assert_eq!(
@@ -738,6 +755,26 @@ mod tests {
                     value: "603".to_owned(),
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn metadata_query_parses_browser_worker_top_level_external_id_alias() {
+        let query = MetadataQuery::from_payload_with_external_id_aliases(
+            &serde_json::json!({
+                "title": "Rendered Page",
+                "browser_worker_url": " https://example.test/page "
+            }),
+            "en-US",
+            TEST_EXTERNAL_ID_ALIASES,
+        );
+
+        assert_eq!(
+            query.external_ids,
+            vec![QueryExternalId {
+                provider: "browser_worker".to_owned(),
+                value: "https://example.test/page".to_owned(),
+            }]
         );
     }
 

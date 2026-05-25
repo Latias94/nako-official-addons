@@ -71,6 +71,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         secret_reference: None,
+        external_id_aliases: &[],
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,

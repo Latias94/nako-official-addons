@@ -19,13 +19,44 @@ pub struct QueryExternalId {
     pub value: String,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct QueryExternalIdAlias {
+    pub top_level_field: &'static str,
+    pub provider: &'static str,
+    pub reject_non_positive_numeric: bool,
+}
+
+impl QueryExternalIdAlias {
+    #[must_use]
+    pub const fn new(
+        top_level_field: &'static str,
+        provider: &'static str,
+        reject_non_positive_numeric: bool,
+    ) -> Self {
+        Self {
+            top_level_field,
+            provider,
+            reject_non_positive_numeric,
+        }
+    }
+}
+
 impl MetadataQuery {
     #[must_use]
     pub fn from_payload(payload: &serde_json::Value, default_language: &str) -> Self {
+        Self::from_payload_with_external_id_aliases(payload, default_language, &[])
+    }
+
+    #[must_use]
+    pub fn from_payload_with_external_id_aliases(
+        payload: &serde_json::Value,
+        default_language: &str,
+        external_id_aliases: &[QueryExternalIdAlias],
+    ) -> Self {
         let title = title_from_payload(payload);
         let year = year_from_payload(payload);
         let language = language_from_payload(payload, default_language);
-        let external_ids = external_ids_from_payload(payload);
+        let external_ids = external_ids_from_payload(payload, external_id_aliases);
 
         Self {
             title: if title.is_empty() {
@@ -125,20 +156,26 @@ fn first_non_empty_payload_str<'a>(
     })
 }
 
-fn external_ids_from_payload(payload: &serde_json::Value) -> Vec<QueryExternalId> {
-    let mut external_ids = explicit_external_ids_from_payload(payload);
-    push_top_level_external_id_aliases(&mut external_ids, payload);
+fn external_ids_from_payload(
+    payload: &serde_json::Value,
+    aliases: &[QueryExternalIdAlias],
+) -> Vec<QueryExternalId> {
+    let mut external_ids = explicit_external_ids_from_payload(payload, aliases);
+    push_top_level_external_id_aliases(&mut external_ids, payload, aliases);
     external_ids
 }
 
-fn explicit_external_ids_from_payload(payload: &serde_json::Value) -> Vec<QueryExternalId> {
+fn explicit_external_ids_from_payload(
+    payload: &serde_json::Value,
+    aliases: &[QueryExternalIdAlias],
+) -> Vec<QueryExternalId> {
     if let Some(values) = payload
         .get("external_ids")
         .and_then(serde_json::Value::as_object)
     {
         let mut external_ids = Vec::new();
         for (provider, value) in values {
-            push_external_ids_from_object_value(&mut external_ids, provider, value);
+            push_external_ids_from_object_value(&mut external_ids, provider, value, aliases);
         }
         return external_ids;
     }
@@ -152,6 +189,7 @@ fn explicit_external_ids_from_payload(payload: &serde_json::Value) -> Vec<QueryE
             query_external_id(
                 value.get("provider")?.as_str()?,
                 external_id_array_object_value(value)?,
+                aliases,
             )
         })
         .collect()
@@ -160,14 +198,13 @@ fn explicit_external_ids_from_payload(payload: &serde_json::Value) -> Vec<QueryE
 fn push_top_level_external_id_aliases(
     external_ids: &mut Vec<QueryExternalId>,
     payload: &serde_json::Value,
+    aliases: &[QueryExternalIdAlias],
 ) {
-    for (field, provider) in [
-        ("tmdb_id", "tmdb"),
-        ("imdb_id", "imdb"),
-        ("bangumi_id", "bangumi"),
-    ] {
-        if let Some(value) = payload.get(field).and_then(external_id_scalar_value)
-            && let Some(external_id) = query_external_id(provider, &value)
+    for alias in aliases {
+        if let Some(value) = payload
+            .get(alias.top_level_field)
+            .and_then(external_id_scalar_value)
+            && let Some(external_id) = query_external_id(alias.provider, &value, aliases)
         {
             external_ids.push(external_id);
         }
@@ -190,13 +227,19 @@ fn external_id_scalar_value(value: &serde_json::Value) -> Option<String> {
     value.as_i64().map(|value| value.to_string())
 }
 
-fn query_external_id(provider: &str, value: &str) -> Option<QueryExternalId> {
+fn query_external_id(
+    provider: &str,
+    value: &str,
+    aliases: &[QueryExternalIdAlias],
+) -> Option<QueryExternalId> {
     let provider = provider.trim();
     let value = value.trim();
     if provider.is_empty() || value.is_empty() {
         return None;
     }
-    if is_known_non_positive_numeric_external_id(provider, value) {
+    if rejects_non_positive_numeric(provider, aliases)
+        && value.parse::<i128>().is_ok_and(|value| value <= 0)
+    {
         return None;
     }
 
@@ -206,20 +249,20 @@ fn query_external_id(provider: &str, value: &str) -> Option<QueryExternalId> {
     })
 }
 
-fn is_known_non_positive_numeric_external_id(provider: &str, value: &str) -> bool {
-    ["tmdb", "bangumi", "imdb"]
-        .iter()
-        .any(|known_provider| provider.eq_ignore_ascii_case(known_provider))
-        && value.parse::<i128>().is_ok_and(|value| value <= 0)
+fn rejects_non_positive_numeric(provider: &str, aliases: &[QueryExternalIdAlias]) -> bool {
+    aliases.iter().any(|alias| {
+        alias.reject_non_positive_numeric && provider.eq_ignore_ascii_case(alias.provider)
+    })
 }
 
 fn push_external_ids_from_object_value(
     external_ids: &mut Vec<QueryExternalId>,
     provider: &str,
     value: &serde_json::Value,
+    aliases: &[QueryExternalIdAlias],
 ) {
     if let Some(value) = external_id_scalar_value(value) {
-        if let Some(external_id) = query_external_id(provider, &value) {
+        if let Some(external_id) = query_external_id(provider, &value, aliases) {
             external_ids.push(external_id);
         }
         return;
@@ -228,7 +271,7 @@ fn push_external_ids_from_object_value(
     if let Some(values) = value.as_array() {
         external_ids.extend(values.iter().filter_map(|value| {
             let parsed_value = external_id_scalar_value(value)?;
-            query_external_id(provider, &parsed_value)
+            query_external_id(provider, &parsed_value, aliases)
         }));
     }
 }

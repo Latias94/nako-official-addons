@@ -6,7 +6,7 @@ use crate::{
     config::{ProviderConfig, ProviderId},
     engine::{
         MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
-        ProviderOutcome,
+        ProviderOutcome, QueryExternalIdAlias,
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -21,6 +21,10 @@ use crate::{
 
 pub const BROWSER_WORKER_PROVIDER_ID: &str = "browser_worker";
 const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction";
+const BROWSER_WORKER_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
+    QueryExternalIdAlias::new("browser_worker_url", BROWSER_WORKER_PROVIDER_ID, false),
+    QueryExternalIdAlias::new("browser_worker_id", BROWSER_WORKER_PROVIDER_ID, false),
+];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BrowserWorkerProviderConfig {
@@ -59,6 +63,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             BROWSER_WORKER_RENDERED_PAGE_CAPABILITY,
         ],
         secret_reference: None,
+        external_id_aliases: BROWSER_WORKER_EXTERNAL_ID_ALIASES,
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,

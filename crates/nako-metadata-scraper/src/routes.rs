@@ -34,14 +34,16 @@ pub struct AppState {
 
 pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
+    let external_id_aliases = registry.external_id_aliases();
     let provider_assembly = registry.assemble();
     let provider_diagnostics = provider_assembly.diagnostics;
     let providers = provider_assembly.providers;
     let nako_runtime = NakoRuntimeClientConfig::from_runtime_config(&config.nako_runtime)
         .map(NakoRuntimeClient::new);
     let state = AppState {
-        metadata_runtime: MetadataScrapeRuntime::new(
+        metadata_runtime: MetadataScrapeRuntime::with_external_id_aliases(
             config.preferred_language.clone(),
+            external_id_aliases,
             providers,
             nako_runtime,
         ),

@@ -39,6 +39,11 @@
       "date": "2026-05-25",
       "task": "OMAPED-020",
       "summary": "ProviderConfig now uses typed provider config variants and provider-local config structs live in provider modules while public env and manifest compatibility is preserved."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-030",
+      "summary": "Provider catalog entries now own top-level external ID alias and numeric validation descriptors consumed by MetadataScrapeRuntime query parsing."
     }
   ],
   "adr_refs": [

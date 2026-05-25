@@ -5,6 +5,7 @@ use serde::Serialize;
 use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::config::{ProviderConfig, ProviderId};
+use crate::engine::QueryExternalIdAlias;
 use crate::{Config, providers::MetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -82,6 +83,14 @@ impl ProviderRegistry {
             .into_iter()
             .filter(|entry| config.provider_enabled(entry.id))
             .filter_map(|entry| entry.secret_reference)
+            .collect()
+    }
+
+    #[must_use]
+    pub fn external_id_aliases(&self) -> Vec<QueryExternalIdAlias> {
+        self.catalog
+            .iter()
+            .flat_map(|entry| entry.external_id_aliases.iter().copied())
             .collect()
     }
 
@@ -170,6 +179,7 @@ pub struct ProviderCatalogEntry {
     pub(crate) enabled_env_var: &'static str,
     pub(crate) capabilities: &'static [&'static str],
     pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
+    pub(crate) external_id_aliases: &'static [QueryExternalIdAlias],
     pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
     pub(crate) proxy_configured: fn(&ProviderConfig) -> bool,
     pub(crate) network_policy_key: Option<&'static str>,

@@ -32,14 +32,24 @@ OMAPED-020 completed:
 - Manifest defaults, secret references, provider enablement, and env var parsing
   stayed compatible under the targeted gate.
 
+OMAPED-030 completed:
+
+- Added `QueryExternalIdAlias` descriptors to the query parsing Interface.
+- Provider catalog entries now contribute `tmdb_id`, `imdb_id`, `bangumi_id`,
+  and browser-worker rendered-page URL aliases.
+- `MetadataScrapeRuntime` receives aliases from `ProviderRegistry`, so
+  `engine::query` does not import provider implementation modules.
+- Existing explicit external ID payloads and top-level aliases still parse, and
+  known numeric providers still reject non-positive numeric IDs.
+
 ## Next Task
 
-Start OMAPED-030.
+Start OMAPED-040.
 
 Recommended next implementation focus:
 
-- move top-level external ID alias declarations and known numeric validation
-  into provider-owned descriptors or a provider extension seam.
+- make rendered-page support config and naming explicit for Douban and
+  browser_worker while preserving existing browser-worker env vars.
 
 ## Risks
 
@@ -54,3 +64,4 @@ Recommended next implementation focus:
 
 OMAPED-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPED-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast`, and `git diff --check`.
+OMAPED-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast`, and `git diff --check`.
