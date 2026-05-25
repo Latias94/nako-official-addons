@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use nako_addon_protocol::AddonMetadataPatch;
 
-use crate::{Config, providers::registry::ProviderCatalogEntry};
 use crate::{
-    config::ProviderId,
+    Config,
+    config::{ProviderConfig, ProviderId},
     engine::{MetadataQuery, ProviderCandidateFacts, ProviderMetadataCandidate},
-    providers::{MetadataProvider, ProviderBuildStatus},
+    providers::{MetadataProvider, ProviderBuildStatus, ProviderCatalogEntry, ProviderConfigInput},
 };
 
 pub struct FixtureProvider;
@@ -14,9 +14,25 @@ pub struct FixtureProvider;
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
         id: ProviderId::Fixture,
+        default_enabled: true,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED",
         capabilities: &["metadata_suggestion"],
         secret_reference: None,
+        load_config: load_config,
+        proxy_configured: |_| false,
+        network_policy_key: None,
         build: build_provider,
+    }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    ProviderConfig {
+        id: ProviderId::Fixture,
+        enabled: input.enabled,
+        tmdb: None,
+        bangumi: None,
+        browser_worker: None,
+        douban: None,
     }
 }
 

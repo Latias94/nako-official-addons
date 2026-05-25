@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Config,
-    config::{BrowserWorkerProviderConfig, ProviderId},
+    config::{BrowserWorkerProviderConfig, ProviderConfig, ProviderId},
     engine::{
         MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
     },
     providers::{
-        MetadataProvider, ProviderBuildStatus,
+        MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig,
             ProviderHttpTransport, ReqwestProviderHttpTransport,
@@ -25,12 +25,31 @@ const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction"
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
         id: ProviderId::BrowserWorker,
+        default_enabled: false,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED",
         capabilities: &[
             "metadata_suggestion",
             BROWSER_WORKER_RENDERED_PAGE_CAPABILITY,
         ],
         secret_reference: None,
+        load_config: load_config,
+        proxy_configured: |_| false,
+        network_policy_key: None,
         build: build_provider,
+    }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    let lookup = input.lookup;
+    ProviderConfig {
+        id: ProviderId::BrowserWorker,
+        enabled: input.enabled,
+        tmdb: None,
+        bangumi: None,
+        browser_worker: Some(BrowserWorkerProviderConfig::from_env_lookup(|name| {
+            lookup(name)
+        })),
+        douban: None,
     }
 }
 

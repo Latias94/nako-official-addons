@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 
 use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
-use crate::config::ProviderId;
+use crate::config::{ProviderConfig, ProviderId};
 use crate::{Config, providers::MetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -28,11 +30,17 @@ pub struct ProviderDiagnostics {
     pub enabled: Vec<&'static str>,
     pub disabled: Vec<&'static str>,
     pub unavailable: Vec<&'static str>,
+    pub network_policy: BTreeMap<&'static str, bool>,
 }
 
 pub struct ProviderRegistry {
     config: Config,
     catalog: Vec<ProviderCatalogEntry>,
+}
+
+pub struct ProviderAssembly {
+    pub providers: Vec<Box<dyn MetadataProvider>>,
+    pub diagnostics: ProviderDiagnostics,
 }
 
 impl ProviderRegistry {
@@ -79,41 +87,50 @@ impl ProviderRegistry {
 
     #[must_use]
     pub fn providers(&self) -> Vec<Box<dyn MetadataProvider>> {
-        self.catalog
-            .iter()
-            .filter_map(|entry| {
-                if !self.config.provider_enabled(entry.id) {
-                    return None;
-                }
-                match (entry.build)(&self.config) {
-                    ProviderBuildStatus::Ready(provider) => Some(provider),
-                    ProviderBuildStatus::Unavailable => None,
-                }
-            })
-            .collect()
+        self.assemble().providers
     }
 
     #[must_use]
     pub fn diagnostics(&self) -> ProviderDiagnostics {
-        let supported = self
-            .catalog
-            .iter()
-            .map(|entry| {
-                let enabled = self.config.provider_enabled(entry.id);
-                let status = match enabled.then(|| (entry.build)(&self.config)) {
-                    None => ProviderStatus::Disabled,
-                    Some(ProviderBuildStatus::Ready(_)) => ProviderStatus::Ready,
-                    Some(ProviderBuildStatus::Unavailable) => ProviderStatus::Unavailable,
-                };
-                ProviderDescriptor {
-                    id: entry.id.as_str(),
-                    enabled,
-                    available: status == ProviderStatus::Ready,
-                    capabilities: entry.capabilities.to_vec(),
-                    status,
+        self.assemble().diagnostics
+    }
+
+    #[must_use]
+    pub fn assemble(&self) -> ProviderAssembly {
+        let mut providers = Vec::new();
+        let mut supported = Vec::new();
+        let mut network_policy = BTreeMap::new();
+
+        for entry in &self.catalog {
+            if let Some(key) = entry.network_policy_key {
+                let configured = self
+                    .config
+                    .provider_config(entry.id)
+                    .is_some_and(|provider| (entry.proxy_configured)(provider));
+                network_policy.insert(key, configured);
+            }
+
+            let enabled = self.config.provider_enabled(entry.id);
+            let status = if enabled {
+                match (entry.build)(&self.config) {
+                    ProviderBuildStatus::Ready(provider) => {
+                        providers.push(provider);
+                        ProviderStatus::Ready
+                    }
+                    ProviderBuildStatus::Unavailable => ProviderStatus::Unavailable,
                 }
-            })
-            .collect::<Vec<_>>();
+            } else {
+                ProviderStatus::Disabled
+            };
+
+            supported.push(ProviderDescriptor {
+                id: entry.id.as_str(),
+                enabled,
+                available: status == ProviderStatus::Ready,
+                capabilities: entry.capabilities.to_vec(),
+                status,
+            });
+        }
 
         let enabled = supported
             .iter()
@@ -131,11 +148,17 @@ impl ProviderRegistry {
             .map(|provider| provider.id)
             .collect();
 
-        ProviderDiagnostics {
+        let diagnostics = ProviderDiagnostics {
             supported,
             enabled,
             disabled,
             unavailable,
+            network_policy,
+        };
+
+        ProviderAssembly {
+            providers,
+            diagnostics,
         }
     }
 }
@@ -143,14 +166,24 @@ impl ProviderRegistry {
 #[derive(Clone)]
 pub struct ProviderCatalogEntry {
     pub(crate) id: ProviderId,
+    pub(crate) default_enabled: bool,
+    pub(crate) enabled_env_var: &'static str,
     pub(crate) capabilities: &'static [&'static str],
     pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
+    pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
+    pub(crate) proxy_configured: fn(&ProviderConfig) -> bool,
+    pub(crate) network_policy_key: Option<&'static str>,
     pub(crate) build: fn(&Config) -> ProviderBuildStatus,
 }
 
 pub enum ProviderBuildStatus {
     Ready(Box<dyn MetadataProvider>),
     Unavailable,
+}
+
+pub struct ProviderConfigInput<'a> {
+    pub(crate) enabled: bool,
+    pub(crate) lookup: &'a mut dyn FnMut(&str) -> Option<String>,
 }
 
 #[cfg(test)]
@@ -272,15 +305,10 @@ mod tests {
             ProviderBuildStatus::Unavailable
         }
 
-        let registry = ProviderRegistry::with_catalog(
-            Config::default(),
-            vec![ProviderCatalogEntry {
-                id: ProviderId::Fixture,
-                capabilities: &["metadata_suggestion"],
-                secret_reference: None,
-                build: unavailable_provider,
-            }],
-        );
+        let mut entry = crate::providers::fixture::catalog_entry();
+        entry.build = unavailable_provider;
+
+        let registry = ProviderRegistry::with_catalog(Config::default(), vec![entry]);
 
         let diagnostics = registry.diagnostics();
 

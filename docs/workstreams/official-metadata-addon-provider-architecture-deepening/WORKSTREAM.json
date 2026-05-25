@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-architecture-deepening",
+  "title": "Official Metadata Addon Provider Architecture Deepening",
+  "status": "active",
+  "updated": "2026-05-25",
+  "scope_kind": "execution",
+  "problem": "Provider extension remains too shallow across config, registry, manifest, search policy, diagnostics, and browser-worker support semantics.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-architecture-deepening/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-architecture-deepening/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-architecture-deepening/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-architecture-deepening/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-010",
+      "summary": "Workstream opened from architecture review and user-approved five-refactor Goal."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-020",
+      "summary": "Provider catalog entries now own default enablement, enablement env vars, provider config loading, and provider-local proxy facts."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-030",
+      "summary": "ProviderRegistry now exposes one ProviderAssembly for ready adapters, diagnostics, and provider-owned network policy facts consumed by routes."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue",
+    "notes": "Continue through OMAPAD-020, OMAPAD-030, OMAPAD-040, OMAPAD-050, and OMAPAD-060 while public payload compatibility remains valid. Split follow-ons if a task changes Addon Protocol or Nako host contracts."
+  }
+}

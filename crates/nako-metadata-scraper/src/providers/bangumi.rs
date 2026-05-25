@@ -11,10 +11,10 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
     Config,
-    config::{BangumiProviderConfig, ProviderId},
+    config::{BangumiProviderConfig, ProviderConfig, ProviderId},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
-        MetadataProvider, ProviderBuildStatus,
+        MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
     },
@@ -40,6 +40,8 @@ pub const BANGUMI_PROVIDER_ID: &str = "bangumi";
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
         id: ProviderId::Bangumi,
+        default_enabled: false,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED",
         capabilities: &["metadata_suggestion", "subject_search", "anime_search"],
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             BangumiProviderConfig::secret_field_id(),
@@ -50,8 +52,31 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             ),
             false,
         )),
+        load_config: load_config,
+        proxy_configured: bangumi_proxy_configured,
+        network_policy_key: Some("bangumi_proxy_configured"),
         build: build_provider,
     }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    let lookup = input.lookup;
+    ProviderConfig {
+        id: ProviderId::Bangumi,
+        enabled: input.enabled,
+        tmdb: None,
+        bangumi: Some(BangumiProviderConfig::from_env_lookup(|name| lookup(name))),
+        browser_worker: None,
+        douban: None,
+    }
+}
+
+fn bangumi_proxy_configured(provider: &ProviderConfig) -> bool {
+    provider
+        .bangumi
+        .as_ref()
+        .and_then(|config| config.proxy_url.as_ref())
+        .is_some()
 }
 
 fn build_provider(config: &Config) -> ProviderBuildStatus {

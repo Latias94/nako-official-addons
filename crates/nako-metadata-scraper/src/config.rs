@@ -1,3 +1,5 @@
+use crate::providers::{ProviderConfigInput, ProviderRegistry};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NakoRuntimeConfig {
     pub base_url: Option<String>,
@@ -50,14 +52,6 @@ pub enum ProviderId {
 }
 
 impl ProviderId {
-    pub const ALL: [Self; 5] = [
-        Self::Fixture,
-        Self::Tmdb,
-        Self::Bangumi,
-        Self::BrowserWorker,
-        Self::Douban,
-    ];
-
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -66,25 +60,6 @@ impl ProviderId {
             Self::Bangumi => "bangumi",
             Self::BrowserWorker => "browser_worker",
             Self::Douban => "douban",
-        }
-    }
-
-    #[must_use]
-    pub const fn enabled_env_var(self) -> &'static str {
-        match self {
-            Self::Fixture => "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED",
-            Self::Tmdb => "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
-            Self::Bangumi => "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED",
-            Self::BrowserWorker => "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED",
-            Self::Douban => "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED",
-        }
-    }
-
-    #[must_use]
-    pub const fn default_enabled(self) -> bool {
-        match self {
-            Self::Fixture => true,
-            Self::Tmdb | Self::Bangumi | Self::BrowserWorker | Self::Douban => false,
         }
     }
 }
@@ -288,27 +263,7 @@ impl Config {
                 .unwrap_or_else(|| "http://127.0.0.1:9100".to_owned()),
             preferred_language: lookup("NAKO_METADATA_SCRAPER_LANGUAGE")
                 .unwrap_or_else(|| "en-US".to_owned()),
-            providers: ProviderId::ALL
-                .into_iter()
-                .map(|id| {
-                    let enabled = lookup(id.enabled_env_var())
-                        .and_then(|value| parse_bool(&value))
-                        .unwrap_or_else(|| id.default_enabled());
-                    ProviderConfig {
-                        id,
-                        enabled,
-                        tmdb: (id == ProviderId::Tmdb)
-                            .then(|| TmdbProviderConfig::from_env_lookup(|name| lookup(name))),
-                        bangumi: (id == ProviderId::Bangumi)
-                            .then(|| BangumiProviderConfig::from_env_lookup(|name| lookup(name))),
-                        browser_worker: (id == ProviderId::BrowserWorker).then(|| {
-                            BrowserWorkerProviderConfig::from_env_lookup(|name| lookup(name))
-                        }),
-                        douban: (id == ProviderId::Douban)
-                            .then(|| DoubanProviderConfig::from_env_lookup(|name| lookup(name))),
-                    }
-                })
-                .collect(),
+            providers: provider_configs_from_catalog(|name| lookup(name)),
             nako_runtime: NakoRuntimeConfig::from_env_lookup(|name| lookup(name)),
         }
     }
@@ -333,19 +288,10 @@ impl Config {
             return false;
         };
 
-        match provider_id {
-            ProviderId::Tmdb => provider
-                .tmdb
-                .as_ref()
-                .and_then(|config| config.proxy_url.as_ref())
-                .is_some(),
-            ProviderId::Bangumi => provider
-                .bangumi
-                .as_ref()
-                .and_then(|config| config.proxy_url.as_ref())
-                .is_some(),
-            ProviderId::Fixture | ProviderId::BrowserWorker | ProviderId::Douban => false,
-        }
+        ProviderRegistry::catalog()
+            .into_iter()
+            .find(|entry| entry.id == provider_id)
+            .is_some_and(|entry| (entry.proxy_configured)(provider))
     }
 }
 
@@ -355,24 +301,27 @@ impl Default for Config {
             listen_addr: "127.0.0.1:9100".to_owned(),
             base_url: "http://127.0.0.1:9100".to_owned(),
             preferred_language: "en-US".to_owned(),
-            providers: ProviderId::ALL
-                .into_iter()
-                .map(|id| ProviderConfig {
-                    id,
-                    enabled: id.default_enabled(),
-                    tmdb: (id == ProviderId::Tmdb)
-                        .then(|| TmdbProviderConfig::from_env_lookup(|_| None)),
-                    bangumi: (id == ProviderId::Bangumi)
-                        .then(|| BangumiProviderConfig::from_env_lookup(|_| None)),
-                    browser_worker: (id == ProviderId::BrowserWorker)
-                        .then(|| BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
-                    douban: (id == ProviderId::Douban)
-                        .then(|| DoubanProviderConfig::from_env_lookup(|_| None)),
-                })
-                .collect(),
+            providers: provider_configs_from_catalog(|_| None),
             nako_runtime: NakoRuntimeConfig::disabled(),
         }
     }
+}
+
+fn provider_configs_from_catalog(
+    mut lookup: impl FnMut(&str) -> Option<String>,
+) -> Vec<ProviderConfig> {
+    ProviderRegistry::catalog()
+        .into_iter()
+        .map(|entry| {
+            let enabled = lookup(entry.enabled_env_var)
+                .and_then(|value| parse_bool(&value))
+                .unwrap_or(entry.default_enabled);
+            (entry.load_config)(ProviderConfigInput {
+                enabled,
+                lookup: &mut lookup,
+            })
+        })
+        .collect()
 }
 
 fn parse_bool(value: &str) -> Option<bool> {

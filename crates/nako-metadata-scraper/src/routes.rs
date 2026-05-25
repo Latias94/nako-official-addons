@@ -15,7 +15,6 @@ use tower_http::trace::TraceLayer;
 
 use crate::{
     Config,
-    config::ProviderId,
     engine::{
         MetadataScrapeRuntime,
         bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH},
@@ -35,8 +34,9 @@ pub struct AppState {
 
 pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
-    let provider_diagnostics = registry.diagnostics();
-    let providers = registry.providers();
+    let provider_assembly = registry.assemble();
+    let provider_diagnostics = provider_assembly.diagnostics;
+    let providers = provider_assembly.providers;
     let nako_runtime = NakoRuntimeClientConfig::from_runtime_config(&config.nako_runtime)
         .map(NakoRuntimeClient::new);
     let state = AppState {
@@ -92,10 +92,7 @@ async fn health(
             "enabled_providers": state.provider_diagnostics.enabled,
             "disabled_providers": state.provider_diagnostics.disabled,
             "unavailable_providers": state.provider_diagnostics.unavailable,
-            "network_policy": {
-                "tmdb_proxy_configured": state.config.provider_proxy_configured(ProviderId::Tmdb),
-                "bangumi_proxy_configured": state.config.provider_proxy_configured(ProviderId::Bangumi)
-            }
+            "network_policy": state.provider_diagnostics.network_policy
         }),
     })
 }
@@ -175,9 +172,9 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         .collect::<Vec<_>>();
     let supported_providers = provider_list_label(&supported_provider_ids);
     let tmdb_proxy_configured =
-        yes_no_label(state.config.provider_proxy_configured(ProviderId::Tmdb));
+        network_policy_label(&state.provider_diagnostics, "tmdb_proxy_configured");
     let bangumi_proxy_configured =
-        yes_no_label(state.config.provider_proxy_configured(ProviderId::Bangumi));
+        network_policy_label(&state.provider_diagnostics, "bangumi_proxy_configured");
     Html(format!(
         r#"<!doctype html>
 <html lang="en">
@@ -206,6 +203,16 @@ fn provider_list_label(providers: &[&str]) -> String {
 
 const fn yes_no_label(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
+}
+
+fn network_policy_label(diagnostics: &ProviderDiagnostics, key: &str) -> &'static str {
+    yes_no_label(
+        diagnostics
+            .network_policy
+            .get(key)
+            .copied()
+            .unwrap_or(false),
+    )
 }
 
 #[cfg(test)]

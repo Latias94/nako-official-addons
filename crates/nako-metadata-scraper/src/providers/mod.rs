@@ -11,11 +11,11 @@ pub mod http_runtime;
 mod registry;
 pub mod tmdb;
 
-use registry::ProviderCatalogEntry;
-
 pub use registry::{
-    ProviderBuildStatus, ProviderDescriptor, ProviderDiagnostics, ProviderRegistry, ProviderStatus,
+    ProviderAssembly, ProviderBuildStatus, ProviderDescriptor, ProviderDiagnostics,
+    ProviderRegistry, ProviderStatus,
 };
+pub(crate) use registry::{ProviderCatalogEntry, ProviderConfigInput};
 
 #[must_use]
 pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {

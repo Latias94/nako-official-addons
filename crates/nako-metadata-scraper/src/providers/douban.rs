@@ -9,10 +9,10 @@ use async_trait::async_trait;
 
 use crate::{
     Config,
-    config::{DoubanProviderConfig, ProviderId},
+    config::{DoubanProviderConfig, ProviderConfig, ProviderId},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
-        MetadataProvider, ProviderBuildStatus,
+        MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
     },
@@ -30,13 +30,30 @@ const DOUBAN_DETAIL_ENRICHMENT_LIMIT: usize = 1;
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
         id: ProviderId::Douban,
+        default_enabled: false,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED",
         capabilities: &[
             "metadata_suggestion",
             "movie_search",
             "browser_worker_rendered_html",
         ],
         secret_reference: None,
+        load_config: load_config,
+        proxy_configured: |_| false,
+        network_policy_key: None,
         build: build_provider,
+    }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    let lookup = input.lookup;
+    ProviderConfig {
+        id: ProviderId::Douban,
+        enabled: input.enabled,
+        tmdb: None,
+        bangumi: None,
+        browser_worker: None,
+        douban: Some(DoubanProviderConfig::from_env_lookup(|name| lookup(name))),
     }
 }
 

@@ -11,10 +11,10 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
     Config,
-    config::{ProviderId, TmdbProviderConfig},
+    config::{ProviderConfig, ProviderId, TmdbProviderConfig},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
-        MetadataProvider, ProviderBuildStatus,
+        MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
     },
@@ -41,6 +41,8 @@ pub const TMDB_PROVIDER_ID: &str = "tmdb";
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
         id: ProviderId::Tmdb,
+        default_enabled: false,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
         capabilities: &["metadata_suggestion", "movie_search"],
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             TmdbProviderConfig::secret_field_id(),
@@ -51,8 +53,31 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             ),
             true,
         )),
+        load_config: load_config,
+        proxy_configured: tmdb_proxy_configured,
+        network_policy_key: Some("tmdb_proxy_configured"),
         build: build_provider,
     }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    let lookup = input.lookup;
+    ProviderConfig {
+        id: ProviderId::Tmdb,
+        enabled: input.enabled,
+        tmdb: Some(TmdbProviderConfig::from_env_lookup(|name| lookup(name))),
+        bangumi: None,
+        browser_worker: None,
+        douban: None,
+    }
+}
+
+fn tmdb_proxy_configured(provider: &ProviderConfig) -> bool {
+    provider
+        .tmdb
+        .as_ref()
+        .and_then(|config| config.proxy_url.as_ref())
+        .is_some()
 }
 
 fn build_provider(config: &Config) -> ProviderBuildStatus {
