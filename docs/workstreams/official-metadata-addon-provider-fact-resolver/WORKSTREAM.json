@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-provider-fact-resolver",
   "title": "Official Metadata Addon Provider Fact Resolver",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-25",
   "scope_kind": "execution",
   "problem": "nako-metadata-scraper ranks isolated provider candidates and only exact-dedupes provider/provider_id pairs, so shared external IDs cannot merge provider facts before final ranking.",
@@ -54,6 +54,11 @@
       "date": "2026-05-25",
       "task": "OMAPFR-050",
       "summary": "Full package gate passed and README docs now describe capability-derived aliases plus shared external-ID candidate resolution."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-060",
+      "summary": "Workstream reviewed, verified, and closed with no immediate follow-on split from this lane."
     }
   ],
   "research_refs": [
@@ -61,8 +66,7 @@
     "docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "next_task": "OMAPFR-060",
-    "notes": "Review, verify, and close the resolver workstream or split explicit follow-ons."
+    "default_action": "closed",
+    "notes": "Provider fact resolver and external ID capability catalog workstream is complete. Host-owned refresh, locked fields, local metadata, local artwork priority, and final merge/apply policy remain outside this sidecar lane."
   }
 }

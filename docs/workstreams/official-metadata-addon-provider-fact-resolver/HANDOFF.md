@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Fact Resolver - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Current State
@@ -18,13 +18,19 @@ OMAPFR-050 is complete. The full `nako-metadata-scraper` package gate passed,
 and README docs now describe capability-derived external ID aliases plus shared
 external-ID candidate resolution without changing the protocol envelope.
 
+OMAPFR-060 is complete. Review found no blocking issues, closeout validation
+passed, and the workstream is closed.
+
 ## Next Task
 
-Start OMAPFR-060:
+No next task in this lane.
 
-- review the completed lane;
-- rerun closeout validation from TODO;
-- close the workstream or split explicit follow-ons.
+Potential future work remains outside this lane:
+
+- host-owned refresh state, locked fields, local metadata, local artwork
+  priority, and final merge/apply policy;
+- central direct-lookup dispatch from capability descriptors if the sidecar
+  later needs provider planning beyond provider-local query code.
 
 ## License Guardrails
 
@@ -47,3 +53,4 @@ OMAPFR-020 passed with `cargo nextest run -p nako-metadata-scraper resolver --no
 OMAPFR-030 passed with `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPFR-040 passed with `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPFR-050 passed with `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
+OMAPFR-060 passed with `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, `cargo fmt --all -- --check`, `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`, and `git diff --check`.

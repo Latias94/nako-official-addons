@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Fact Resolver
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Why This Lane Exists
@@ -85,3 +85,14 @@ This lane can close when:
 - provenance evidence is redaction-safe and tested;
 - full `nako-metadata-scraper` package gate passes;
 - no reference repository source is copied or vendored.
+
+## Closeout Summary
+
+Closed on 2026-05-25. The sidecar now adapts provider candidates into internal
+provider facts, resolves exact provider identities and shared external IDs
+before final ranking, and uses provider-owned external ID capabilities for query
+alias parsing and emitted-ID resolver clustering. The `/metadata` response shape
+is unchanged.
+
+Host-owned refresh state, locked fields, local metadata, local artwork priority,
+and final merge/apply policy remain outside this sidecar lane.

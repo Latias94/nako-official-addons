@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Fact Resolver - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Scope And License Guardrails
@@ -39,3 +39,8 @@ Last updated: 2026-05-25
 
 - Review and verification are recorded.
 - Workstream is closed or follow-ons are split explicitly.
+
+## Closeout
+
+Closed on 2026-05-25 with all milestones complete. No immediate follow-on is
+split from this lane.

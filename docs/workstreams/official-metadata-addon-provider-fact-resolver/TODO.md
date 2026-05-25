@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Fact Resolver - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Scope And License Guardrails
@@ -50,9 +50,9 @@ Last updated: 2026-05-25
 
 ## M5 - Closeout
 
-- [ ] OMAPFR-060 [owner=planner] [deps=OMAPFR-050] [scope=docs/workstreams/official-metadata-addon-provider-fact-resolver]
+- [x] OMAPFR-060 [owner=planner] [deps=OMAPFR-050] [scope=docs/workstreams/official-metadata-addon-provider-fact-resolver]
   Goal: Review, verify, and close the resolver workstream or split explicit follow-ons.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`; `git diff --check`.
   Review: review-workstream has no blocking findings.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-provider-fact-resolver/WORKSTREAM.json`; `git diff --check`.
+  Handoff: DONE. Workstream closed; no immediate follow-on is split from this lane.
