@@ -324,14 +324,7 @@ mod tests {
         let registry = ProviderRegistry::from_config(Config {
             providers: vec![
                 ProviderConfig::disabled(ProviderId::Fixture),
-                ProviderConfig {
-                    id: ProviderId::Tmdb,
-                    enabled: true,
-                    tmdb: Some(TmdbProviderConfig::from_env_lookup(|_| None)),
-                    bangumi: None,
-                    browser_worker: None,
-                    douban: None,
-                },
+                ProviderConfig::tmdb(true, TmdbProviderConfig::from_env_lookup(|_| None)),
             ],
             ..Config::default()
         });
@@ -353,20 +346,16 @@ mod tests {
         let registry = ProviderRegistry::from_config(Config {
             providers: vec![
                 ProviderConfig::disabled(ProviderId::Fixture),
-                ProviderConfig {
-                    id: ProviderId::Tmdb,
-                    enabled: true,
-                    tmdb: Some(TmdbProviderConfig {
+                ProviderConfig::tmdb(
+                    true,
+                    TmdbProviderConfig {
                         read_access_token: Some("tmdb-token".to_owned()),
                         api_base_url: "https://tmdb.example/3".to_owned(),
                         language: "en-US".to_owned(),
                         include_adult: false,
                         proxy_url: None,
-                    }),
-                    bangumi: None,
-                    browser_worker: None,
-                    douban: None,
-                },
+                    },
+                ),
             ],
             ..Config::default()
         });
@@ -386,14 +375,7 @@ mod tests {
             providers: vec![
                 ProviderConfig::disabled(ProviderId::Fixture),
                 ProviderConfig::disabled(ProviderId::Tmdb),
-                ProviderConfig {
-                    id: ProviderId::Bangumi,
-                    enabled: true,
-                    bangumi: Some(BangumiProviderConfig::from_env_lookup(|_| None)),
-                    tmdb: None,
-                    browser_worker: None,
-                    douban: None,
-                },
+                ProviderConfig::bangumi(true, BangumiProviderConfig::from_env_lookup(|_| None)),
             ],
             ..Config::default()
         });
@@ -408,20 +390,16 @@ mod tests {
     }
 
     #[test]
-    fn registry_reports_enabled_browser_worker_without_base_url_as_unavailable() {
+    fn registry_builds_enabled_browser_worker_with_default_base_url() {
         let registry = ProviderRegistry::from_config(Config {
             providers: vec![
                 ProviderConfig::disabled(ProviderId::Fixture),
                 ProviderConfig::disabled(ProviderId::Tmdb),
                 ProviderConfig::disabled(ProviderId::Bangumi),
-                ProviderConfig {
-                    id: ProviderId::BrowserWorker,
-                    enabled: true,
-                    tmdb: None,
-                    bangumi: None,
-                    browser_worker: Some(BrowserWorkerProviderConfig::from_env_lookup(|_| None)),
-                    douban: None,
-                },
+                ProviderConfig::browser_worker(
+                    true,
+                    BrowserWorkerProviderConfig::from_env_lookup(|_| None),
+                ),
             ],
             ..Config::default()
         });

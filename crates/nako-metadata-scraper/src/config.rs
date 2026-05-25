@@ -1,4 +1,8 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
+pub use crate::providers::{
+    bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
+    douban::DoubanProviderConfig, tmdb::TmdbProviderConfig,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NakoRuntimeConfig {
@@ -68,175 +72,122 @@ impl ProviderId {
 pub struct ProviderConfig {
     pub id: ProviderId,
     pub enabled: bool,
-    pub tmdb: Option<TmdbProviderConfig>,
-    pub bangumi: Option<BangumiProviderConfig>,
-    pub browser_worker: Option<BrowserWorkerProviderConfig>,
-    pub douban: Option<DoubanProviderConfig>,
+    kind: ProviderConfigKind,
 }
 
 impl ProviderConfig {
     #[must_use]
-    pub const fn enabled(id: ProviderId) -> Self {
+    pub fn enabled(id: ProviderId) -> Self {
+        Self::with_enabled(id, true)
+    }
+
+    #[must_use]
+    pub fn disabled(id: ProviderId) -> Self {
+        Self::with_enabled(id, false)
+    }
+
+    #[must_use]
+    pub fn fixture(enabled: bool) -> Self {
         Self {
-            id,
-            enabled: true,
-            tmdb: None,
-            bangumi: None,
-            browser_worker: None,
-            douban: None,
+            id: ProviderId::Fixture,
+            enabled,
+            kind: ProviderConfigKind::Fixture,
         }
     }
 
     #[must_use]
-    pub const fn disabled(id: ProviderId) -> Self {
+    pub fn tmdb(enabled: bool, config: TmdbProviderConfig) -> Self {
         Self {
-            id,
-            enabled: false,
-            tmdb: None,
-            bangumi: None,
-            browser_worker: None,
-            douban: None,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TmdbProviderConfig {
-    pub read_access_token: Option<String>,
-    pub api_base_url: String,
-    pub language: String,
-    pub include_adult: bool,
-    pub proxy_url: Option<String>,
-}
-
-impl TmdbProviderConfig {
-    #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
-        Self {
-            read_access_token: lookup("NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN")
-                .and_then(non_empty_trimmed),
-            api_base_url: lookup("NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "https://api.themoviedb.org/3".to_owned()),
-            language: lookup("NAKO_METADATA_SCRAPER_TMDB_LANGUAGE")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "en-US".to_owned()),
-            include_adult: lookup("NAKO_METADATA_SCRAPER_TMDB_INCLUDE_ADULT")
-                .and_then(|value| parse_bool(&value))
-                .unwrap_or(false),
-            proxy_url: lookup("NAKO_METADATA_SCRAPER_TMDB_PROXY_URL").and_then(non_empty_trimmed),
+            id: ProviderId::Tmdb,
+            enabled,
+            kind: ProviderConfigKind::Tmdb(config),
         }
     }
 
     #[must_use]
-    pub const fn secret_field_id() -> &'static str {
-        "tmdb_read_access_token"
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct BangumiProviderConfig {
-    pub access_token: Option<String>,
-    pub api_base_url: String,
-    pub user_agent: String,
-    pub include_nsfw: bool,
-    pub subject_types: Vec<u8>,
-    pub proxy_url: Option<String>,
-}
-
-impl BangumiProviderConfig {
-    #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+    pub fn bangumi(enabled: bool, config: BangumiProviderConfig) -> Self {
         Self {
-            access_token: lookup("NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN")
-                .and_then(non_empty_trimmed),
-            api_base_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_API_BASE_URL")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "https://api.bgm.tv".to_owned()),
-            user_agent: lookup("NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(Self::default_user_agent),
-            include_nsfw: lookup("NAKO_METADATA_SCRAPER_BANGUMI_INCLUDE_NSFW")
-                .and_then(|value| parse_bool(&value))
-                .unwrap_or(false),
-            subject_types: lookup("NAKO_METADATA_SCRAPER_BANGUMI_SUBJECT_TYPES")
-                .and_then(|value| parse_bangumi_subject_types(&value))
-                .unwrap_or_else(|| vec![2]),
-            proxy_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL")
-                .and_then(non_empty_trimmed),
+            id: ProviderId::Bangumi,
+            enabled,
+            kind: ProviderConfigKind::Bangumi(config),
         }
     }
 
     #[must_use]
-    pub fn default_user_agent() -> String {
-        format!(
-            "Latias94/nako-official-addons/nako-metadata-scraper/{} (https://github.com/Latias94/nako-official-addons)",
-            env!("CARGO_PKG_VERSION")
-        )
-    }
-
-    #[must_use]
-    pub const fn secret_field_id() -> &'static str {
-        "bangumi_access_token"
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct BrowserWorkerProviderConfig {
-    pub base_url: String,
-    pub extract_path: String,
-    pub timeout_ms: u64,
-}
-
-impl BrowserWorkerProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
-
-    #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+    pub fn browser_worker(enabled: bool, config: BrowserWorkerProviderConfig) -> Self {
         Self {
-            base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
-                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            extract_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| "/extract".to_owned()),
-            timeout_ms: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
-                .and_then(|value| value.trim().parse::<u64>().ok())
-                .filter(|value| *value > 0)
-                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+            id: ProviderId::BrowserWorker,
+            enabled,
+            kind: ProviderConfigKind::BrowserWorker(config),
+        }
+    }
+
+    #[must_use]
+    pub fn douban(enabled: bool, config: DoubanProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Douban,
+            enabled,
+            kind: ProviderConfigKind::Douban(config),
+        }
+    }
+
+    #[must_use]
+    pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Tmdb(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn bangumi_config(&self) -> Option<&BangumiProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Bangumi(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn browser_worker_config(&self) -> Option<&BrowserWorkerProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::BrowserWorker(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn douban_config(&self) -> Option<&DoubanProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Douban(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    fn with_enabled(id: ProviderId, enabled: bool) -> Self {
+        match id {
+            ProviderId::Fixture => Self::fixture(enabled),
+            ProviderId::Tmdb => Self::tmdb(enabled, TmdbProviderConfig::from_env_lookup(|_| None)),
+            ProviderId::Bangumi => {
+                Self::bangumi(enabled, BangumiProviderConfig::from_env_lookup(|_| None))
+            }
+            ProviderId::BrowserWorker => Self::browser_worker(
+                enabled,
+                BrowserWorkerProviderConfig::from_env_lookup(|_| None),
+            ),
+            ProviderId::Douban => {
+                Self::douban(enabled, DoubanProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DoubanProviderConfig {
-    pub search_base_url: String,
-    pub browser_worker_base_url: String,
-    pub render_path: String,
-    pub timeout_ms: u64,
-}
-
-impl DoubanProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
-
-    #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
-        Self {
-            search_base_url: lookup("NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL")
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| "https://movie.douban.com/subject_search".to_owned()),
-            browser_worker_base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            render_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| "/render".to_owned()),
-            timeout_ms: lookup("NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS")
-                .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
-                .and_then(|value| value.trim().parse::<u64>().ok())
-                .filter(|value| *value > 0)
-                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
-        }
-    }
+pub enum ProviderConfigKind {
+    Fixture,
+    Tmdb(TmdbProviderConfig),
+    Bangumi(BangumiProviderConfig),
+    BrowserWorker(BrowserWorkerProviderConfig),
+    Douban(DoubanProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -324,7 +275,7 @@ fn provider_configs_from_catalog(
         .collect()
 }
 
-fn parse_bool(value: &str) -> Option<bool> {
+pub(crate) fn parse_bool(value: &str) -> Option<bool> {
     match value.trim().to_ascii_lowercase().as_str() {
         "1" | "true" | "yes" | "on" => Some(true),
         "0" | "false" | "no" | "off" => Some(false),
@@ -332,21 +283,9 @@ fn parse_bool(value: &str) -> Option<bool> {
     }
 }
 
-fn non_empty_trimmed(value: String) -> Option<String> {
+pub(crate) fn non_empty_trimmed(value: String) -> Option<String> {
     let value = value.trim();
     (!value.is_empty()).then(|| value.to_owned())
-}
-
-fn parse_bangumi_subject_types(value: &str) -> Option<Vec<u8>> {
-    let mut subject_types = Vec::new();
-    for item in value.split(',') {
-        let subject_type = item.trim().parse::<u8>().ok()?;
-        if !matches!(subject_type, 1 | 2 | 3 | 4 | 6) {
-            return None;
-        }
-        subject_types.push(subject_type);
-    }
-    (!subject_types.is_empty()).then_some(subject_types)
 }
 
 #[cfg(test)]
@@ -364,33 +303,32 @@ mod tests {
         assert_eq!(config.providers[1].id, ProviderId::Tmdb);
         assert!(!config.providers[1].enabled);
         assert_eq!(
-            config.providers[1].tmdb.as_ref().unwrap().api_base_url,
+            config.providers[1].tmdb_config().unwrap().api_base_url,
             "https://api.themoviedb.org/3"
         );
         assert!(
             config.providers[1]
-                .tmdb
-                .as_ref()
+                .tmdb_config()
                 .unwrap()
                 .proxy_url
                 .is_none()
         );
         assert_eq!(config.providers[2].id, ProviderId::Bangumi);
         assert!(!config.providers[2].enabled);
-        let bangumi = config.providers[2].bangumi.as_ref().unwrap();
+        let bangumi = config.providers[2].bangumi_config().unwrap();
         assert_eq!(bangumi.api_base_url, "https://api.bgm.tv");
         assert_eq!(bangumi.subject_types, vec![2]);
         assert!(!bangumi.include_nsfw);
         assert!(bangumi.proxy_url.is_none());
         assert_eq!(config.providers[3].id, ProviderId::BrowserWorker);
         assert!(!config.providers[3].enabled);
-        let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
+        let browser_worker = config.providers[3].browser_worker_config().unwrap();
         assert_eq!(browser_worker.base_url, "http://nako-browser-worker:3000");
         assert_eq!(browser_worker.extract_path, "/extract");
         assert_eq!(browser_worker.timeout_ms, 10_000);
         assert_eq!(config.providers[4].id, ProviderId::Douban);
         assert!(!config.providers[4].enabled);
-        let douban = config.providers[4].douban.as_ref().unwrap();
+        let douban = config.providers[4].douban_config().unwrap();
         assert_eq!(
             douban.search_base_url,
             "https://movie.douban.com/subject_search"
@@ -477,13 +415,13 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Fixture));
         assert!(config.provider_enabled(ProviderId::Tmdb));
         assert!(config.provider_enabled(ProviderId::Bangumi));
-        let tmdb = config.providers[1].tmdb.as_ref().unwrap();
+        let tmdb = config.providers[1].tmdb_config().unwrap();
         assert_eq!(tmdb.read_access_token.as_deref(), Some("tmdb-token"));
         assert_eq!(tmdb.api_base_url, "https://tmdb.example/3");
         assert_eq!(tmdb.language, "ja-JP");
         assert!(tmdb.include_adult);
         assert_eq!(tmdb.proxy_url.as_deref(), Some("http://proxy.example:8080"));
-        let bangumi = config.providers[2].bangumi.as_ref().unwrap();
+        let bangumi = config.providers[2].bangumi_config().unwrap();
         assert_eq!(bangumi.access_token.as_deref(), Some("bangumi-token"));
         assert_eq!(bangumi.api_base_url, "https://bangumi.example");
         assert_eq!(bangumi.user_agent, "Latias94/test-addon/0.1.0");
@@ -496,7 +434,7 @@ mod tests {
         assert!(config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(config.provider_proxy_configured(ProviderId::Bangumi));
         assert!(config.provider_enabled(ProviderId::BrowserWorker));
-        let browser_worker = config.providers[3].browser_worker.as_ref().unwrap();
+        let browser_worker = config.providers[3].browser_worker_config().unwrap();
         assert_eq!(
             browser_worker.base_url,
             "http://browser-worker.example:3000"
@@ -504,7 +442,7 @@ mod tests {
         assert_eq!(browser_worker.extract_path, "/extract");
         assert_eq!(browser_worker.timeout_ms, 7500);
         assert!(config.provider_enabled(ProviderId::Douban));
-        let douban = config.providers[4].douban.as_ref().unwrap();
+        let douban = config.providers[4].douban_config().unwrap();
         assert_eq!(
             douban.search_base_url,
             "https://douban.example/subject_search"
@@ -559,13 +497,12 @@ mod tests {
         });
 
         assert_eq!(
-            config.providers[2].bangumi.as_ref().unwrap().subject_types,
+            config.providers[2].bangumi_config().unwrap().subject_types,
             vec![2]
         );
         assert_eq!(
             config.providers[3]
-                .browser_worker
-                .as_ref()
+                .browser_worker_config()
                 .unwrap()
                 .extract_path,
             "/extract"

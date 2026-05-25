@@ -22,14 +22,24 @@ OMAPED-010 completed:
 - Release publishing and live smoke remain explicitly out of scope.
 - JSON, format, and diff hygiene gates passed.
 
+OMAPED-020 completed:
+
+- `ProviderConfig` no longer carries `tmdb`, `bangumi`, `browser_worker`, and
+  `douban` optional fields on every row.
+- Provider config is now represented by typed `ProviderConfigKind` variants.
+- TMDB, Bangumi, browser_worker, and Douban config structs live in their
+  provider modules, with central re-exports to preserve existing call sites.
+- Manifest defaults, secret references, provider enablement, and env var parsing
+  stayed compatible under the targeted gate.
+
 ## Next Task
 
-Start OMAPED-020.
+Start OMAPED-030.
 
 Recommended next implementation focus:
 
-- begin replacing the provider config optional-field matrix with a typed
-  provider config Interface.
+- move top-level external ID alias declarations and known numeric validation
+  into provider-owned descriptors or a provider extension seam.
 
 ## Risks
 
@@ -43,3 +53,4 @@ Recommended next implementation focus:
 ## Validation Memory
 
 OMAPED-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`, `cargo fmt --all -- --check`, and `git diff --check`.
+OMAPED-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast`, and `git diff --check`.

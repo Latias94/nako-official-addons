@@ -11,7 +11,7 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
     Config,
-    config::{ProviderConfig, ProviderId, TmdbProviderConfig},
+    config::{ProviderConfig, ProviderId, non_empty_trimmed, parse_bool},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -36,6 +36,40 @@ use search::tmdb_query_movie_ids;
 use test_support::FakeTransport;
 
 pub const TMDB_PROVIDER_ID: &str = "tmdb";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TmdbProviderConfig {
+    pub read_access_token: Option<String>,
+    pub api_base_url: String,
+    pub language: String,
+    pub include_adult: bool,
+    pub proxy_url: Option<String>,
+}
+
+impl TmdbProviderConfig {
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            read_access_token: lookup("NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN")
+                .and_then(non_empty_trimmed),
+            api_base_url: lookup("NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "https://api.themoviedb.org/3".to_owned()),
+            language: lookup("NAKO_METADATA_SCRAPER_TMDB_LANGUAGE")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "en-US".to_owned()),
+            include_adult: lookup("NAKO_METADATA_SCRAPER_TMDB_INCLUDE_ADULT")
+                .and_then(|value| parse_bool(&value))
+                .unwrap_or(false),
+            proxy_url: lookup("NAKO_METADATA_SCRAPER_TMDB_PROXY_URL").and_then(non_empty_trimmed),
+        }
+    }
+
+    #[must_use]
+    pub const fn secret_field_id() -> &'static str {
+        "tmdb_read_access_token"
+    }
+}
 
 #[must_use]
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
@@ -62,20 +96,15 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
     let lookup = input.lookup;
-    ProviderConfig {
-        id: ProviderId::Tmdb,
-        enabled: input.enabled,
-        tmdb: Some(TmdbProviderConfig::from_env_lookup(|name| lookup(name))),
-        bangumi: None,
-        browser_worker: None,
-        douban: None,
-    }
+    ProviderConfig::tmdb(
+        input.enabled,
+        TmdbProviderConfig::from_env_lookup(|name| lookup(name)),
+    )
 }
 
 fn tmdb_proxy_configured(provider: &ProviderConfig) -> bool {
     provider
-        .tmdb
-        .as_ref()
+        .tmdb_config()
         .and_then(|config| config.proxy_url.as_ref())
         .is_some()
 }
@@ -83,7 +112,7 @@ fn tmdb_proxy_configured(provider: &ProviderConfig) -> bool {
 fn build_provider(config: &Config) -> ProviderBuildStatus {
     let Some(tmdb_config) = config
         .provider_config(ProviderId::Tmdb)
-        .and_then(|provider| provider.tmdb.clone())
+        .and_then(|provider| provider.tmdb_config().cloned())
     else {
         return ProviderBuildStatus::Unavailable;
     };

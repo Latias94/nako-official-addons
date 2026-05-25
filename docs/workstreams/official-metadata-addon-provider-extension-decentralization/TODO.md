@@ -14,12 +14,12 @@ Last updated: 2026-05-25
 
 ## M1 - Provider Config Decentralization
 
-- [ ] OMAPED-020 [owner=codex] [deps=OMAPED-010] [scope=crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/manifest.rs]
+- [x] OMAPED-020 [owner=codex] [deps=OMAPED-010] [scope=crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/manifest.rs]
   Goal: Replace the provider config optional-field matrix with a typed provider config Interface that prevents invalid rows and moves provider-local config structs closer to provider adapters.
   Validation: cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast
   Review: Confirm public env vars, manifest defaults, secret references, and provider enablement remain compatible.
-  Evidence: EVIDENCE_AND_GATES.md
-  Handoff: Provider config central edits are reduced for the next provider.
+  Evidence: `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. `ProviderConfig` now uses typed provider config variants and provider-local config structs live in provider modules while env vars, manifest defaults, secret references, and provider enablement remain compatible.
 
 ## M2 - Provider-Owned External ID Aliases
 

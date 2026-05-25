@@ -11,7 +11,7 @@ use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
     Config,
-    config::{BangumiProviderConfig, ProviderConfig, ProviderId},
+    config::{ProviderConfig, ProviderId, non_empty_trimmed, parse_bool},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -35,6 +35,65 @@ use search::{bangumi_air_date_filter, bangumi_query_subject_ids};
 use test_support::FakeTransport;
 
 pub const BANGUMI_PROVIDER_ID: &str = "bangumi";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BangumiProviderConfig {
+    pub access_token: Option<String>,
+    pub api_base_url: String,
+    pub user_agent: String,
+    pub include_nsfw: bool,
+    pub subject_types: Vec<u8>,
+    pub proxy_url: Option<String>,
+}
+
+impl BangumiProviderConfig {
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            access_token: lookup("NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN")
+                .and_then(non_empty_trimmed),
+            api_base_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_API_BASE_URL")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "https://api.bgm.tv".to_owned()),
+            user_agent: lookup("NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(Self::default_user_agent),
+            include_nsfw: lookup("NAKO_METADATA_SCRAPER_BANGUMI_INCLUDE_NSFW")
+                .and_then(|value| parse_bool(&value))
+                .unwrap_or(false),
+            subject_types: lookup("NAKO_METADATA_SCRAPER_BANGUMI_SUBJECT_TYPES")
+                .and_then(|value| parse_bangumi_subject_types(&value))
+                .unwrap_or_else(|| vec![2]),
+            proxy_url: lookup("NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL")
+                .and_then(non_empty_trimmed),
+        }
+    }
+
+    #[must_use]
+    pub fn default_user_agent() -> String {
+        format!(
+            "Latias94/nako-official-addons/nako-metadata-scraper/{} (https://github.com/Latias94/nako-official-addons)",
+            env!("CARGO_PKG_VERSION")
+        )
+    }
+
+    #[must_use]
+    pub const fn secret_field_id() -> &'static str {
+        "bangumi_access_token"
+    }
+}
+
+fn parse_bangumi_subject_types(value: &str) -> Option<Vec<u8>> {
+    let mut subject_types = Vec::new();
+    for item in value.split(',') {
+        let subject_type = item.trim().parse::<u8>().ok()?;
+        if !matches!(subject_type, 1 | 2 | 3 | 4 | 6) {
+            return None;
+        }
+        subject_types.push(subject_type);
+    }
+    (!subject_types.is_empty()).then_some(subject_types)
+}
 
 #[must_use]
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
@@ -61,20 +120,15 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
     let lookup = input.lookup;
-    ProviderConfig {
-        id: ProviderId::Bangumi,
-        enabled: input.enabled,
-        tmdb: None,
-        bangumi: Some(BangumiProviderConfig::from_env_lookup(|name| lookup(name))),
-        browser_worker: None,
-        douban: None,
-    }
+    ProviderConfig::bangumi(
+        input.enabled,
+        BangumiProviderConfig::from_env_lookup(|name| lookup(name)),
+    )
 }
 
 fn bangumi_proxy_configured(provider: &ProviderConfig) -> bool {
     provider
-        .bangumi
-        .as_ref()
+        .bangumi_config()
         .and_then(|config| config.proxy_url.as_ref())
         .is_some()
 }
@@ -82,7 +136,7 @@ fn bangumi_proxy_configured(provider: &ProviderConfig) -> bool {
 fn build_provider(config: &Config) -> ProviderBuildStatus {
     let Some(bangumi_config) = config
         .provider_config(ProviderId::Bangumi)
-        .and_then(|provider| provider.bangumi.clone())
+        .and_then(|provider| provider.bangumi_config().cloned())
     else {
         return ProviderBuildStatus::Unavailable;
     };

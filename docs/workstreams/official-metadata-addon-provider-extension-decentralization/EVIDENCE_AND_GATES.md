@@ -20,6 +20,7 @@ Last updated: 2026-05-25
 | Date | Task | Evidence | Result |
 | --- | --- | --- | --- |
 | 2026-05-25 | OMAPED-010 planning | Opened this workstream from the user-approved follow-on provider extension refactor Goal. Validated `WORKSTREAM.json` with `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
+| 2026-05-25 | OMAPED-020 provider config decentralization | Replaced `ProviderConfig`'s provider-specific optional-field matrix with typed `ProviderConfigKind` variants and moved TMDB, Bangumi, browser_worker, and Douban config structs into their provider modules with central re-exports for compatibility. Ran `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast` with 94 tests run, 94 passed, and 51 skipped; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
 
 ## Notes
 

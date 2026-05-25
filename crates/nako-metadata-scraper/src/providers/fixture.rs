@@ -26,14 +26,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
 }
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
-    ProviderConfig {
-        id: ProviderId::Fixture,
-        enabled: input.enabled,
-        tmdb: None,
-        bangumi: None,
-        browser_worker: None,
-        douban: None,
-    }
+    ProviderConfig::fixture(input.enabled)
 }
 
 fn build_provider(_config: &Config) -> ProviderBuildStatus {

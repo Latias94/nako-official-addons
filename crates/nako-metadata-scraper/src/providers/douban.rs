@@ -9,7 +9,7 @@ use async_trait::async_trait;
 
 use crate::{
     Config,
-    config::{DoubanProviderConfig, ProviderConfig, ProviderId},
+    config::{ProviderConfig, ProviderId},
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
@@ -26,6 +26,38 @@ use test_support::FakeTransport;
 
 pub const DOUBAN_PROVIDER_ID: &str = "douban";
 const DOUBAN_DETAIL_ENRICHMENT_LIMIT: usize = 1;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DoubanProviderConfig {
+    pub search_base_url: String,
+    pub browser_worker_base_url: String,
+    pub render_path: String,
+    pub timeout_ms: u64,
+}
+
+impl DoubanProviderConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            search_base_url: lookup("NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "https://movie.douban.com/subject_search".to_owned()),
+            browser_worker_base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
+            render_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "/render".to_owned()),
+            timeout_ms: lookup("NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS")
+                .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        }
+    }
+}
 
 #[must_use]
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
@@ -48,20 +80,16 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
     let lookup = input.lookup;
-    ProviderConfig {
-        id: ProviderId::Douban,
-        enabled: input.enabled,
-        tmdb: None,
-        bangumi: None,
-        browser_worker: None,
-        douban: Some(DoubanProviderConfig::from_env_lookup(|name| lookup(name))),
-    }
+    ProviderConfig::douban(
+        input.enabled,
+        DoubanProviderConfig::from_env_lookup(|name| lookup(name)),
+    )
 }
 
 fn build_provider(config: &Config) -> ProviderBuildStatus {
     let Some(douban_config) = config
         .provider_config(ProviderId::Douban)
-        .and_then(|provider| provider.douban.clone())
+        .and_then(|provider| provider.douban_config().cloned())
     else {
         return ProviderBuildStatus::Unavailable;
     };

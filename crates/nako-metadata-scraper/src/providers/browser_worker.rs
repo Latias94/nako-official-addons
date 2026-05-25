@@ -3,7 +3,7 @@ use nako_addon_protocol::AddonMetadataPatch;
 
 use crate::{
     Config,
-    config::{BrowserWorkerProviderConfig, ProviderConfig, ProviderId},
+    config::{ProviderConfig, ProviderId},
     engine::{
         MetadataQuery, ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate,
         ProviderOutcome,
@@ -21,6 +21,32 @@ use crate::{
 
 pub const BROWSER_WORKER_PROVIDER_ID: &str = "browser_worker";
 const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BrowserWorkerProviderConfig {
+    pub base_url: String,
+    pub extract_path: String,
+    pub timeout_ms: u64,
+}
+
+impl BrowserWorkerProviderConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
+            extract_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "/extract".to_owned()),
+            timeout_ms: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        }
+    }
+}
 
 #[must_use]
 pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
@@ -42,22 +68,16 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
     let lookup = input.lookup;
-    ProviderConfig {
-        id: ProviderId::BrowserWorker,
-        enabled: input.enabled,
-        tmdb: None,
-        bangumi: None,
-        browser_worker: Some(BrowserWorkerProviderConfig::from_env_lookup(|name| {
-            lookup(name)
-        })),
-        douban: None,
-    }
+    ProviderConfig::browser_worker(
+        input.enabled,
+        BrowserWorkerProviderConfig::from_env_lookup(|name| lookup(name)),
+    )
 }
 
 fn build_provider(config: &Config) -> ProviderBuildStatus {
     let Some(browser_worker_config) = config
         .provider_config(ProviderId::BrowserWorker)
-        .and_then(|provider| provider.browser_worker.clone())
+        .and_then(|provider| provider.browser_worker_config().cloned())
     else {
         return ProviderBuildStatus::Unavailable;
     };
