@@ -23,6 +23,11 @@ Prefix: OMAV
   - Document AV request fields, provider enablement, and batch diagnostics.
   - Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`
 
+- [x] OMAV-070 - Add bounded-batch duplicate reuse and failure accounting
+  - Reuse duplicate AV-number scrape results within one bounded batch when items do not request metadata/artwork side effects.
+  - Report per-item `reused_from_index` and `safe_failure_reason: no_candidates`.
+  - Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`
+
 ## Active
 
 - [ ] OMAV-050 - Verify and close implementation
@@ -35,5 +40,5 @@ Prefix: OMAV
   - Use the shared AV facts to route FC2, censored, uncensored, amateur, western, and domestic families to provider groups.
   - Keep provider failures isolated and preserve per-provider field provenance.
 
-- [ ] OMAV-070 - Add resumable batch failure accounting lane
-  - Add richer failed-reason summaries and duplicate-number coalescing to bulk task output while keeping Nako-owned scheduling.
+- [ ] OMAV-080 - Add resumable batch failure accounting lane
+  - Add cross-batch resume state, richer failed-reason categories, and provider-level failure summaries while keeping Nako-owned scheduling.

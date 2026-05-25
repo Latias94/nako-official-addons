@@ -60,7 +60,10 @@ Bulk Metadata Scrape is declared as the `bulk-metadata-scrape` Addon Task at
 cancellation; this crate owns the bounded batch planner and metadata/item
 scrape execution behind that task path. Each bulk item also includes an optional
 `av` summary copied from `payload.query.av`, so batch runs can explain which AV
-number and route were used without exposing raw file paths.
+number and route were used without exposing raw file paths. Within one bounded
+batch, duplicate AV numbers without metadata/artwork writeback requests reuse
+the first scrape result and report `reused_from_index`; items with empty
+candidate lists report `safe_failure_reason: "no_candidates"`.
 
 Optional live drift smoke checks are available for manual use only:
 

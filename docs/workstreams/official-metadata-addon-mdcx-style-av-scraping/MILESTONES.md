@@ -28,6 +28,8 @@ Status: Complete
 
 - Bulk task item output includes optional AV planning summary.
 - README documents AV fields and batch behavior.
+- Duplicate AV numbers within one bounded batch reuse the first scrape result when no side-effect request is present.
+- Empty candidate items report a redaction-safe failure reason.
 
 ## M4 - Verified Closeout
 
@@ -41,4 +43,4 @@ Status: In progress
 Status: Candidate
 
 - Add additional AV provider groups using the shared AV route facts.
-- Add field-level provenance and richer batch failure accounting beyond this first vertical slice.
+- Add field-level provenance and cross-batch failure accounting beyond this first vertical slice.
