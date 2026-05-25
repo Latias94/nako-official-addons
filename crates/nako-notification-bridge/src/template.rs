@@ -63,7 +63,7 @@ pub struct TemplateContext<'a> {
 }
 
 pub fn validate_template(template: &str) -> Result<(), TemplateError> {
-    render_segments(template, |token| token_value_exists(token))?;
+    render_segments(template, token_value_exists)?;
     Ok(())
 }
 

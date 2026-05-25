@@ -59,11 +59,13 @@ NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY=20
 Do not put raw webhook URLs or shared secrets in Nako core configuration. Use
 the deployment operator's secret reference mechanism to inject them into the
 sidecar process. Health and diagnostics expose only configured/valid/secret
-presence booleans plus a safe provider status. Configure at most one provider
-send path at a time; the sidecar fails closed when multiple provider send paths
-are enabled. Templates can use only whitelisted event facts and payload keys;
-raw event payload values are not available. Provider attempt history is bounded
-and in-memory only; it is for safe operator diagnostics, not provider retry.
+presence booleans, provider send path count, safe provider status, and aggregate
+configuration status. Configure at most one provider send path at a time; the
+sidecar fails closed when multiple provider send paths are enabled. Templates
+can use only whitelisted event facts and payload keys; raw event payload values
+are not available. Provider attempt history is bounded and in-memory only; it
+records actual provider send outcomes and failures for safe operator
+diagnostics, not ACK-only disabled-provider records or provider retry.
 
 The outbound payload includes event identifiers and sorted payload keys only;
 it does not include raw event payload values.

@@ -58,10 +58,15 @@ orchestrated deployments, bind those values into the sidecar process through
 the operator's secret reference mechanism, such as Docker Compose environment
 substitution or Kubernetes Secret-backed environment variables.
 
-The sidecar health response and `/ui/diagnostics` report only booleans and a
-safe status (`disabled`, `missing_target_url`, `invalid_target_url`, or
-`configured`). They do not echo the URL, secret header name, shared secret, or
-event payload values.
+The sidecar health response and `/ui/diagnostics` report only booleans,
+provider send path count, aggregate configuration status, and a safe provider
+status (`disabled`, `missing_target_url`, `invalid_target_url`, or
+`configured`). Aggregate configuration status is one of `ack_only`,
+`provider_send_ready`, `provider_configuration_invalid`,
+`multiple_provider_send_paths_configured`, or `template_invalid`. Health
+degrades for invalid provider configuration, multiple configured send paths, or
+an invalid template used by an enabled provider. Diagnostics do not echo the
+URL, secret header name, shared secret, or event payload values.
 
 The webhook payload is fixed JSON:
 
@@ -116,18 +121,19 @@ whether a template is configured and valid; they do not echo template text.
 
 ## Provider Attempt History
 
-The sidecar keeps a bounded in-memory history of recent provider outcomes for
-operator diagnostics:
+The sidecar keeps a bounded in-memory history of recent provider send outcomes
+and failures for operator diagnostics:
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
-| `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY` | `20` | Number of recent safe provider outcome records kept in memory. Invalid or non-positive values fall back to the default. |
+| `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY` | `20` | Number of recent safe provider send outcome and failure records kept in memory. Invalid or non-positive values fall back to the default. |
 
 Attempt history is not persistent and is not a provider retry queue. Records
 contain safe event/provider facts only: provider id, event id/kind, subject
 kind/id, Addon Event attempt number, provider status, retryable flag, and
 provider HTTP status when available. Raw provider URLs, secrets, headers,
-message bodies, and raw event payload values are not stored.
+message bodies, and raw event payload values are not stored. ACK-only events and
+disabled providers do not create history records.
 
 ## Boundary
 

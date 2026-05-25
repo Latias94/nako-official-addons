@@ -41,6 +41,13 @@ builds.
   modules for client, enrichment, parser, mapper, and test support.
 - Provider manifest schema and secret-reference declarations now come from
   provider-owned catalog entries through the provider registry.
+- `nako-notification-bridge` provider attempt history now records actual
+  provider send outcomes and failures without filling recent diagnostics with
+  ACK-only disabled-provider records.
+- `nako-notification-bridge` health and diagnostics now expose provider send
+  path count plus aggregate configuration status, and health degrades for
+  invalid provider configuration, multiple send paths, or invalid enabled
+  provider templates.
 
 ### Fixed
 

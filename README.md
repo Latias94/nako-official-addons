@@ -87,9 +87,15 @@ Provider defaults:
 - `notification_bridge.template`: default-safe summary rendering through
   `NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY`, with whitelisted event fact
   tokens only and no raw event payload value access.
+- `notification_bridge.configuration_status`: redaction-safe health and
+  diagnostics status for ACK-only mode, ready provider sends, invalid provider
+  configuration, multiple configured send paths, and invalid enabled-provider
+  templates.
 - `notification_bridge.provider_attempt_history`: bounded in-memory recent
-  provider outcome history for redaction-safe sidecar diagnostics, controlled by
-  `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY`.
+  provider send outcome and failure history for redaction-safe sidecar
+  diagnostics, controlled by
+  `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY`. ACK-only events
+  and disabled providers do not create history records.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now

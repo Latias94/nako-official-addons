@@ -62,7 +62,9 @@ async fn health(
     State(state): State<AppState>,
     Json(request): Json<AddonHealthCheckRequest>,
 ) -> Json<AddonHealthCheckResponse> {
-    let expected_status = if request.manifest_id == ADDON_ID {
+    let configuration_status = notification_configuration_status(&state.config);
+    let expected_status = if request.manifest_id == ADDON_ID && !configuration_status.is_degraded()
+    {
         AddonHealthStatus::Ok
     } else {
         AddonHealthStatus::Degraded
@@ -84,6 +86,8 @@ async fn health(
             "safe_note": "notification bridge sidecar is reachable",
             "mode": "ack_only",
             "provider_fan_out": http_webhook.send_path_enabled() || discord_webhook.send_path_enabled(),
+            "provider_send_path_count": provider_send_path_count(&state.config),
+            "configuration_status": configuration_status.as_str(),
             "template": {
                 "summary_template_configured": template.summary_template_configured(),
                 "summary_template_valid": template.summary_template_valid(),
@@ -259,8 +263,10 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured());
     let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid());
     let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled());
-    let provider_fan_out =
+    let provider_send_configured =
         yes_no_label(http_webhook.send_path_enabled() || discord_webhook.send_path_enabled());
+    let provider_send_path_count = provider_send_path_count(&state.config);
+    let configuration_status = notification_configuration_status(&state.config);
     let summary_template_configured = yes_no_label(template.summary_template_configured());
     let summary_template_valid = yes_no_label(template.summary_template_valid());
     let provider_attempt_history_count = state.provider_attempt_history.snapshot().len();
@@ -273,7 +279,9 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <h1>Nako Notification Bridge</h1>
   <p>Base URL: {}</p>
   <p>Mode: ack only</p>
-  <p>Provider fan-out: {provider_fan_out}</p>
+  <p>Provider send configured: {provider_send_configured}</p>
+  <p>Provider send path count: {provider_send_path_count}</p>
+  <p>Configuration status: {}</p>
   <p>Summary template status: {}</p>
   <p>Summary template configured: {summary_template_configured}</p>
   <p>Summary template valid: {summary_template_valid}</p>
@@ -294,6 +302,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
 </body>
 </html>"#,
         state.config.base_url,
+        configuration_status.as_str(),
         template.status().as_str(),
         http_webhook.status().as_str(),
         discord_webhook.status().as_str()
@@ -318,6 +327,10 @@ fn record_http_webhook_outcome(
     request: &AddonEventRequest,
     outcome: &HttpWebhookSendOutcome,
 ) {
+    if matches!(outcome, HttpWebhookSendOutcome::SkippedDisabled) {
+        return;
+    }
+
     history.record(ProviderAttemptRecord::new(
         HTTP_WEBHOOK_PROVIDER_ID,
         request,
@@ -346,6 +359,10 @@ fn record_discord_webhook_outcome(
     request: &AddonEventRequest,
     outcome: &DiscordWebhookSendOutcome,
 ) {
+    if matches!(outcome, DiscordWebhookSendOutcome::SkippedDisabled) {
+        return;
+    }
+
     history.record(ProviderAttemptRecord::new(
         DISCORD_WEBHOOK_PROVIDER_ID,
         request,
@@ -371,6 +388,66 @@ fn record_discord_webhook_error(
 
 const fn yes_no_label(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NotificationConfigurationStatus {
+    AckOnly,
+    ProviderSendReady,
+    ProviderConfigurationInvalid,
+    MultipleProviderSendPathsConfigured,
+    TemplateInvalid,
+}
+
+impl NotificationConfigurationStatus {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::AckOnly => "ack_only",
+            Self::ProviderSendReady => "provider_send_ready",
+            Self::ProviderConfigurationInvalid => "provider_configuration_invalid",
+            Self::MultipleProviderSendPathsConfigured => "multiple_provider_send_paths_configured",
+            Self::TemplateInvalid => "template_invalid",
+        }
+    }
+
+    const fn is_degraded(self) -> bool {
+        matches!(
+            self,
+            Self::ProviderConfigurationInvalid
+                | Self::MultipleProviderSendPathsConfigured
+                | Self::TemplateInvalid
+        )
+    }
+}
+
+fn notification_configuration_status(config: &Config) -> NotificationConfigurationStatus {
+    let send_path_count = provider_send_path_count(config);
+    if send_path_count > 1 {
+        return NotificationConfigurationStatus::MultipleProviderSendPathsConfigured;
+    }
+
+    let provider_configuration_invalid = (config.http_webhook.enabled
+        && !config.http_webhook.send_path_enabled())
+        || (config.discord_webhook.enabled && !config.discord_webhook.send_path_enabled());
+    if provider_configuration_invalid {
+        return NotificationConfigurationStatus::ProviderConfigurationInvalid;
+    }
+
+    let provider_enabled = config.http_webhook.enabled || config.discord_webhook.enabled;
+    if provider_enabled && !config.template.summary_template_valid() {
+        return NotificationConfigurationStatus::TemplateInvalid;
+    }
+
+    if send_path_count == 1 {
+        NotificationConfigurationStatus::ProviderSendReady
+    } else {
+        NotificationConfigurationStatus::AckOnly
+    }
+}
+
+fn provider_send_path_count(config: &Config) -> usize {
+    (config.http_webhook.send_path_enabled() as usize)
+        + (config.discord_webhook.send_path_enabled() as usize)
 }
 
 #[cfg(test)]
@@ -804,7 +881,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn provider_attempt_history_records_safe_recent_provider_outcomes() {
+    async fn provider_attempt_history_records_safe_recent_provider_send_outcomes() {
         let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
         let app = router(Config::from_env_lookup(|name| match name {
             "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
@@ -875,12 +952,10 @@ mod tests {
             payload.diagnostics["provider_attempt_history"]["capacity"],
             4
         );
-        assert_eq!(attempts.len(), 2);
-        assert_eq!(attempts[0]["provider_id"], "http_webhook");
-        assert_eq!(attempts[0]["provider_status"], "disabled");
-        assert_eq!(attempts[1]["provider_id"], "discord_webhook");
-        assert_eq!(attempts[1]["provider_status"], "sent");
-        assert_eq!(attempts[1]["provider_http_status"], 202);
+        assert_eq!(attempts.len(), 1);
+        assert_eq!(attempts[0]["provider_id"], "discord_webhook");
+        assert_eq!(attempts[0]["provider_status"], "sent");
+        assert_eq!(attempts[0]["provider_http_status"], 202);
         assert!(!text.contains("nako_at_should_not_echo"));
         assert!(!text.contains("source-1"));
         assert!(!text.contains("127.0.0.1"));
@@ -1139,6 +1214,8 @@ mod tests {
         );
         assert_eq!(payload.diagnostics["mode"], "ack_only");
         assert_eq!(payload.diagnostics["provider_fan_out"], false);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 0);
+        assert_eq!(payload.diagnostics["configuration_status"], "ack_only");
         assert_eq!(
             payload.diagnostics["template"]["summary_template_configured"],
             false
@@ -1219,6 +1296,11 @@ mod tests {
         let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
 
         assert_eq!(payload.diagnostics["provider_fan_out"], true);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 1);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "provider_send_ready"
+        );
         assert_eq!(payload.diagnostics["providers"][0]["enabled"], true);
         assert_eq!(payload.diagnostics["providers"][0]["status"], "configured");
         assert_eq!(
@@ -1282,6 +1364,11 @@ mod tests {
         let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
 
         assert_eq!(payload.diagnostics["provider_fan_out"], true);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 1);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "provider_send_ready"
+        );
         assert_eq!(payload.diagnostics["providers"][1]["id"], "discord_webhook");
         assert_eq!(payload.diagnostics["providers"][1]["enabled"], true);
         assert_eq!(payload.diagnostics["providers"][1]["status"], "configured");
@@ -1301,6 +1388,165 @@ mod tests {
         let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
         assert!(!diagnostics.contains("discord.example"));
         assert!(!diagnostics.contains("api/webhooks"));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_degrades_multiple_provider_send_path_configuration() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => {
+                Some("https://hooks.example/internal/path".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => {
+                Some("https://discord.example/api/webhooks/secret".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.status, AddonHealthStatus::Degraded);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 2);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "multiple_provider_send_paths_configured"
+        );
+        assert!(!text.contains("hooks.example"));
+        assert!(!text.contains("discord.example"));
+        assert!(!text.contains("api/webhooks"));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_degrades_invalid_provider_configuration_without_leaking_values() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some("file:///tmp/nako-hook".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SHARED_SECRET" => {
+                Some("webhook-secret-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.status, AddonHealthStatus::Degraded);
+        assert_eq!(payload.diagnostics["provider_fan_out"], false);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 0);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "provider_configuration_invalid"
+        );
+        assert_eq!(payload.diagnostics["providers"][0]["enabled"], true);
+        assert_eq!(
+            payload.diagnostics["providers"][0]["status"],
+            "invalid_target_url"
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][0]["send_path_enabled"],
+            false
+        );
+        assert!(!text.contains("file:///tmp/nako-hook"));
+        assert!(!text.contains("webhook-secret-should-not-appear"));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_degrades_enabled_provider_with_invalid_template() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => {
+                Some("https://discord.example/api/webhooks/secret".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY" => Some("{{payload.secret}}".to_owned()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.status, AddonHealthStatus::Degraded);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 1);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "template_invalid"
+        );
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_valid"],
+            false
+        );
+        assert_eq!(payload.diagnostics["template"]["status"], "invalid");
+        assert!(!text.contains("payload.secret"));
+        assert!(!text.contains("discord.example"));
+        assert!(!text.contains("api/webhooks"));
     }
 
     #[tokio::test]
@@ -1408,7 +1654,9 @@ mod tests {
             .unwrap();
         let text = String::from_utf8(body.to_vec()).unwrap();
 
-        assert!(text.contains("Provider fan-out: yes"));
+        assert!(text.contains("Provider send configured: yes"));
+        assert!(text.contains("Provider send path count: 1"));
+        assert!(text.contains("Configuration status: provider_send_ready"));
         assert!(text.contains("Discord webhook provider status: configured"));
         assert!(text.contains("Discord webhook enabled: yes"));
         assert!(text.contains("Discord webhook URL configured: yes"));
