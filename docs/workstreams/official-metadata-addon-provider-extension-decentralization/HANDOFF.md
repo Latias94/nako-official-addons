@@ -42,14 +42,24 @@ OMAPED-030 completed:
 - Existing explicit external ID payloads and top-level aliases still parse, and
   known numeric providers still reject non-positive numeric IDs.
 
+OMAPED-040 completed:
+
+- Added shared `RenderedPageSupportConfig` in the rendered-page support Module.
+- `browser_worker` and Douban provider configs now hold rendered-page support
+  config explicitly instead of duplicating base URL and timeout fields.
+- Douban remains represented as a browser-rendered provider.
+- `browser_worker` remains a real default-off metadata provider for explicit
+  rendered-page URL extraction.
+- Existing browser-worker env var names and defaults are preserved.
+
 ## Next Task
 
-Start OMAPED-040.
+Start OMAPED-050.
 
 Recommended next implementation focus:
 
-- make rendered-page support config and naming explicit for Douban and
-  browser_worker while preserving existing browser-worker env vars.
+- run the full metadata scraper package gate and clean any stale docs or tests
+  that remain after OMAPED-020 through OMAPED-040.
 
 ## Risks
 
@@ -65,3 +75,4 @@ Recommended next implementation focus:
 OMAPED-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPED-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper config manifest provider registry --no-fail-fast`, and `git diff --check`.
 OMAPED-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast`, and `git diff --check`.
+OMAPED-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban rendered --no-fail-fast`, and `git diff --check`.

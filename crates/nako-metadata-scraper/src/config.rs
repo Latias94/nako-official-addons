@@ -323,9 +323,12 @@ mod tests {
         assert_eq!(config.providers[3].id, ProviderId::BrowserWorker);
         assert!(!config.providers[3].enabled);
         let browser_worker = config.providers[3].browser_worker_config().unwrap();
-        assert_eq!(browser_worker.base_url, "http://nako-browser-worker:3000");
+        assert_eq!(
+            browser_worker.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
         assert_eq!(browser_worker.extract_path, "/extract");
-        assert_eq!(browser_worker.timeout_ms, 10_000);
+        assert_eq!(browser_worker.rendered_pages.timeout_ms, 10_000);
         assert_eq!(config.providers[4].id, ProviderId::Douban);
         assert!(!config.providers[4].enabled);
         let douban = config.providers[4].douban_config().unwrap();
@@ -334,11 +337,11 @@ mod tests {
             "https://movie.douban.com/subject_search"
         );
         assert_eq!(
-            douban.browser_worker_base_url,
+            douban.rendered_pages.base_url,
             "http://nako-browser-worker:3000"
         );
         assert_eq!(douban.render_path, "/render");
-        assert_eq!(douban.timeout_ms, 10_000);
+        assert_eq!(douban.rendered_pages.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -436,11 +439,11 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::BrowserWorker));
         let browser_worker = config.providers[3].browser_worker_config().unwrap();
         assert_eq!(
-            browser_worker.base_url,
+            browser_worker.rendered_pages.base_url,
             "http://browser-worker.example:3000"
         );
         assert_eq!(browser_worker.extract_path, "/extract");
-        assert_eq!(browser_worker.timeout_ms, 7500);
+        assert_eq!(browser_worker.rendered_pages.timeout_ms, 7500);
         assert!(config.provider_enabled(ProviderId::Douban));
         let douban = config.providers[4].douban_config().unwrap();
         assert_eq!(
@@ -448,11 +451,11 @@ mod tests {
             "https://douban.example/subject_search"
         );
         assert_eq!(
-            douban.browser_worker_base_url,
+            douban.rendered_pages.base_url,
             "http://browser-worker.example:3000"
         );
         assert_eq!(douban.render_path, "/render");
-        assert_eq!(douban.timeout_ms, 6500);
+        assert_eq!(douban.rendered_pages.timeout_ms, 6500);
     }
 
     #[test]

@@ -32,12 +32,12 @@ Last updated: 2026-05-25
 
 ## M3 - Rendered Page Support Semantics
 
-- [ ] OMAPED-040 [owner=codex] [deps=OMAPED-020] [scope=crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs,crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/douban.rs,crates/nako-metadata-scraper/src/providers/douban]
+- [x] OMAPED-040 [owner=codex] [deps=OMAPED-020] [scope=crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs,crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/douban.rs,crates/nako-metadata-scraper/src/providers/douban]
   Goal: Make rendered-page support config and naming explicit for Douban and browser_worker while preserving existing browser-worker env vars.
   Validation: cargo nextest run -p nako-metadata-scraper browser_worker douban rendered --no-fail-fast
   Review: Confirm Douban is represented as a browser-rendered provider and `browser_worker` remains a real default-off metadata provider only for explicit rendered-page URL extraction.
-  Evidence: EVIDENCE_AND_GATES.md
-  Handoff: Shared rendered-page support is ready for another browser-rendered provider.
+  Evidence: `cargo nextest run -p nako-metadata-scraper browser_worker douban rendered --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. Browser_worker and Douban now both hold shared `RenderedPageSupportConfig`; existing browser-worker env vars and provider semantics are preserved.
 
 ## M4 - Cleanup And Integration
 

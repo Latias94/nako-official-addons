@@ -44,6 +44,11 @@
       "date": "2026-05-25",
       "task": "OMAPED-030",
       "summary": "Provider catalog entries now own top-level external ID alias and numeric validation descriptors consumed by MetadataScrapeRuntime query parsing."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-040",
+      "summary": "Browser_worker and Douban now share explicit RenderedPageSupportConfig while preserving existing browser-worker env vars and metadata provider semantics."
     }
   ],
   "adr_refs": [

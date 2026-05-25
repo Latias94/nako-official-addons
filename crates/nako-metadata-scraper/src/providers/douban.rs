@@ -15,7 +15,7 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
-        rendered_page::RenderedPageRuntime,
+        rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
 
@@ -29,33 +29,46 @@ const DOUBAN_DETAIL_ENRICHMENT_LIMIT: usize = 1;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DoubanProviderConfig {
-    pub search_base_url: String,
-    pub browser_worker_base_url: String,
-    pub render_path: String,
-    pub timeout_ms: u64,
+    pub(crate) search_base_url: String,
+    pub(crate) rendered_pages: RenderedPageSupportConfig,
+    pub(crate) render_path: String,
 }
 
 impl DoubanProviderConfig {
     pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 
     #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+    pub(crate) fn new(
+        search_base_url: String,
+        browser_worker_base_url: String,
+        render_path: String,
+        timeout_ms: u64,
+    ) -> Self {
         Self {
-            search_base_url: lookup("NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL")
+            search_base_url,
+            rendered_pages: RenderedPageSupportConfig::new(browser_worker_base_url, timeout_ms),
+            render_path,
+        }
+    }
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self::new(
+            lookup("NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL")
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or_else(|| "https://movie.douban.com/subject_search".to_owned()),
-            browser_worker_base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            render_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or_else(|| "/render".to_owned()),
-            timeout_ms: lookup("NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS")
+            lookup("NAKO_METADATA_SCRAPER_DOUBAN_TIMEOUT_MS")
                 .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
                 .and_then(|value| value.trim().parse::<u64>().ok())
                 .filter(|value| *value > 0)
                 .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
-        }
+        )
     }
 }
 
@@ -185,12 +198,12 @@ mod tests {
             transport.clone(),
         );
         let provider = DoubanMetadataProvider::with_runtime(
-            DoubanProviderConfig {
-                search_base_url: "https://movie.douban.com/subject_search".to_owned(),
-                browser_worker_base_url: "http://browser-worker.example".to_owned(),
-                render_path: "/render".to_owned(),
-                timeout_ms: 10_000,
-            },
+            DoubanProviderConfig::new(
+                "https://movie.douban.com/subject_search".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
             runtime,
         );
 

@@ -11,8 +11,7 @@ use super::{DOUBAN_PROVIDER_ID, DoubanMetadataProvider};
 
 impl DoubanMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: DoubanProviderConfig) -> ProviderHttpResult<Self> {
-        let rendered_pages =
-            RenderedPageRuntime::new(config.browser_worker_base_url.clone(), config.timeout_ms)?;
+        let rendered_pages = RenderedPageRuntime::new(config.rendered_pages.clone())?;
         Ok(Self {
             config,
             rendered_pages,
@@ -27,7 +26,7 @@ where
     #[must_use]
     pub fn with_runtime(config: DoubanProviderConfig, runtime: ProviderHttpRuntime<T>) -> Self {
         let rendered_pages =
-            RenderedPageRuntime::with_runtime(config.browser_worker_base_url.clone(), runtime);
+            RenderedPageRuntime::with_runtime(config.rendered_pages.clone(), runtime);
         Self {
             config,
             rendered_pages,

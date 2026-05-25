@@ -15,7 +15,7 @@ use crate::{
             ReqwestProviderHttpTransport,
         },
         registry::ProviderCatalogEntry,
-        rendered_page::{RenderedPageRuntime, RenderedTextPage},
+        rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig, RenderedTextPage},
     },
 };
 
@@ -28,27 +28,34 @@ const BROWSER_WORKER_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BrowserWorkerProviderConfig {
-    pub base_url: String,
-    pub extract_path: String,
-    pub timeout_ms: u64,
+    pub(crate) rendered_pages: RenderedPageSupportConfig,
+    pub(crate) extract_path: String,
 }
 
 impl BrowserWorkerProviderConfig {
     pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 
     #[must_use]
-    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+    pub(crate) fn new(base_url: String, extract_path: String, timeout_ms: u64) -> Self {
         Self {
-            base_url: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+            rendered_pages: RenderedPageSupportConfig::new(base_url, timeout_ms),
+            extract_path,
+        }
+    }
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self::new(
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
                 .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            extract_path: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or_else(|| "/extract".to_owned()),
-            timeout_ms: lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
                 .and_then(|value| value.trim().parse::<u64>().ok())
                 .filter(|value| *value > 0)
                 .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
-        }
+        )
     }
 }
 
@@ -103,7 +110,7 @@ where
 
 impl BrowserWorkerMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: BrowserWorkerProviderConfig) -> ProviderHttpResult<Self> {
-        let rendered_pages = RenderedPageRuntime::new(config.base_url.clone(), config.timeout_ms)?;
+        let rendered_pages = RenderedPageRuntime::new(config.rendered_pages.clone())?;
         Ok(Self {
             config,
             rendered_pages,
@@ -120,7 +127,8 @@ where
         config: BrowserWorkerProviderConfig,
         runtime: ProviderHttpRuntime<T>,
     ) -> Self {
-        let rendered_pages = RenderedPageRuntime::with_runtime(config.base_url.clone(), runtime);
+        let rendered_pages =
+            RenderedPageRuntime::with_runtime(config.rendered_pages.clone(), runtime);
         Self {
             config,
             rendered_pages,
@@ -258,11 +266,11 @@ mod tests {
             transport.clone(),
         );
         let provider = BrowserWorkerMetadataProvider::with_runtime(
-            BrowserWorkerProviderConfig {
-                base_url: "http://browser-worker.example".to_owned(),
-                extract_path: "/extract".to_owned(),
-                timeout_ms: 10_000,
-            },
+            BrowserWorkerProviderConfig::new(
+                "http://browser-worker.example".to_owned(),
+                "/extract".to_owned(),
+                10_000,
+            ),
             runtime,
         );
 

@@ -5,6 +5,22 @@ use super::http_runtime::{
     ReqwestProviderHttpTransport,
 };
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RenderedPageSupportConfig {
+    pub(crate) base_url: String,
+    pub(crate) timeout_ms: u64,
+}
+
+impl RenderedPageSupportConfig {
+    #[must_use]
+    pub(crate) fn new(base_url: String, timeout_ms: u64) -> Self {
+        Self {
+            base_url,
+            timeout_ms,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct RenderedPageRuntime<T = ReqwestProviderHttpTransport>
 where
@@ -15,12 +31,15 @@ where
 }
 
 impl RenderedPageRuntime<ReqwestProviderHttpTransport> {
-    pub(crate) fn new(base_url: String, timeout_ms: u64) -> ProviderHttpResult<Self> {
+    pub(crate) fn new(config: RenderedPageSupportConfig) -> ProviderHttpResult<Self> {
         let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
-            timeout_ms,
+            timeout_ms: config.timeout_ms,
             ..ProviderHttpRuntimeConfig::default()
         })?;
-        Ok(Self { base_url, runtime })
+        Ok(Self {
+            base_url: config.base_url,
+            runtime,
+        })
     }
 }
 
@@ -29,8 +48,14 @@ where
     T: ProviderHttpTransport,
 {
     #[must_use]
-    pub(crate) fn with_runtime(base_url: String, runtime: ProviderHttpRuntime<T>) -> Self {
-        Self { base_url, runtime }
+    pub(crate) fn with_runtime(
+        config: RenderedPageSupportConfig,
+        runtime: ProviderHttpRuntime<T>,
+    ) -> Self {
+        Self {
+            base_url: config.base_url,
+            runtime,
+        }
     }
 
     pub(crate) async fn render_html(
