@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Extension Decentralization - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Scope And Gates
@@ -50,9 +50,9 @@ Last updated: 2026-05-25
 
 ## M5 - Closeout
 
-- [ ] OMAPED-060 [owner=planner] [deps=OMAPED-050] [scope=docs/workstreams/official-metadata-addon-provider-extension-decentralization]
+- [x] OMAPED-060 [owner=planner] [deps=OMAPED-050] [scope=docs/workstreams/official-metadata-addon-provider-extension-decentralization,crates/nako-metadata-scraper/src/providers/browser_worker.rs]
   Goal: Close the lane or split concrete follow-ons.
   Validation: verify-rust-workstream records fresh final gate evidence.
   Review: review-workstream has no blocking findings.
-  Evidence: EVIDENCE_AND_GATES.md, WORKSTREAM.json
-  Handoff: Summarize remaining risks in HANDOFF.md.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`; `git diff --check`
+  Handoff: DONE. Workstream closed with no blocking findings and no split follow-ons; closeout review removed the misleading `browser_worker_id` alias and kept `browser_worker_url`.

@@ -21,10 +21,11 @@ use crate::{
 
 pub const BROWSER_WORKER_PROVIDER_ID: &str = "browser_worker";
 const BROWSER_WORKER_RENDERED_PAGE_CAPABILITY: &str = "rendered_page_extraction";
-const BROWSER_WORKER_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
-    QueryExternalIdAlias::new("browser_worker_url", BROWSER_WORKER_PROVIDER_ID, false),
-    QueryExternalIdAlias::new("browser_worker_id", BROWSER_WORKER_PROVIDER_ID, false),
-];
+const BROWSER_WORKER_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[QueryExternalIdAlias::new(
+    "browser_worker_url",
+    BROWSER_WORKER_PROVIDER_ID,
+    false,
+)];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BrowserWorkerProviderConfig {

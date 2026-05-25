@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-provider-extension-decentralization",
   "title": "Official Metadata Addon Provider Extension Decentralization",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-25",
   "scope_kind": "execution",
   "problem": "Provider extension still leaks provider-specific config, external ID alias, and rendered-page support facts through central modules.",
@@ -54,6 +54,11 @@
       "date": "2026-05-25",
       "task": "OMAPED-050",
       "summary": "Full nako-metadata-scraper package validation passed and README docs now mention explicit external IDs plus provider-owned top-level aliases."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-060",
+      "summary": "Closeout review found no blocking findings; final package, format, JSON, and diff hygiene gates passed with no follow-ons split."
     }
   ],
   "adr_refs": [
@@ -62,7 +67,7 @@
     "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "notes": "Continue through provider config decentralization, provider-owned external ID aliases, rendered-page support semantics, cleanup, integration, and closeout. Do not add live smoke or release work to this lane."
+    "default_action": "closed",
+    "notes": "Provider config decentralization, provider-owned external ID aliases, rendered-page support semantics, cleanup, integration, and closeout are complete. No follow-on was split; live smoke and release work remain intentionally out of scope."
   }
 }

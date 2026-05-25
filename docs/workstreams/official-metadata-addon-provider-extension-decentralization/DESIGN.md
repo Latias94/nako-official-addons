@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Extension Decentralization
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Why This Lane Exists
@@ -96,3 +96,8 @@ This lane can close when:
 - stale tests/docs discovered during the refactor are cleaned up;
 - targeted metadata scraper tests, package tests, formatting, JSON, and diff
   hygiene pass.
+
+Closeout status: Complete on 2026-05-25. Provider config decentralization,
+provider-owned external ID aliases, rendered-page support semantics, README
+cleanup, package verification, and final closeout gates all passed with no
+follow-on split.

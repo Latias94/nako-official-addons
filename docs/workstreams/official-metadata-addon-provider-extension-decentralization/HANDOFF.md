@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Extension Decentralization - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Current State
@@ -62,14 +62,16 @@ OMAPED-050 completed:
 
 ## Next Task
 
-Start OMAPED-060 closeout.
+No next task in this lane.
 
-Recommended next implementation focus:
+Closeout result:
 
-- run `review-workstream` for workstream compliance and code quality;
-- perform final verification against the provider extension decentralization
-  target state;
-- close the lane or split only concrete follow-ons.
+- Review found no blocking workstream compliance or code-quality findings.
+- Final package, format, JSON, and diff hygiene gates passed.
+- The misleading `browser_worker_id` top-level alias was removed during
+  closeout review; `browser_worker_url` remains the documented alias.
+- No architecture follow-on was split; release publishing and live provider
+  smoke remain out of scope.
 
 ## Risks
 
@@ -87,3 +89,4 @@ OMAPED-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-
 OMAPED-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker --no-fail-fast`, and `git diff --check`.
 OMAPED-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban rendered --no-fail-fast`, and `git diff --check`.
 OMAPED-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.
+OMAPED-060 passed with `cargo fmt --all -- --check`, `python -m json.tool docs/workstreams/official-metadata-addon-provider-extension-decentralization/WORKSTREAM.json`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.
