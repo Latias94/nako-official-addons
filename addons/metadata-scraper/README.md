@@ -259,7 +259,8 @@ Bangumi proxy policy is configured. They intentionally expose only boolean
 policy state, not proxy URLs or credentials.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`.
+`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`. These aliases
+are derived from provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -270,10 +271,10 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
-The runtime then deduplicates exact duplicate candidates, caps the final list,
-and applies a small generic bonus from the shared community score/vote-count
-facts exposed by TMDB, Bangumi, and Douban. The protocol envelope does not
-change.
+The runtime then resolves exact duplicate candidates and candidates that share
+declared provider-emitted external IDs, caps the final list, and applies a
+small generic bonus from the shared community score/vote-count facts exposed by
+TMDB, Bangumi, and Douban. The protocol envelope does not change.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

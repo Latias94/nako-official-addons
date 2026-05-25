@@ -14,15 +14,17 @@ capabilities, runtime query parsing uses those capabilities, legacy alias
 exposure is derived from the catalog for compatibility, and resolver clustering
 uses declared emitted external IDs when catalog data is available.
 
+OMAPFR-050 is complete. The full `nako-metadata-scraper` package gate passed,
+and README docs now describe capability-derived external ID aliases plus shared
+external-ID candidate resolution without changing the protocol envelope.
+
 ## Next Task
 
-Start OMAPFR-050:
+Start OMAPFR-060:
 
-- run the full `nako-metadata-scraper` package gate;
-- update user-facing docs only if resolver or external ID capability behaviour
-  needs explanation;
-- confirm no public protocol break, no reference-source copy, and no host policy
-  moved into the sidecar.
+- review the completed lane;
+- rerun closeout validation from TODO;
+- close the workstream or split explicit follow-ons.
 
 ## License Guardrails
 
@@ -44,3 +46,4 @@ OMAPFR-010 passed with `python -m json.tool docs/workstreams/official-metadata-a
 OMAPFR-020 passed with `cargo nextest run -p nako-metadata-scraper resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPFR-030 passed with `cargo nextest run -p nako-metadata-scraper resolver orchestration ranking --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
 OMAPFR-040 passed with `cargo nextest run -p nako-metadata-scraper external_id tmdb bangumi browser_worker resolver --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.
+OMAPFR-050 passed with `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, `cargo fmt --all -- --check`, and `git diff --check`.

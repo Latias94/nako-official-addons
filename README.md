@@ -23,10 +23,11 @@ as one suite later:
 - the same sidecar also declares a small `library.scanned` event subscription
   proof path, so resource, task, and event capabilities can share one official
   deployment unit when they share trust and lifecycle;
-- runtime candidate shaping deduplicates exact duplicate provider candidates,
-  caps the final result set, and uses shared TMDB/Bangumi/Douban community
-  score and vote-count signals as a small generic ranking bonus without
-  changing the protocol contract;
+- runtime candidate shaping resolves exact duplicate provider candidates and
+  candidates that share provider-emitted external IDs, caps the final result
+  set, and uses shared TMDB/Bangumi/Douban community score and vote-count
+  signals as a small generic ranking bonus without changing the protocol
+  contract;
 - provider image facts are surfaced as typed artwork candidates, and explicit
   metadata/artwork writeback goes through Nako-owned Addon Side Effects;
 - future subtitle or local rule providers should be added as internal adapters

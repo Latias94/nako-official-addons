@@ -23,9 +23,11 @@ Current alpha provider defaults:
   HTML and keeps Douban parsing/mapping inside the Rust provider.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`.
+`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`. These aliases
+are derived from provider-owned external ID capabilities.
 
-Runtime candidate shaping deduplicates exact duplicate provider candidates,
+Runtime candidate shaping resolves exact duplicate provider candidates and
+candidates that share declared provider-emitted external IDs before ranking,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 

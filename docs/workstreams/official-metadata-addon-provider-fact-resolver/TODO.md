@@ -41,12 +41,12 @@ Last updated: 2026-05-25
 
 ## M4 - Integration And Docs
 
-- [ ] OMAPFR-050 [owner=codex] [deps=OMAPFR-040] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-fact-resolver]
+- [x] OMAPFR-050 [owner=codex] [deps=OMAPFR-040] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-fact-resolver]
   Goal: Run full package validation, update user-facing docs if resolver or external ID capability behaviour needs explanation, and record integration evidence.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`.
   Review: Confirm no public protocol break, no reference-source copy, and no host policy was moved into the sidecar.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`.
+  Handoff: DONE. Package gate passed, README docs now describe capability-derived aliases and shared external-ID candidate resolution, and no protocol response shape or host policy was changed; start OMAPFR-060 closeout.
 
 ## M5 - Closeout
 
