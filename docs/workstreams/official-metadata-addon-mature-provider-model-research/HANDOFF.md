@@ -21,12 +21,11 @@ of the commit surface.
 
 ## Next Task
 
-Start OMAPMR-020:
+Start OMAPMR-040:
 
-- inspect Jellyfin core metadata provider interfaces and provider ordering;
-- identify host-owned metadata responsibilities that should not be moved into
-  the Nako sidecar;
-- record findings in `FINDINGS.md` with source anchors.
+- compare recorded findings against current `nako-metadata-scraper` modules;
+- write `REFACTOR_CANDIDATES.md` with ranked recommendations;
+- keep production code unchanged in this research lane.
 
 ## Risks
 
@@ -40,3 +39,5 @@ Start OMAPMR-020:
 ## Validation
 
 OMAPMR-010 passed with `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`, reference repo `rev-parse --short HEAD` checks, and `git diff --check`.
+OMAPMR-020 passed by recording Jellyfin core provider model source anchors in `FINDINGS.md`.
+OMAPMR-030 passed by recording Jellyfin plugin and Kodi scraper source anchors in `FINDINGS.md`.

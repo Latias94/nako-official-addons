@@ -14,21 +14,21 @@ Last updated: 2026-05-25
 
 ## M1 - Jellyfin Core Provider Model
 
-- [ ] OMAPMR-020 [owner=codex] [deps=OMAPMR-010] [scope=repo-ref/jellyfin,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md]
+- [x] OMAPMR-020 [owner=codex] [deps=OMAPMR-010] [scope=repo-ref/jellyfin,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md]
   Goal: Extract Jellyfin core provider concepts relevant to Nako: provider interfaces, metadata/image/local metadata roles, refresh/order semantics, and host-owned responsibilities.
   Validation: source anchors recorded in `FINDINGS.md`.
   Review: Separate patterns that Nako sidecar can own from patterns that must remain Nako core concerns.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `rg --files repo-ref/jellyfin/MediaBrowser.Providers repo-ref/jellyfin/MediaBrowser.Controller repo-ref/jellyfin/MediaBrowser.Model | rg "Provider|Metadata|Image|Refresh|Lookup|Nfo|External|Library"`; `rg "interface I.*Provider|class .*Provider|IImageProvider|IRemoteMetadataProvider|ILocalMetadataProvider|MetadataRefresh|ProviderManager|ItemLookupInfo|RemoteSearchResult" repo-ref/jellyfin/MediaBrowser.Providers repo-ref/jellyfin/MediaBrowser.Controller repo-ref/jellyfin/MediaBrowser.Model`; targeted source reads recorded in `FINDINGS.md`.
+  Handoff: DONE. Jellyfin core findings recorded; start OMAPMR-030 plugin and scraper comparison.
 
 ## M2 - Plugin And Scraper Model
 
-- [ ] OMAPMR-030 [owner=codex] [deps=OMAPMR-010] [scope=repo-ref/jellyfin-plugin-*,repo-ref/kodi-metadata-themoviedb-python,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md]
+- [x] OMAPMR-030 [owner=codex] [deps=OMAPMR-010] [scope=repo-ref/jellyfin-plugin-*,repo-ref/kodi-metadata-themoviedb-python,docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md]
   Goal: Compare Jellyfin plugins and Kodi scraper implementation patterns for provider config, lookup flow, mapping, images, parser drift, and operational behaviour.
   Validation: source anchors recorded in `FINDINGS.md`.
   Review: Avoid copying ecosystem-specific plugin mechanics that do not fit Nako Addon Protocol.
-  Evidence: pending.
-  Handoff: TODO.
+  Evidence: `rg --files repo-ref/jellyfin-plugin-tvdb repo-ref/jellyfin-plugin-anidb repo-ref/jellyfin-plugin-anilist | rg "Provider|Plugin|Configuration|Api|Client|Image|Metadata|Series|Movie|Episode|Season|Search|External"`; `rg -n "IRemoteMetadataProvider|IRemoteImageProvider|IHasOrder|GetSearchResults|GetMetadata|GetImages|Name =>|Order =>|PluginConfiguration|Cache|Semaphore|Rate|ProviderIds|Supports\\(" repo-ref/jellyfin-plugin-tvdb repo-ref/jellyfin-plugin-anidb repo-ref/jellyfin-plugin-anilist`; Kodi scraper source reads recorded in `FINDINGS.md`.
+  Handoff: DONE. Plugin and scraper findings recorded; start OMAPMR-040 local comparison and refactor candidates.
 
 ## M3 - Local Architecture Comparison
 
