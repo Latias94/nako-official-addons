@@ -55,17 +55,27 @@ OMAPAD-050 completed:
   for tests and non-migrated providers, but current built-in providers no
   longer use it for diagnostic prose.
 
+OMAPAD-060 completed:
+
+- `providers/rendered_page.rs` owns browser-worker render/extract request
+  construction, endpoint joining, response parsing, and status validation.
+- Douban now asks the rendered-page runtime for HTML and keeps only Douban
+  search URL construction plus Douban HTML parsing/mapping locally.
+- `browser_worker` remains a provider identity because it has explicit metadata
+  semantics: when a request carries a browser-worker URL external id, it
+  returns a rendered-page metadata candidate. It is still default-off and now
+  uses the same support runtime instead of owning protocol plumbing.
+
 ## Next Task
 
-Start OMAPAD-060.
+Start OMAPAD-070.
 
 Recommended next implementation focus:
 
-- split browser-worker support into a rendered-page runtime support Seam;
-- decide whether `browser_worker` remains a metadata provider identity or is
-  demoted to support infrastructure;
-- preserve Douban behavior while removing direct worker HTTP details from the
-  Douban provider boundary where practical.
+- run the broader metadata scraper package gate;
+- review docs/examples for any provider strategy wording that should mention
+  rendered-page support and typed outcomes;
+- prepare integration evidence before closeout.
 
 ## Risks
 
@@ -85,3 +95,4 @@ OMAPAD-020 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-
 OMAPAD-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider health_endpoint diagnostics --no-fail-fast`, and `git diff --check`.
 OMAPAD-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`, and `git diff --check`.
 OMAPAD-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`, and `git diff --check`.
+OMAPAD-060 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast`, and `git diff --check`.

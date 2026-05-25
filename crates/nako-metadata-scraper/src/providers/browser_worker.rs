@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use nako_addon_protocol::AddonMetadataPatch;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     Config,
@@ -12,10 +11,11 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{
-            ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig,
-            ProviderHttpTransport, ReqwestProviderHttpTransport,
+            ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
+            ReqwestProviderHttpTransport,
         },
         registry::ProviderCatalogEntry,
+        rendered_page::{RenderedPageRuntime, RenderedTextPage},
     },
 };
 
@@ -73,16 +73,16 @@ where
     T: ProviderHttpTransport,
 {
     config: BrowserWorkerProviderConfig,
-    runtime: ProviderHttpRuntime<T>,
+    rendered_pages: RenderedPageRuntime<T>,
 }
 
 impl BrowserWorkerMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: BrowserWorkerProviderConfig) -> ProviderHttpResult<Self> {
-        let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
-            timeout_ms: config.timeout_ms,
-            ..ProviderHttpRuntimeConfig::default()
-        })?;
-        Ok(Self { config, runtime })
+        let rendered_pages = RenderedPageRuntime::new(config.base_url.clone(), config.timeout_ms)?;
+        Ok(Self {
+            config,
+            rendered_pages,
+        })
     }
 }
 
@@ -95,21 +95,10 @@ where
         config: BrowserWorkerProviderConfig,
         runtime: ProviderHttpRuntime<T>,
     ) -> Self {
-        Self { config, runtime }
-    }
-
-    fn endpoint(&self, path: impl AsRef<str>) -> String {
-        let path = path.as_ref();
-        format!(
-            "{}/{}",
-            self.config.base_url.trim_end_matches('/'),
-            path.trim_start_matches('/')
-        )
-    }
-
-    fn extract_request(&self, url: &str) -> BrowserWorkerExtractRequest {
-        BrowserWorkerExtractRequest {
-            url: url.to_owned(),
+        let rendered_pages = RenderedPageRuntime::with_runtime(config.base_url.clone(), runtime);
+        Self {
+            config,
+            rendered_pages,
         }
     }
 }
@@ -136,101 +125,69 @@ where
             .collect::<Vec<_>>();
 
         for source_url in source_urls {
-            let response = self
-                .runtime
-                .post_json(
+            let extracted = self
+                .rendered_pages
+                .extract_text(
                     BROWSER_WORKER_PROVIDER_ID,
                     "extract rendered page",
-                    self.endpoint(&self.config.extract_path),
-                    Vec::new(),
-                    Vec::new(),
-                    &self.extract_request(&source_url),
+                    &self.config.extract_path,
+                    &source_url,
                 )
                 .await?;
-            let extracted = BrowserWorkerExtractResponse::from_value(response.body)?;
-            if extracted.status.as_deref() != Some("ok") {
-                anyhow::bail!(
-                    "browser worker returned non-ok status for {source_url}: {:?}",
-                    extracted.status
-                );
-            }
-            candidates.push(extracted.into_candidate(query, &source_url));
+            candidates.push(rendered_text_candidate(extracted, query, &source_url));
         }
 
         Ok(candidates)
     }
 }
 
-#[derive(Debug, Serialize)]
-struct BrowserWorkerExtractRequest {
-    url: String,
-}
+fn rendered_text_candidate(
+    rendered_page: RenderedTextPage,
+    query: &MetadataQuery,
+    source_url: &str,
+) -> ProviderMetadataCandidate {
+    let title = rendered_page
+        .title
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| query.title.clone());
+    let rendered_text = rendered_page
+        .rendered_text
+        .filter(|value| !value.trim().is_empty())
+        .or(rendered_page.excerpt)
+        .unwrap_or_default();
 
-#[derive(Debug, Deserialize)]
-struct BrowserWorkerExtractResponse {
-    #[serde(default)]
-    status: Option<String>,
-    url: Option<String>,
-    title: Option<String>,
-    rendered_text: Option<String>,
-    excerpt: Option<String>,
-}
-
-impl BrowserWorkerExtractResponse {
-    fn from_value(value: serde_json::Value) -> anyhow::Result<Self> {
-        serde_json::from_value(value).map_err(|error| {
-            anyhow::anyhow!("failed to parse browser worker extract response: {error}")
-        })
-    }
-
-    fn into_candidate(self, query: &MetadataQuery, source_url: &str) -> ProviderMetadataCandidate {
-        let rendered_url = self
-            .url
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| source_url.to_owned());
-        let title = self
-            .title
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| query.title.clone());
-        let rendered_text = self
-            .rendered_text
-            .filter(|value| !value.trim().is_empty())
-            .or(self.excerpt)
-            .unwrap_or_default();
-
-        ProviderMetadataCandidate {
-            provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
-            provider_id: format!("browser-worker:{source_url}"),
-            patch: AddonMetadataPatch {
-                title: Some(title.clone()),
-                original_title: Some(query.title.clone()).filter(|value| value != &title),
-                sort_title: Some(title.clone()),
-                overview: (!rendered_text.is_empty()).then_some(rendered_text.clone()),
-                release_date: None,
-                runtime_minutes: None,
-                tagline: Some("Browser worker rendered page".to_owned()),
-                genres: None,
-                tags: Some(vec![
-                    BROWSER_WORKER_PROVIDER_ID.to_owned(),
-                    BROWSER_WORKER_RENDERED_PAGE_CAPABILITY.to_owned(),
-                ]),
-            },
-            facts: ProviderCandidateFacts {
-                title: Some(title),
-                alternate_titles: Vec::new(),
-                release_year: None,
-                language: Some(query.language.clone()),
-                community_score_milli: None,
-                community_vote_count: None,
-                external_ids: vec![ProviderExternalId {
-                    provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
-                    value: rendered_url,
-                }],
-                provider_outcomes: vec![ProviderOutcome::BrowserWorkerRenderedText],
-                provider_note: None,
-            },
-            artwork_candidates: Vec::new(),
-        }
+    ProviderMetadataCandidate {
+        provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
+        provider_id: format!("browser-worker:{source_url}"),
+        patch: AddonMetadataPatch {
+            title: Some(title.clone()),
+            original_title: Some(query.title.clone()).filter(|value| value != &title),
+            sort_title: Some(title.clone()),
+            overview: (!rendered_text.is_empty()).then_some(rendered_text.clone()),
+            release_date: None,
+            runtime_minutes: None,
+            tagline: Some("Browser worker rendered page".to_owned()),
+            genres: None,
+            tags: Some(vec![
+                BROWSER_WORKER_PROVIDER_ID.to_owned(),
+                BROWSER_WORKER_RENDERED_PAGE_CAPABILITY.to_owned(),
+            ]),
+        },
+        facts: ProviderCandidateFacts {
+            title: Some(title),
+            alternate_titles: Vec::new(),
+            release_year: None,
+            language: Some(query.language.clone()),
+            community_score_milli: None,
+            community_vote_count: None,
+            external_ids: vec![ProviderExternalId {
+                provider: BROWSER_WORKER_PROVIDER_ID.to_owned(),
+                value: rendered_page.final_url,
+            }],
+            provider_outcomes: vec![ProviderOutcome::BrowserWorkerRenderedText],
+            provider_note: None,
+        },
+        artwork_candidates: Vec::new(),
     }
 }
 

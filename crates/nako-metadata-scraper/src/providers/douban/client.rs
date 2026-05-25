@@ -1,22 +1,22 @@
-use serde::{Deserialize, Serialize};
-
 use crate::{
     config::DoubanProviderConfig,
     providers::http_runtime::{
-        ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig, ProviderHttpTransport,
+        ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
         ReqwestProviderHttpTransport,
     },
+    providers::rendered_page::{RenderedHtmlPage, RenderedPageRuntime},
 };
 
 use super::{DOUBAN_PROVIDER_ID, DoubanMetadataProvider};
 
 impl DoubanMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: DoubanProviderConfig) -> ProviderHttpResult<Self> {
-        let runtime = ProviderHttpRuntime::new(ProviderHttpRuntimeConfig {
-            timeout_ms: config.timeout_ms,
-            ..ProviderHttpRuntimeConfig::default()
-        })?;
-        Ok(Self { config, runtime })
+        let rendered_pages =
+            RenderedPageRuntime::new(config.browser_worker_base_url.clone(), config.timeout_ms)?;
+        Ok(Self {
+            config,
+            rendered_pages,
+        })
     }
 }
 
@@ -26,15 +26,12 @@ where
 {
     #[must_use]
     pub fn with_runtime(config: DoubanProviderConfig, runtime: ProviderHttpRuntime<T>) -> Self {
-        Self { config, runtime }
-    }
-
-    fn render_endpoint(&self) -> String {
-        format!(
-            "{}/{}",
-            self.config.browser_worker_base_url.trim_end_matches('/'),
-            self.config.render_path.trim_start_matches('/')
-        )
+        let rendered_pages =
+            RenderedPageRuntime::with_runtime(config.browser_worker_base_url.clone(), runtime);
+        Self {
+            config,
+            rendered_pages,
+        }
     }
 
     pub(super) fn search_url(&self, title: &str) -> String {
@@ -45,54 +42,15 @@ where
         )
     }
 
-    pub(super) async fn render(&self, url: String) -> anyhow::Result<RenderedPage> {
-        let response = self
-            .runtime
-            .post_json(
+    pub(super) async fn render(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
+        self.rendered_pages
+            .render_html(
                 DOUBAN_PROVIDER_ID,
                 "render page",
-                self.render_endpoint(),
-                Vec::new(),
-                Vec::new(),
-                &RenderPageRequest { url },
+                &self.config.render_path,
+                url,
             )
-            .await?;
-        RenderedPage::from_value(response.body)
-    }
-}
-
-#[derive(Debug, Serialize)]
-struct RenderPageRequest {
-    url: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct RenderedPage {
-    #[serde(default)]
-    status: Option<String>,
-    #[serde(rename = "url")]
-    _url: String,
-    #[serde(rename = "title")]
-    _title: Option<String>,
-    pub(super) html: String,
-    #[serde(rename = "text")]
-    _text: Option<String>,
-    #[serde(rename = "excerpt")]
-    _excerpt: Option<String>,
-}
-
-impl RenderedPage {
-    fn from_value(value: serde_json::Value) -> anyhow::Result<Self> {
-        let page: Self = serde_json::from_value(value).map_err(|error| {
-            anyhow::anyhow!("failed to parse browser worker render response: {error}")
-        })?;
-        if page.status.as_deref() != Some("ok") {
-            anyhow::bail!(
-                "browser worker returned non-ok status for rendered page: {:?}",
-                page.status
-            );
-        }
-        Ok(page)
+            .await
     }
 }
 

@@ -45,12 +45,12 @@ Last updated: 2026-05-25
 
 ## M3 - Rendered Page Support Seam
 
-- [ ] OMAPAD-060 [owner=codex] [deps=OMAPAD-030] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/douban.rs,crates/nako-metadata-scraper/src/providers/douban]
+- [x] OMAPAD-060 [owner=codex] [deps=OMAPAD-030] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/douban.rs,crates/nako-metadata-scraper/src/providers/douban]
   Goal: Split browser-worker support into a deep rendered-page runtime Module and clarify whether `browser_worker` remains a real metadata provider or is removed from the provider catalog.
   Validation: cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast
   Review: Confirm support dependencies are not presented as provider identity unless they provide real metadata semantics.
-  Evidence: crates/nako-metadata-scraper/src/providers/browser_worker.rs
-  Handoff: Final status must be DONE, DONE_WITH_CONCERNS, BLOCKED, or NEEDS_CONTEXT.
+  Evidence: `cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. Browser-worker protocol details now live in `providers/rendered_page.rs`; Douban uses that support runtime for rendered HTML, while `browser_worker` remains a default-off metadata provider only for explicit rendered-page URL extraction.
 
 ## M4 - Integration, Docs, And Gates
 

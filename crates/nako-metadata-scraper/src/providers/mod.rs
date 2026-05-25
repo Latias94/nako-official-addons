@@ -9,6 +9,7 @@ pub mod douban;
 pub mod fixture;
 pub mod http_runtime;
 mod registry;
+mod rendered_page;
 mod search_policy;
 pub mod tmdb;
 

@@ -13,8 +13,9 @@ use crate::{
     engine::{MetadataQuery, ProviderMetadataCandidate},
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
-        http_runtime::{ProviderHttpRuntime, ProviderHttpTransport, ReqwestProviderHttpTransport},
+        http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        rendered_page::RenderedPageRuntime,
     },
 };
 
@@ -76,7 +77,7 @@ where
     T: ProviderHttpTransport,
 {
     config: DoubanProviderConfig,
-    runtime: ProviderHttpRuntime<T>,
+    rendered_pages: RenderedPageRuntime<T>,
 }
 
 #[async_trait]

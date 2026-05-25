@@ -54,6 +54,11 @@
       "date": "2026-05-25",
       "task": "OMAPAD-050",
       "summary": "Provider diagnostics now flow through typed ProviderOutcome facts rendered by one redaction-safe engine outcome module while preserving the public provider_note payload field."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-060",
+      "summary": "Browser-worker protocol handling now lives in a rendered-page support runtime; Douban consumes it as infrastructure while browser_worker remains a default-off provider for explicit rendered-page URL extraction."
     }
   ],
   "adr_refs": [
