@@ -20,6 +20,9 @@ pub const WEBHOOK_RESPONSE_SCHEMA: &str =
 pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
 pub const DIAGNOSTICS_LABEL: &str = "Notification Bridge Diagnostics";
 pub const DIAGNOSTICS_PATH: &str = "/ui/diagnostics";
+pub const PROVIDER_TEST_SEND_PATH: &str = "/providers/test-send";
+pub const PROVIDER_TEST_SEND_RESPONSE_SCHEMA: &str =
+    "nako.official.notification-bridge.provider-test-send.v1";
 pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 pub const DEFAULT_MAX_ATTEMPTS: u32 = 2;
 

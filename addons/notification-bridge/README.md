@@ -12,6 +12,8 @@ explicitly configured provider:
 - it reads sidecar-owned provider configuration from operator-provided
   environment variables;
 - it reports only redaction-safe provider status in health and diagnostics;
+- it exposes `POST /providers/test-send` for a redaction-safe synthetic
+  provider delivery check;
 - it sends a fixed redaction-safe JSON summary to the configured HTTP webhook;
 - it can send a fixed Discord-compatible webhook payload when
   `discord_webhook` is explicitly configured;
@@ -69,6 +71,13 @@ diagnostics, not ACK-only disabled-provider records or provider retry.
 
 The outbound payload includes event identifiers and sorted payload keys only;
 it does not include raw event payload values.
+
+`POST /providers/test-send` sends the same safe notification shape using
+synthetic event facts. It is intended for local/operator verification and fails
+closed when no provider, multiple providers, invalid provider configuration, or
+an invalid enabled-provider template is present. Its response contains only
+safe provider status and never echoes provider URLs, secrets, template text, or
+raw payload values.
 
 ## Smoke
 

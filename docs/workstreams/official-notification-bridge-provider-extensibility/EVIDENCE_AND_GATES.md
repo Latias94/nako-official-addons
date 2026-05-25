@@ -86,6 +86,12 @@ smoke, or docs example must not expose:
 | 2026-05-25 | ONBPE-020 | `cargo clippy -p nako-notification-bridge --all-targets -- -D warnings` | Pass |
 | 2026-05-25 | ONBPE-020 | `cargo fmt --package nako-notification-bridge --check`; `git diff --check` | Pass |
 | 2026-05-25 | ONBPE-020 | `cargo nextest run --workspace --no-fail-fast` | Skipped: changed Rust scope is limited to `nako-notification-bridge`; package nextest plus clippy/fmt/diff gates prove the task-local behavior and compile surface. |
+| 2026-05-25 | ONBPE-030 | `cargo nextest run -p nako-notification-bridge test_send provider diagnostics --no-fail-fast` | Pass: 19 passed, 20 skipped |
+| 2026-05-25 | ONBPE-030 | `cargo nextest run -p nako-notification-bridge --no-fail-fast` | Pass: 39 passed |
+| 2026-05-25 | ONBPE-030 | `cargo clippy -p nako-notification-bridge --all-targets -- -D warnings` | Pass |
+| 2026-05-25 | ONBPE-030 | `cargo fmt --package nako-notification-bridge --check`; `git diff --check` | Pass |
+| 2026-05-25 | ONBPE-030 | Review gate | Pass: no blocking workstream-compliance or code-quality findings. Residual live-provider behavior remains covered by opt-in local smoke, not default CI. |
+| 2026-05-25 | ONBPE-030 | `cargo nextest run --workspace --no-fail-fast` | Skipped: changed Rust scope is limited to `nako-notification-bridge`; package nextest plus clippy/fmt/diff gates prove the task-local behavior and compile surface. |
 
 ## Notes
 

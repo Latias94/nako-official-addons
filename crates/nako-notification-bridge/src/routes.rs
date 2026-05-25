@@ -14,11 +14,12 @@ use tower_http::trace::TraceLayer;
 use crate::{
     Config,
     attempt_history::ProviderAttemptHistory,
-    discord_webhook::DiscordWebhookClient,
-    http_webhook::HttpWebhookClient,
+    discord_webhook::{DiscordWebhookClient, DiscordWebhookSendOutcome},
+    http_webhook::{HttpWebhookClient, HttpWebhookSendOutcome},
     manifest::{
         ADDON_ID, ADDON_VERSION, DIAGNOSTICS_PATH, LIBRARY_SCANNED_EVENT_KIND,
-        LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID, addon_manifest,
+        LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID, PROVIDER_TEST_SEND_PATH,
+        PROVIDER_TEST_SEND_RESPONSE_SCHEMA, addon_manifest,
     },
     provider_registry::{
         NotificationProviderRegistry, record_provider_error, record_provider_outcome,
@@ -43,6 +44,7 @@ pub fn router(config: Config) -> Router {
         .route("/manifest.json", get(manifest))
         .route("/health", post(health))
         .route(LIBRARY_SCANNED_EVENT_PATH, post(library_scanned_event))
+        .route(PROVIDER_TEST_SEND_PATH, post(provider_test_send))
         .route(DIAGNOSTICS_PATH, get(diagnostics))
         .layer(TraceLayer::new_for_http())
         .with_state(AppState {
@@ -118,15 +120,7 @@ async fn library_scanned_event(
         ));
     }
 
-    let payload_keys = request
-        .payload
-        .as_object()
-        .map(|object| {
-            let mut keys = object.keys().cloned().collect::<Vec<_>>();
-            keys.sort();
-            keys
-        })
-        .unwrap_or_default();
+    let payload_keys = sorted_payload_keys(&request);
     let providers = NotificationProviderRegistry::new(&state.config);
     if let Some(error) = providers.multiple_send_paths_error() {
         return Err((StatusCode::BAD_REQUEST, Json(error)));
@@ -140,56 +134,10 @@ async fn library_scanned_event(
     )
     .map_err(invalid_template_error)?;
 
-    let provider_outcome = match state
-        .http_webhook
-        .send_library_scanned_event(
-            &state.config.http_webhook,
-            &request,
-            &payload_keys,
-            &summary,
-        )
-        .await
-    {
-        Ok(outcome) => {
-            record_provider_outcome(&state.provider_attempt_history, &request, &outcome);
-            outcome
-        }
-        Err(error) => {
-            record_provider_error(&state.provider_attempt_history, &request, &error);
-            return Err((error.status_code(), Json(error.safe_body())));
-        }
-    };
-    let discord_provider_outcome = match state
-        .discord_webhook
-        .send_library_scanned_event(
-            &state.config.discord_webhook,
-            &request,
-            &payload_keys,
-            &summary,
-        )
-        .await
-    {
-        Ok(outcome) => {
-            record_provider_outcome(&state.provider_attempt_history, &request, &outcome);
-            outcome
-        }
-        Err(error) => {
-            record_provider_error(&state.provider_attempt_history, &request, &error);
-            return Err((error.status_code(), Json(error.safe_body())));
-        }
-    };
-    let provider_outputs = vec![
-        provider_outcome.provider_output(),
-        discord_provider_outcome.provider_output(),
-    ];
+    let provider_send =
+        send_library_scanned_event_to_providers(&state, &request, &payload_keys, &summary).await?;
+    let provider_outputs = provider_send.provider_outputs();
     let primary_provider_output = select_primary_provider_output(&provider_outputs);
-    let mode = if provider_outcome.mode() == "provider_send"
-        || discord_provider_outcome.mode() == "provider_send"
-    {
-        "provider_send"
-    } else {
-        "ack_only"
-    };
 
     Ok(Json(AddonEventResponse {
         protocol_version: request.protocol_version,
@@ -199,7 +147,7 @@ async fn library_scanned_event(
         output: serde_json::json!({
             "schema": "nako.official.notification-bridge.library-scanned.event.v1",
             "accepted": true,
-            "mode": mode,
+            "mode": provider_send.mode(),
             "attempt": request.attempt,
             "subject_kind": request.subject_kind,
             "subject_id": request.subject_id,
@@ -208,6 +156,139 @@ async fn library_scanned_event(
             "providers": provider_outputs
         }),
     }))
+}
+
+async fn provider_test_send(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let providers = NotificationProviderRegistry::new(&state.config);
+    if let Some(error) = providers.test_send_preflight_error() {
+        return Err((StatusCode::BAD_REQUEST, Json(error)));
+    }
+
+    let request = provider_test_send_request();
+    let payload_keys = sorted_payload_keys(&request);
+    let summary = render_template(
+        providers.summary_template(),
+        &TemplateContext {
+            request: &request,
+            payload_keys: &payload_keys,
+        },
+    )
+    .map_err(invalid_template_error)?;
+    let provider_send =
+        send_library_scanned_event_to_providers(&state, &request, &payload_keys, &summary).await?;
+    let provider_outputs = provider_send.provider_outputs();
+    let primary_provider_output = select_primary_provider_output(&provider_outputs);
+
+    Ok(Json(serde_json::json!({
+        "schema": PROVIDER_TEST_SEND_RESPONSE_SCHEMA,
+        "accepted": true,
+        "mode": provider_send.mode(),
+        "provider_send_path_count": providers.send_path_count(),
+        "configuration_status": providers.configuration_status().as_str(),
+        "provider": primary_provider_output,
+        "providers": provider_outputs
+    })))
+}
+
+async fn send_library_scanned_event_to_providers(
+    state: &AppState,
+    request: &AddonEventRequest,
+    payload_keys: &[String],
+    summary: &str,
+) -> Result<ProviderSendOutcomes, (StatusCode, Json<serde_json::Value>)> {
+    let http_webhook = match state
+        .http_webhook
+        .send_library_scanned_event(&state.config.http_webhook, request, payload_keys, summary)
+        .await
+    {
+        Ok(outcome) => {
+            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
+            outcome
+        }
+        Err(error) => {
+            record_provider_error(&state.provider_attempt_history, request, &error);
+            return Err((error.status_code(), Json(error.safe_body())));
+        }
+    };
+    let discord_webhook = match state
+        .discord_webhook
+        .send_library_scanned_event(
+            &state.config.discord_webhook,
+            request,
+            payload_keys,
+            summary,
+        )
+        .await
+    {
+        Ok(outcome) => {
+            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
+            outcome
+        }
+        Err(error) => {
+            record_provider_error(&state.provider_attempt_history, request, &error);
+            return Err((error.status_code(), Json(error.safe_body())));
+        }
+    };
+
+    Ok(ProviderSendOutcomes {
+        http_webhook,
+        discord_webhook,
+    })
+}
+
+struct ProviderSendOutcomes {
+    http_webhook: HttpWebhookSendOutcome,
+    discord_webhook: DiscordWebhookSendOutcome,
+}
+
+impl ProviderSendOutcomes {
+    fn provider_outputs(&self) -> Vec<serde_json::Value> {
+        vec![
+            self.http_webhook.provider_output(),
+            self.discord_webhook.provider_output(),
+        ]
+    }
+
+    const fn mode(&self) -> &'static str {
+        if matches!(self.http_webhook, HttpWebhookSendOutcome::Sent { .. })
+            || matches!(self.discord_webhook, DiscordWebhookSendOutcome::Sent { .. })
+        {
+            "provider_send"
+        } else {
+            "ack_only"
+        }
+    }
+}
+
+fn sorted_payload_keys(request: &AddonEventRequest) -> Vec<String> {
+    request
+        .payload
+        .as_object()
+        .map(|object| {
+            let mut keys = object.keys().cloned().collect::<Vec<_>>();
+            keys.sort();
+            keys
+        })
+        .unwrap_or_default()
+}
+
+fn provider_test_send_request() -> AddonEventRequest {
+    AddonEventRequest {
+        protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+        addon_id: ADDON_ID.to_owned(),
+        subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+        event_id: "notification-provider-test-send".to_owned(),
+        event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+        subject_kind: "library".to_owned(),
+        subject_id: "provider-test".to_owned(),
+        occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+        attempt: 1,
+        payload: serde_json::json!({
+            "test_send": true
+        }),
+    }
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
@@ -796,6 +877,225 @@ mod tests {
         assert!(!text.contains("nako_at_should_not_echo"));
         assert!(!text.contains("source-1"));
         assert!(!text.contains("127.0.0.1"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_sends_http_webhook_without_leaking_values() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some(target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SECRET_HEADER_NAME" => {
+                Some("x-test-secret".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SHARED_SECRET" => {
+                Some("test-secret-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/providers/test-send")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(
+            payload["schema"],
+            "nako.official.notification-bridge.provider-test-send.v1"
+        );
+        assert_eq!(payload["accepted"], true);
+        assert_eq!(payload["mode"], "provider_send");
+        assert_eq!(payload["provider"]["id"], "http_webhook");
+        assert_eq!(payload["provider"]["status"], "sent");
+        assert_eq!(payload["provider"]["send_path_enabled"], true);
+        assert_eq!(payload["provider_send_path_count"], 1);
+        assert_eq!(payload["configuration_status"], "provider_send_ready");
+        assert!(!text.contains("127.0.0.1"));
+        assert!(!text.contains("test-secret-should-not-appear"));
+
+        let requests = fixture.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].secret_header.as_deref(),
+            Some("test-secret-should-not-appear")
+        );
+        assert_eq!(
+            requests[0].body["schema"],
+            "nako.official.notification-bridge.http-webhook.library-scanned.v1"
+        );
+        assert_eq!(
+            requests[0].body["event"]["event_id"],
+            "notification-provider-test-send"
+        );
+        assert_eq!(requests[0].body["event"]["subject_id"], "provider-test");
+        let webhook_body = serde_json::to_string(&requests[0].body).unwrap();
+        assert!(!webhook_body.contains("test-secret-should-not-appear"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_fails_closed_without_provider_send_path() {
+        let response = router(Config::default())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/providers/test-send")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            payload["safe_error_code"],
+            "no_notification_provider_send_path_configured"
+        );
+        assert_eq!(payload["configuration_status"], "ack_only");
+        assert_eq!(payload["provider_send_path_count"], 0);
+        assert_eq!(payload["retryable"], false);
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_fails_closed_for_multiple_provider_send_paths() {
+        let (http_target_url, http_fixture, http_handle) = spawn_http_webhook_fixture().await;
+        let (discord_target_url, discord_fixture, discord_handle) =
+            spawn_http_webhook_fixture().await;
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some(http_target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(discord_target_url.clone()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/providers/test-send")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(
+            payload["safe_error_code"],
+            "multiple_notification_provider_send_paths_configured"
+        );
+        assert_eq!(
+            payload["configuration_status"],
+            "multiple_provider_send_paths_configured"
+        );
+        assert_eq!(payload["provider_send_path_count"], 2);
+        assert_eq!(payload["retryable"], false);
+        assert!(!text.contains("127.0.0.1"));
+        assert_eq!(http_fixture.requests.lock().unwrap().len(), 0);
+        assert_eq!(discord_fixture.requests.lock().unwrap().len(), 0);
+
+        http_handle.abort();
+        discord_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_fails_closed_for_invalid_provider_configuration() {
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some("file:///tmp/hook".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_SHARED_SECRET" => {
+                Some("test-secret-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/providers/test-send")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(
+            payload["safe_error_code"],
+            "notification_provider_configuration_invalid"
+        );
+        assert_eq!(
+            payload["configuration_status"],
+            "provider_configuration_invalid"
+        );
+        assert_eq!(payload["provider_send_path_count"], 0);
+        assert_eq!(payload["retryable"], false);
+        assert!(!text.contains("file:///tmp/hook"));
+        assert!(!text.contains("test-secret-should-not-appear"));
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_fails_closed_for_invalid_enabled_provider_template() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some(target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY" => Some("{{payload.secret}}".to_owned()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/providers/test-send")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload["safe_error_code"], "notification_template_invalid");
+        assert_eq!(payload["configuration_status"], "template_invalid");
+        assert_eq!(payload["provider_send_path_count"], 1);
+        assert_eq!(payload["retryable"], false);
+        assert!(!text.contains("payload.secret"));
+        assert!(!text.contains("127.0.0.1"));
+        assert_eq!(fixture.requests.lock().unwrap().len(), 0);
 
         handle.abort();
     }

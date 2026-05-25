@@ -7,10 +7,11 @@
   "scope_kind": "architecture_execution",
   "problem": "The notification bridge has two working providers, but provider orchestration, diagnostics, and future test-send behavior are still route-local and will not scale cleanly to more providers.",
   "task_prefix": "ONBPE",
-  "current_task": "ONBPE-030",
+  "current_task": "ONBPE-040",
   "completed_tasks": [
     "ONBPE-010",
-    "ONBPE-020"
+    "ONBPE-020",
+    "ONBPE-030"
   ],
   "authoritative_docs": [
     {
@@ -52,6 +53,11 @@
       "date": "2026-05-25",
       "task": "ONBPE-020",
       "summary": "Added provider_registry seam for provider diagnostics, configuration status, selected-provider output, and generic attempt-history mapping. Routes now consume registry facts while preserving HTTP and Discord webhook behavior; targeted/package nextest, clippy, fmt, and diff gates passed."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "ONBPE-030",
+      "summary": "Added sidecar-local POST /providers/test-send with synthetic redaction-safe provider delivery, fail-closed preflight for no provider, multiple providers, invalid provider config, and invalid enabled-provider template, plus operator docs. Targeted/package nextest, clippy, fmt, and diff gates passed."
     }
   ],
   "adr_refs": [
@@ -73,7 +79,7 @@
   ],
   "continue_policy": {
     "default_action": "continue",
-    "next_task": "ONBPE-030",
-    "notes": "Continue with safe provider test-send. Split concrete Telegram/Home Assistant/email provider implementation if the registry/test-send scope grows."
+    "next_task": "ONBPE-040",
+    "notes": "Continue with provider extension proof. Split concrete Telegram/Home Assistant/email provider implementation if the provider choice grows beyond a small fixture-backed proof."
   }
 }

@@ -39,7 +39,7 @@ Task IDs use the `ONBPE` prefix.
 
 ## M2 - Safe Provider Test-Send
 
-- [ ] ONBPE-030 [owner=codex] [deps=ONBPE-020] [scope=crates/nako-notification-bridge/src,addons/notification-bridge,docs]
+- [x] ONBPE-030 [owner=codex] [deps=ONBPE-020] [scope=crates/nako-notification-bridge/src,addons/notification-bridge,docs]
   Goal: Add a redaction-safe provider test-send path that sends a synthetic
   notification through the single configured provider and reports safe delivery
   status without echoing secrets, webhook URLs, template text, or raw payload
@@ -49,11 +49,16 @@ Task IDs use the `ONBPE` prefix.
   Review: The test-send path must fail closed for zero providers, multiple
   providers, invalid provider config, and invalid enabled-provider templates.
   Evidence: route tests, smoke/docs updates, and EVIDENCE_AND_GATES.md.
-  Handoff: Split live-provider smoke changes if they require operator secrets.
+  Result: DONE 2026-05-25.
+  Evidence: Added `POST /providers/test-send`, success and fail-closed route
+  tests, provider registry preflight checks, and operator docs. Targeted
+  nextest passed 19/19; package nextest passed 39/39; fmt, clippy, and diff
+  checks passed.
+  Handoff: Continue with ONBPE-040 provider extension proof.
 
 ## M3 - Provider Extension Proof
 
-- [ ] ONBPE-040 [owner=codex] [deps=ONBPE-020] [scope=crates/nako-notification-bridge/src,docs]
+- [ ] ONBPE-040 [owner=codex] [deps=ONBPE-020,ONBPE-030] [scope=crates/nako-notification-bridge/src,docs]
   Goal: Prove the registry makes another provider or provider-ready extension
   cheap. Prefer a small provider with fixture-backed tests only if the
   configuration and payload contract are clear; otherwise record the extension

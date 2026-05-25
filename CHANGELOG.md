@@ -30,6 +30,9 @@ builds.
 - `nako-notification-bridge` bounded in-memory provider attempt history for
   redaction-safe sidecar diagnostics without adding provider retry state to Nako
   core.
+- `nako-notification-bridge` sidecar-local provider test-send endpoint that
+  sends a synthetic redaction-safe notification through the single configured
+  provider and fails closed for unsafe provider configuration states.
 - Opt-in `nako-notification-bridge` live provider smoke script that skips by
   default and never requires CI secrets.
 

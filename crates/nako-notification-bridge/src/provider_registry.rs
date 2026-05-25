@@ -100,6 +100,43 @@ impl<'a> NotificationProviderRegistry<'a> {
     }
 
     #[must_use]
+    pub fn test_send_preflight_error(&self) -> Option<serde_json::Value> {
+        let configuration_status = self.configuration_status();
+        match configuration_status {
+            NotificationConfigurationStatus::AckOnly => Some(serde_json::json!({
+                "safe_error_code": "no_notification_provider_send_path_configured",
+                "configuration_status": configuration_status.as_str(),
+                "provider_send_path_count": self.send_path_count(),
+                "retryable": false
+            })),
+            NotificationConfigurationStatus::ProviderConfigurationInvalid => {
+                Some(serde_json::json!({
+                    "safe_error_code": "notification_provider_configuration_invalid",
+                    "configuration_status": configuration_status.as_str(),
+                    "provider_send_path_count": self.send_path_count(),
+                    "retryable": false
+                }))
+            }
+            NotificationConfigurationStatus::MultipleProviderSendPathsConfigured => {
+                Some(serde_json::json!({
+                    "safe_error_code": "multiple_notification_provider_send_paths_configured",
+                    "configuration_status": configuration_status.as_str(),
+                    "provider_send_path_count": self.send_path_count(),
+                    "retryable": false
+                }))
+            }
+            NotificationConfigurationStatus::TemplateInvalid => Some(serde_json::json!({
+                "safe_error_code": "notification_template_invalid",
+                "template_error": "invalid",
+                "configuration_status": configuration_status.as_str(),
+                "provider_send_path_count": self.send_path_count(),
+                "retryable": false
+            })),
+            NotificationConfigurationStatus::ProviderSendReady => None,
+        }
+    }
+
+    #[must_use]
     pub fn configuration_status(&self) -> NotificationConfigurationStatus {
         let send_path_count = self.send_path_count();
         if send_path_count > 1 {

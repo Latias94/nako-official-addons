@@ -5,24 +5,26 @@ Last updated: 2026-05-25
 
 ## Current State
 
-ONBPE-020 is complete. `nako-notification-bridge` now has a
-provider-local registry seam that owns provider diagnostics, configuration
-status, send-path count, multi-send fail-closed error construction,
-selected-provider output, and generic attempt-history mapping.
+ONBPE-020 and ONBPE-030 are complete. `nako-notification-bridge` now has a
+provider-local registry seam plus sidecar-local `POST /providers/test-send`.
+The test-send path sends a synthetic redaction-safe notification through the
+single configured provider and returns only safe delivery status.
 
 Existing behavior is preserved for ACK-only mode, HTTP webhook, Discord
 webhook, safe templates, bounded provider attempt history, aggregate
-configuration status, and redaction-safe health/diagnostics.
+configuration status, and redaction-safe health/diagnostics. Test-send fails
+closed for no provider send path, multiple provider send paths, invalid provider
+configuration, and invalid enabled-provider templates.
 
 ## Active Task
 
-- Task ID: ONBPE-030
+- Task ID: ONBPE-040
 - Owner: codex
 - Files: `crates/nako-notification-bridge/src`, `addons/notification-bridge`, `docs`
-- Validation: `cargo nextest run -p nako-notification-bridge test_send provider diagnostics --no-fail-fast`; `cargo fmt --package nako-notification-bridge --check`; `git diff --check`
+- Validation: `cargo nextest run -p nako-notification-bridge --no-fail-fast`; `cargo clippy -p nako-notification-bridge --all-targets -- -D warnings`; `cargo fmt --package nako-notification-bridge --check`; `git diff --check`
 - Status: NEEDS_CONTEXT
-- Review: The test-send path must fail closed for zero providers, multiple
-  providers, invalid provider config, and invalid enabled-provider templates.
+- Review: Do not add a low-quality provider just to increase count. Keep
+  secrets redaction-safe and avoid live-network default tests.
 - Evidence: To be recorded in `EVIDENCE_AND_GATES.md`.
 
 ## Decisions Since Last Update
@@ -34,14 +36,16 @@ configuration status, and redaction-safe health/diagnostics.
   extraction.
 - ONBPE-020 kept route behavior stable and added focused provider registry
   tests rather than changing public HTTP response shapes.
+- ONBPE-030 kept test-send sidecar-local rather than declaring it as an Addon
+  Protocol resource.
 
 ## Blockers
 
-- None for ONBPE-030.
+- None for ONBPE-040.
 - Concrete new provider choice is intentionally deferred until the registry seam
   shows the extension cost.
 
 ## Next Recommended Action
 
-- Execute ONBPE-030 by adding a redaction-safe provider test-send path through
-  the new registry seam.
+- Execute ONBPE-040 by proving the registry makes a provider extension cheap,
+  or split a concrete provider into a follow-on if it is no longer small.

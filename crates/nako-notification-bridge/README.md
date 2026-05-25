@@ -19,6 +19,7 @@ Endpoints:
 - `GET /manifest.json`
 - `POST /health`
 - `POST /events/library-scanned`
+- `POST /providers/test-send`
 - `GET /ui/diagnostics`
 
 ## Local Smoke
@@ -39,6 +40,23 @@ Optional live provider smoke is available through
 `addons/notification-bridge/smoke.live.ps1`. It is skipped unless
 `NAKO_NOTIFICATION_BRIDGE_LIVE_SMOKE=1` is set and should be run only against a
 locally configured sidecar. It never belongs in default CI.
+
+## Provider Test Send
+
+`POST /providers/test-send` is a sidecar-local operator endpoint. It sends a
+synthetic redaction-safe notification through the single configured provider
+and returns safe provider status:
+
+```bash
+curl -X POST http://127.0.0.1:9110/providers/test-send
+```
+
+The response reports schema, mode, provider send path count, aggregate
+configuration status, and safe provider output. It does not echo provider URLs,
+secrets, template text, or raw event payload values. The endpoint fails closed
+when no provider send path is configured, multiple provider send paths are
+configured, provider configuration is invalid, or an enabled provider template
+is invalid.
 
 ## HTTP Webhook Configuration
 

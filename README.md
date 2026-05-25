@@ -116,7 +116,9 @@ pwsh -File addons/notification-bridge/smoke.local.ps1 `
 Optional notification provider live smoke is skipped by default and must be
 enabled explicitly with `NAKO_NOTIFICATION_BRIDGE_LIVE_SMOKE=1` before running
 `addons/notification-bridge/smoke.live.ps1` against a locally configured
-sidecar.
+sidecar. A configured notification bridge can also be checked locally with
+`POST /providers/test-send`; the endpoint sends a synthetic safe provider
+notification and returns only redaction-safe status.
 
 Optional Nako Admin-mediated smoke:
 
