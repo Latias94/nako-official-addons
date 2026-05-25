@@ -59,6 +59,11 @@
       "date": "2026-05-25",
       "task": "OMAPAD-060",
       "summary": "Browser-worker protocol handling now lives in a rendered-page support runtime; Douban consumes it as infrastructure while browser_worker remains a default-off provider for explicit rendered-page URL extraction."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-070",
+      "summary": "Full nako-metadata-scraper package validation passed after all five provider architecture refactors; public docs already covered the unchanged provider strategy."
     }
   ],
   "adr_refs": [

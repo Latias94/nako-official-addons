@@ -54,12 +54,12 @@ Last updated: 2026-05-25
 
 ## M4 - Integration, Docs, And Gates
 
-- [ ] OMAPAD-070 [owner=codex] [deps=OMAPAD-050,OMAPAD-060] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-architecture-deepening]
+- [x] OMAPAD-070 [owner=codex] [deps=OMAPAD-050,OMAPAD-060] [scope=crates/nako-metadata-scraper,addons/metadata-scraper,docs/workstreams/official-metadata-addon-provider-architecture-deepening]
   Goal: Integrate all provider architecture refactors, update docs/examples if config or provider strategy changed, and record fresh targeted evidence.
   Validation: cargo nextest run -p nako-metadata-scraper --no-fail-fast
   Review: review-workstream before accepting completion.
-  Evidence: docs/workstreams/official-metadata-addon-provider-architecture-deepening/EVIDENCE_AND_GATES.md
-  Handoff: Split follow-on work if scope expands.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `git diff --check`
+  Handoff: DONE. Full metadata-scraper package gate passed; user-facing metadata scraper docs already describe browser-worker rendered-page extraction and Douban provider strategy, so no public config doc change was required.
 
 ## M5 - Closeout
 

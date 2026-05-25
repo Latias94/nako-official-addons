@@ -66,16 +66,25 @@ OMAPAD-060 completed:
   returns a rendered-page metadata candidate. It is still default-off and now
   uses the same support runtime instead of owning protocol plumbing.
 
+OMAPAD-070 completed:
+
+- Full metadata scraper package gate passed after the provider descriptor,
+  single assembly, shared search policy, typed outcome, and rendered-page
+  support refactors.
+- `crates/nako-metadata-scraper/README.md` and
+  `addons/metadata-scraper/README.md` already describe the public
+  browser-worker and Douban rendered-page strategy; no config/doc behavior
+  change was required.
+
 ## Next Task
 
-Start OMAPAD-070.
+Start OMAPAD-080 closeout.
 
 Recommended next implementation focus:
 
-- run the broader metadata scraper package gate;
-- review docs/examples for any provider strategy wording that should mention
-  rendered-page support and typed outcomes;
-- prepare integration evidence before closeout.
+- run `review-workstream` for workstream compliance and code quality;
+- perform final verification against the five-refactor target state;
+- close the workstream or split only concrete follow-ons.
 
 ## Risks
 
@@ -96,3 +105,4 @@ OMAPAD-030 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-
 OMAPAD-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper tmdb bangumi relevance partial degraded --no-fail-fast`, and `git diff --check`.
 OMAPAD-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`, and `git diff --check`.
 OMAPAD-060 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast`, and `git diff --check`.
+OMAPAD-070 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.
