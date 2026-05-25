@@ -538,13 +538,19 @@ mod tests {
                     small: None,
                     grid: None,
                 }),
+                nsfw: None,
+                locked: None,
+                series: None,
+                volumes: None,
                 eps: Some(26),
                 total_episodes: Some(26),
+                air_weekday: None,
                 rating: Some(BangumiRating {
                     rank: Some(10),
                     total: Some(12000),
                     score: Some(8.8),
                 }),
+                collection: None,
                 infobox: vec![BangumiInfoboxItem {
                     key: Some(" 别名 ".to_owned()),
                     value: serde_json::json!([{"v": " Search Alias "}]),
@@ -576,13 +582,19 @@ mod tests {
                     small: None,
                     grid: None,
                 }),
+                nsfw: None,
+                locked: None,
+                series: None,
+                volumes: None,
                 eps: Some(26),
                 total_episodes: Some(26),
+                air_weekday: None,
                 rating: Some(BangumiRating {
                     rank: Some(10),
                     total: Some(12000),
                     score: Some(8.8),
                 }),
+                collection: None,
                 infobox: vec![
                     BangumiInfoboxItem {
                         key: Some(" 别名 ".to_owned()),
@@ -640,6 +652,82 @@ mod tests {
         assert_eq!(
             candidate.artwork_candidates[0].facts.source_url,
             "https://lain.bgm.tv/pic/cover/l/detail.jpg"
+        );
+    }
+
+    #[test]
+    fn bangumi_candidate_mapping_preserves_official_subject_facts_as_tags() {
+        let subject = BangumiSubject::from_value(serde_json::json!({
+            "id": 265,
+            "type": 2,
+            "name": "新世紀エヴァンゲリオン",
+            "name_cn": "新世纪福音战士",
+            "summary": "Detail summary.",
+            "date": "1995-10-04",
+            "platform": " TV ",
+            "images": {},
+            "nsfw": true,
+            "locked": true,
+            "series": true,
+            "volumes": 0,
+            "eps": 26,
+            "total_episodes": 26,
+            "air_weekday": 3,
+            "rating": {"rank": 10, "total": 12000, "score": 8.8},
+            "collection": {
+                "wish": 1000,
+                "collect": 9000,
+                "doing": 500,
+                "on_hold": 300,
+                "dropped": 200
+            },
+            "infobox": [
+                {"key": "官方网站", "value": " https://www.evangelion.co.jp/ "},
+                {"key": "播放结束", "value": "1996年03月27日"},
+                {"key": "制作", "value": [
+                    {"v": " GAINAX "},
+                    {"k": "动画制作", "v": " タツノコプロ "},
+                    {"v": "GAINAX"}
+                ]}
+            ],
+            "meta_tags": [],
+            "tags": []
+        }))
+        .unwrap();
+
+        let candidate = BangumiSubjectCandidate {
+            search: BangumiSubject::default(),
+            detail: subject,
+            degraded: false,
+        }
+        .into_candidate(&MetadataQuery {
+            title: "新世纪福音战士".to_owned(),
+            year: Some(1995),
+            language: "zh-CN".to_owned(),
+            external_ids: Vec::new(),
+        });
+
+        let tags = candidate.patch.tags.as_ref().unwrap();
+        assert!(tags.contains(&"bangumi_nsfw".to_owned()));
+        assert!(tags.contains(&"bangumi_locked".to_owned()));
+        assert!(tags.contains(&"bangumi_series".to_owned()));
+        assert!(tags.contains(&"bangumi_subject_type:2".to_owned()));
+        assert!(tags.contains(&"bangumi_eps:26".to_owned()));
+        assert!(tags.contains(&"bangumi_total_episodes:26".to_owned()));
+        assert!(tags.contains(&"bangumi_air_weekday:3".to_owned()));
+        assert!(tags.contains(&"bangumi_platform:TV".to_owned()));
+        assert!(tags.contains(&"bangumi_collection_total:11000".to_owned()));
+        assert!(tags.contains(&"bangumi_official_site".to_owned()));
+        assert!(!tags.iter().any(|tag| tag.contains("evangelion.co.jp")));
+        assert!(tags.contains(&"bangumi_end_date:1996年03月27日".to_owned()));
+        assert!(tags.contains(&"bangumi_production:GAINAX".to_owned()));
+        assert!(tags.contains(&"bangumi_production:タツノコプロ".to_owned()));
+        assert!(!tags.contains(&"bangumi_volumes:0".to_owned()));
+        assert_eq!(
+            tags.iter()
+                .filter(|tag| tag.as_str() == "bangumi_production:GAINAX")
+                .count(),
+            1
         );
     }
 

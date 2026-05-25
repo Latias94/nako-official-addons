@@ -75,13 +75,20 @@ pub(super) struct BangumiSubject {
     pub(super) subject_type: Option<u8>,
     pub(super) name: Option<String>,
     pub(super) name_cn: Option<String>,
-    pub(super) summary: Option<String>,
+    #[serde(alias = "air_date")]
     pub(super) date: Option<String>,
+    pub(super) summary: Option<String>,
     pub(super) platform: Option<String>,
     pub(super) images: Option<BangumiImages>,
+    pub(super) nsfw: Option<bool>,
+    pub(super) locked: Option<bool>,
+    pub(super) series: Option<bool>,
+    pub(super) volumes: Option<u32>,
     pub(super) eps: Option<u32>,
     pub(super) total_episodes: Option<u32>,
+    pub(super) air_weekday: Option<u8>,
     pub(super) rating: Option<BangumiRating>,
+    pub(super) collection: Option<BangumiSubjectCollection>,
     #[serde(default)]
     pub(super) infobox: Vec<BangumiInfoboxItem>,
     #[serde(default)]
@@ -123,6 +130,28 @@ pub(super) struct BangumiRating {
     pub(super) rank: Option<u32>,
     pub(super) total: Option<u32>,
     pub(super) score: Option<f64>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(super) struct BangumiSubjectCollection {
+    pub(super) wish: Option<u32>,
+    pub(super) collect: Option<u32>,
+    pub(super) doing: Option<u32>,
+    pub(super) on_hold: Option<u32>,
+    pub(super) dropped: Option<u32>,
+}
+
+impl BangumiSubjectCollection {
+    pub(super) fn total(&self) -> Option<u32> {
+        let total = self
+            .wish
+            .unwrap_or_default()
+            .saturating_add(self.collect.unwrap_or_default())
+            .saturating_add(self.doing.unwrap_or_default())
+            .saturating_add(self.on_hold.unwrap_or_default())
+            .saturating_add(self.dropped.unwrap_or_default());
+        (total > 0).then_some(total)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]

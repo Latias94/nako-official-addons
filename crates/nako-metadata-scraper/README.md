@@ -16,7 +16,9 @@ Current alpha provider defaults:
   It also accepts `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` for proxied access.
 - `bangumi`: disabled by default; public subject search works without a token
   and requires a compliant User-Agent. It also accepts
-  `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` for proxied access.
+  `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` for proxied access. It maps
+  official subject facts such as NSFW/locked/series flags, episode and
+  collection counts, ratings, selected infobox facts, tags, and poster artwork.
 - `browser_worker`: disabled by default; uses the companion browser worker for
   rendered-page extraction when an external browser-worker URL is supplied.
 - `douban`: disabled by default; calls the companion browser worker for rendered

@@ -248,9 +248,10 @@ and detail enrichment work without a token. Set
 `NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT` to a Bangumi-compliant developer/app
 identifier and optionally set `NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN` for
 authenticated visibility. The baseline maps subject title/original title,
-summary, release date, platform, subject type, episode counts, ratings, tags,
-typed poster artwork candidates, and the Bangumi subject ID into
-provider-neutral facts.
+summary, release date, platform, subject type, NSFW/locked/series flags,
+episode and collection counts, ratings, selected infobox facts, tags, typed
+poster artwork candidates, and the Bangumi subject ID into provider-neutral
+facts.
 Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-bangumi-metadata-enrichment",
+  "title": "Official Metadata Addon Bangumi Metadata Enrichment",
+  "status": "complete",
+  "updated": "2026-05-26",
+  "scope_kind": "execution",
+  "problem": "Bangumi provider ignores several official subject facts and infobox-derived metadata that can improve Nako candidates without changing protocol.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-bangumi-metadata-enrichment/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-bangumi-metadata-enrichment/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-bangumi-metadata-enrichment/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "repo-ref/bangumi-api",
+    "repo-ref/bangumi-server",
+    "repo-ref/jellyfin-plugin-bangumi"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "close",
+    "notes": "Lane complete. Split a follow-on for cast/person, episode, relation, or protocol expansion work."
+  }
+}
