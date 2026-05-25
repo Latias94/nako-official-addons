@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Architecture Deepening - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Scope Frozen
@@ -46,3 +46,6 @@ Last updated: 2026-05-25
 - TODO.md task handoff states are final.
 - HANDOFF.md records remaining risks and follow-ons.
 - WORKSTREAM.json is updated to `complete` or a follow-on is split.
+
+Status: Complete. OMAPAD-080 closed the lane with final package, format, JSON,
+and diff hygiene evidence; no architecture follow-on was split.

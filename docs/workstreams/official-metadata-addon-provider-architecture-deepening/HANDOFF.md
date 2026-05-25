@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Architecture Deepening - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Current State
@@ -78,13 +78,14 @@ OMAPAD-070 completed:
 
 ## Next Task
 
-Start OMAPAD-080 closeout.
+No next task in this lane.
 
-Recommended next implementation focus:
+Closeout result:
 
-- run `review-workstream` for workstream compliance and code quality;
-- perform final verification against the five-refactor target state;
-- close the workstream or split only concrete follow-ons.
+- Review found no blocking workstream compliance or code-quality findings.
+- Final package, format, JSON, and diff hygiene gates passed.
+- No architecture follow-on was split; release publishing and live provider
+  smoke remain out of scope.
 
 ## Risks
 
@@ -106,3 +107,4 @@ OMAPAD-040 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-
 OMAPAD-050 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`, and `git diff --check`.
 OMAPAD-060 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast`, and `git diff --check`.
 OMAPAD-070 passed with `cargo fmt --all -- --check`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.
+OMAPAD-080 passed with `cargo fmt --all -- --check`, `python -m json.tool docs/workstreams/official-metadata-addon-provider-architecture-deepening/WORKSTREAM.json`, `cargo nextest run -p nako-metadata-scraper --no-fail-fast`, and `git diff --check`.

@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Architecture Deepening
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Why This Lane Exists
@@ -130,3 +130,7 @@ This lane can close when:
 - workspace formatting and diff hygiene pass;
 - docs reflect any changed provider strategy or config behavior;
 - and follow-on work is either split or explicitly deferred.
+
+Closeout status: Complete on 2026-05-25. All five refactor slices are
+implemented, public payload/config compatibility is preserved, package and
+format gates pass, and no architecture follow-on was split.

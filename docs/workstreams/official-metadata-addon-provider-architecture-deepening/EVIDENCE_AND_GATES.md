@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Architecture Deepening - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## Gate Plan
@@ -28,9 +28,12 @@ Last updated: 2026-05-25
 | 2026-05-25 | OMAPAD-050 typed provider outcomes | Added `engine/outcome.rs` with typed `ProviderOutcome` facts and one redaction-safe provider note renderer. TMDB, Bangumi, Douban, Fixture, BrowserWorker, and shared search policy now emit outcomes instead of provider-local diagnostic prose. Ran `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper provider_note redaction ranking tmdb bangumi douban --no-fail-fast`; `git diff --check`. | Pass |
 | 2026-05-25 | OMAPAD-060 rendered-page support seam | Added `providers/rendered_page.rs` as the browser-worker protocol runtime. Douban now depends on rendered-page support instead of owning worker request/response parsing; `browser_worker` remains in the provider catalog as a default-off metadata provider for explicit rendered-page URL extraction. Ran `cargo fmt --all -- --check`; `cargo nextest run -p nako-metadata-scraper browser_worker douban --no-fail-fast`; `git diff --check`. | Pass |
 | 2026-05-25 | OMAPAD-070 integration gate | Ran the full metadata scraper package gate after OMAPAD-020 through OMAPAD-060. `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed with 143 tests run, 143 passed, and 2 skipped. `cargo fmt --all -- --check` and `git diff --check` passed. Reviewed `crates/nako-metadata-scraper/README.md` and `addons/metadata-scraper/README.md`; public provider strategy/config docs already cover browser-worker rendered-page extraction and Douban's rendered HTML dependency. | Pass |
+| 2026-05-25 | OMAPAD-080 closeout | Review found no blocking workstream compliance or code-quality findings across provider descriptor ownership, single provider assembly, shared search policy, typed provider outcomes, and rendered-page support. Final gates passed: `cargo fmt --all -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-provider-architecture-deepening/WORKSTREAM.json`; `git diff --check`; `cargo nextest run -p nako-metadata-scraper --no-fail-fast` with 143 tests run, 143 passed, and 2 skipped. | Pass |
 
 ## Notes
 
 - Prefer targeted `cargo nextest` filters while working on a slice.
 - Broader package and formatting gates are required before closeout.
 - Live provider drift checks remain opt-in and out of scope for this lane.
+- Closeout did not split follow-ons because the five architecture targets are
+  implemented and externally visible payload/config compatibility was preserved.

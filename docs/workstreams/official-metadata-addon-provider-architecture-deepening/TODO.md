@@ -1,6 +1,6 @@
 # Official Metadata Addon Provider Architecture Deepening - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-25
 
 ## M0 - Scope And Evidence Freeze
@@ -63,9 +63,9 @@ Last updated: 2026-05-25
 
 ## M5 - Closeout
 
-- [ ] OMAPAD-080 [owner=planner] [deps=OMAPAD-070] [scope=docs/workstreams/official-metadata-addon-provider-architecture-deepening]
+- [x] OMAPAD-080 [owner=planner] [deps=OMAPAD-070] [scope=docs/workstreams/official-metadata-addon-provider-architecture-deepening]
   Goal: Close the lane or split any remaining architecture candidates into narrower follow-ons.
   Validation: verify-rust-workstream records fresh final gate evidence.
   Review: review-workstream has no blocking findings.
-  Evidence: EVIDENCE_AND_GATES.md, WORKSTREAM.json
-  Handoff: Summarize remaining risks in HANDOFF.md.
+  Evidence: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt --all -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-provider-architecture-deepening/WORKSTREAM.json`; `git diff --check`
+  Handoff: DONE. Workstream closed with no blocking review findings and no split follow-ons.

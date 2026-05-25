@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "official-metadata-addon-provider-architecture-deepening",
   "title": "Official Metadata Addon Provider Architecture Deepening",
-  "status": "active",
+  "status": "complete",
   "updated": "2026-05-25",
   "scope_kind": "execution",
   "problem": "Provider extension remains too shallow across config, registry, manifest, search policy, diagnostics, and browser-worker support semantics.",
@@ -64,6 +64,11 @@
       "date": "2026-05-25",
       "task": "OMAPAD-070",
       "summary": "Full nako-metadata-scraper package validation passed after all five provider architecture refactors; public docs already covered the unchanged provider strategy."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPAD-080",
+      "summary": "Closeout review found no blocking workstream or code-quality findings; final package, format, JSON, and diff hygiene gates passed."
     }
   ],
   "adr_refs": [
@@ -72,7 +77,7 @@
     "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md"
   ],
   "continue_policy": {
-    "default_action": "continue",
-    "notes": "Continue through OMAPAD-020, OMAPAD-030, OMAPAD-040, OMAPAD-050, and OMAPAD-060 while public payload compatibility remains valid. Split follow-ons if a task changes Addon Protocol or Nako host contracts."
+    "default_action": "closed",
+    "notes": "All five provider architecture refactors are complete. No follow-on was split from this lane; release publishing and live provider smoke remain intentionally out of scope."
   }
 }
