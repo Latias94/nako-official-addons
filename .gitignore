@@ -4,3 +4,4 @@ target/
 node_modules/
 playwright-report/
 test-results/
+repo-ref/
