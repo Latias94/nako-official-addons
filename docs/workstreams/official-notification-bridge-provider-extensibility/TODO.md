@@ -58,7 +58,7 @@ Task IDs use the `ONBPE` prefix.
 
 ## M3 - Provider Extension Proof
 
-- [ ] ONBPE-040 [owner=codex] [deps=ONBPE-020,ONBPE-030] [scope=crates/nako-notification-bridge/src,docs]
+- [x] ONBPE-040 [owner=codex] [deps=ONBPE-020,ONBPE-030] [scope=crates/nako-notification-bridge/src,docs]
   Goal: Prove the registry makes another provider or provider-ready extension
   cheap. Prefer a small provider with fixture-backed tests only if the
   configuration and payload contract are clear; otherwise record the extension
@@ -69,12 +69,16 @@ Task IDs use the `ONBPE` prefix.
   Review: Do not add a low-quality provider just to increase count. Keep
   secrets redaction-safe and avoid live-network default tests.
   Evidence: provider proof tests or follow-on decision in HANDOFF.md.
-  Handoff: Finalize whether Telegram/Home Assistant/email belongs in this lane
-  or a new one.
+  Result: DONE 2026-05-25.
+  Evidence: Added default-disabled `telegram` provider with fixture-backed
+  `library.scanned`, `POST /providers/test-send`, health, diagnostics, config,
+  and redaction tests. Targeted nextest passed 14/14; package nextest passed
+  44/44; fmt, clippy, and diff checks passed.
+  Handoff: Continue with ONBPE-050 closeout.
 
 ## M4 - Closeout
 
-- [ ] ONBPE-050 [owner=planner] [deps=ONBPE-030] [scope=docs/workstreams/official-notification-bridge-provider-extensibility]
+- [ ] ONBPE-050 [owner=planner] [deps=ONBPE-030,ONBPE-040] [scope=docs/workstreams/official-notification-bridge-provider-extensibility]
   Goal: Verify final evidence, record residual risks, and close the lane or
   split any remaining provider-specific work.
   Validation: verify-rust-workstream records fresh final gate evidence.

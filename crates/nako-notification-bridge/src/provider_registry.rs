@@ -3,11 +3,12 @@ use nako_addon_protocol::AddonEventRequest;
 use crate::{
     Config,
     attempt_history::{ProviderAttemptHistory, ProviderAttemptRecord},
-    config::{DiscordWebhookConfig, HttpWebhookConfig},
+    config::{DiscordWebhookConfig, HttpWebhookConfig, TelegramConfig},
     discord_webhook::{
         DISCORD_WEBHOOK_PROVIDER_ID, DiscordWebhookSendError, DiscordWebhookSendOutcome,
     },
     http_webhook::{HTTP_WEBHOOK_PROVIDER_ID, HttpWebhookSendError, HttpWebhookSendOutcome},
+    telegram::{TELEGRAM_PROVIDER_ID, TelegramSendError, TelegramSendOutcome},
     template::DEFAULT_SUMMARY_TEMPLATE,
 };
 
@@ -61,6 +62,7 @@ impl<'a> NotificationProviderRegistry<'a> {
             discord_webhook: DiscordWebhookProviderDiagnostics::from_config(
                 &self.config.discord_webhook,
             ),
+            telegram: TelegramProviderDiagnostics::from_config(&self.config.telegram),
         }
     }
 
@@ -68,6 +70,7 @@ impl<'a> NotificationProviderRegistry<'a> {
     pub fn send_path_count(&self) -> usize {
         (self.config.http_webhook.send_path_enabled() as usize)
             + (self.config.discord_webhook.send_path_enabled() as usize)
+            + (self.config.telegram.send_path_enabled() as usize)
     }
 
     #[must_use]
@@ -77,7 +80,9 @@ impl<'a> NotificationProviderRegistry<'a> {
 
     #[must_use]
     pub fn any_provider_enabled(&self) -> bool {
-        self.config.http_webhook.enabled || self.config.discord_webhook.enabled
+        self.config.http_webhook.enabled
+            || self.config.discord_webhook.enabled
+            || self.config.telegram.enabled
     }
 
     #[must_use]
@@ -146,7 +151,8 @@ impl<'a> NotificationProviderRegistry<'a> {
         let provider_configuration_invalid = (self.config.http_webhook.enabled
             && !self.config.http_webhook.send_path_enabled())
             || (self.config.discord_webhook.enabled
-                && !self.config.discord_webhook.send_path_enabled());
+                && !self.config.discord_webhook.send_path_enabled())
+            || (self.config.telegram.enabled && !self.config.telegram.send_path_enabled());
         if provider_configuration_invalid {
             return NotificationConfigurationStatus::ProviderConfigurationInvalid;
         }
@@ -167,12 +173,17 @@ impl<'a> NotificationProviderRegistry<'a> {
 pub struct NotificationProviderDiagnostics {
     pub http_webhook: HttpWebhookProviderDiagnostics,
     pub discord_webhook: DiscordWebhookProviderDiagnostics,
+    pub telegram: TelegramProviderDiagnostics,
 }
 
 impl NotificationProviderDiagnostics {
     #[must_use]
     pub fn to_json_array(self) -> Vec<serde_json::Value> {
-        vec![self.http_webhook.to_json(), self.discord_webhook.to_json()]
+        vec![
+            self.http_webhook.to_json(),
+            self.discord_webhook.to_json(),
+            self.telegram.to_json(),
+        ]
     }
 }
 
@@ -256,6 +267,49 @@ impl DiscordWebhookProviderDiagnostics {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TelegramProviderDiagnostics {
+    pub enabled: bool,
+    pub status: &'static str,
+    pub api_base_url_configured: bool,
+    pub api_base_url_valid: bool,
+    pub bot_token_configured: bool,
+    pub chat_id_configured: bool,
+    pub timeout_ms: u64,
+    pub send_path_enabled: bool,
+}
+
+impl TelegramProviderDiagnostics {
+    #[must_use]
+    pub fn from_config(config: &TelegramConfig) -> Self {
+        Self {
+            enabled: config.enabled,
+            status: config.status().as_str(),
+            api_base_url_configured: config.api_base_url_configured(),
+            api_base_url_valid: config.api_base_url_valid(),
+            bot_token_configured: config.bot_token_configured(),
+            chat_id_configured: config.chat_id_configured(),
+            timeout_ms: config.timeout_ms,
+            send_path_enabled: config.send_path_enabled(),
+        }
+    }
+
+    #[must_use]
+    pub fn to_json(self) -> serde_json::Value {
+        serde_json::json!({
+            "id": TELEGRAM_PROVIDER_ID,
+            "enabled": self.enabled,
+            "status": self.status,
+            "api_base_url_configured": self.api_base_url_configured,
+            "api_base_url_valid": self.api_base_url_valid,
+            "bot_token_configured": self.bot_token_configured,
+            "chat_id_configured": self.chat_id_configured,
+            "timeout_ms": self.timeout_ms,
+            "send_path_enabled": self.send_path_enabled
+        })
+    }
+}
+
 pub trait ProviderAttemptOutcomeFacts {
     fn provider_id(&self) -> &'static str;
     fn provider_status(&self) -> &'static str;
@@ -327,6 +381,42 @@ impl ProviderAttemptOutcomeFacts for DiscordWebhookSendOutcome {
 impl ProviderAttemptErrorFacts for DiscordWebhookSendError {
     fn provider_id(&self) -> &'static str {
         DISCORD_WEBHOOK_PROVIDER_ID
+    }
+
+    fn provider_status(&self) -> &'static str {
+        self.provider_status()
+    }
+
+    fn is_retryable(&self) -> bool {
+        self.is_retryable()
+    }
+
+    fn provider_http_status(&self) -> Option<u16> {
+        self.provider_http_status()
+    }
+}
+
+impl ProviderAttemptOutcomeFacts for TelegramSendOutcome {
+    fn provider_id(&self) -> &'static str {
+        TELEGRAM_PROVIDER_ID
+    }
+
+    fn provider_status(&self) -> &'static str {
+        self.provider_status()
+    }
+
+    fn provider_http_status(&self) -> Option<u16> {
+        self.provider_http_status()
+    }
+
+    fn should_record_attempt(&self) -> bool {
+        !matches!(self, Self::SkippedDisabled)
+    }
+}
+
+impl ProviderAttemptErrorFacts for TelegramSendError {
+    fn provider_id(&self) -> &'static str {
+        TELEGRAM_PROVIDER_ID
     }
 
     fn provider_status(&self) -> &'static str {

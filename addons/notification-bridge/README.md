@@ -17,8 +17,10 @@ explicitly configured provider:
 - it sends a fixed redaction-safe JSON summary to the configured HTTP webhook;
 - it can send a fixed Discord-compatible webhook payload when
   `discord_webhook` is explicitly configured;
-- it does not send Telegram, Home Assistant, email, or other platform-specific
-  provider calls.
+- it can send a fixed Telegram `sendMessage` payload when `telegram` is
+  explicitly configured;
+- it does not send Home Assistant, email, or other platform-specific provider
+  calls.
 
 ## Run
 
@@ -46,6 +48,16 @@ NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/..
 NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_TIMEOUT_MS=10000
 ```
 
+Optional Telegram configuration contract:
+
+```bash
+NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED=true
+NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL=https://api.telegram.org
+NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN=<operator-secret>
+NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID=<operator-secret-or-chat-id>
+NAKO_NOTIFICATION_BRIDGE_TELEGRAM_TIMEOUT_MS=10000
+```
+
 Optional safe summary template:
 
 ```bash
@@ -58,16 +70,17 @@ Optional provider attempt history capacity:
 NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY=20
 ```
 
-Do not put raw webhook URLs or shared secrets in Nako core configuration. Use
-the deployment operator's secret reference mechanism to inject them into the
-sidecar process. Health and diagnostics expose only configured/valid/secret
-presence booleans, provider send path count, safe provider status, and aggregate
-configuration status. Configure at most one provider send path at a time; the
-sidecar fails closed when multiple provider send paths are enabled. Templates
-can use only whitelisted event facts and payload keys; raw event payload values
-are not available. Provider attempt history is bounded and in-memory only; it
-records actual provider send outcomes and failures for safe operator
-diagnostics, not ACK-only disabled-provider records or provider retry.
+Do not put raw webhook URLs, bot tokens, chat ids, or shared secrets in Nako
+core configuration. Use the deployment operator's secret reference mechanism to
+inject them into the sidecar process. Health and diagnostics expose only
+configured/valid/secret presence booleans, provider send path count, safe
+provider status, and aggregate configuration status. Configure at most one
+provider send path at a time; the sidecar fails closed when multiple provider
+send paths are enabled. Templates can use only whitelisted event facts and
+payload keys; raw event payload values are not available. Provider attempt
+history is bounded and in-memory only; it records actual provider send outcomes
+and failures for safe operator diagnostics, not ACK-only disabled-provider
+records or provider retry.
 
 The outbound payload includes event identifiers and sorted payload keys only;
 it does not include raw event payload values.

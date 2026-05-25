@@ -33,6 +33,9 @@ builds.
 - `nako-notification-bridge` sidecar-local provider test-send endpoint that
   sends a synthetic redaction-safe notification through the single configured
   provider and fails closed for unsafe provider configuration states.
+- `nako-notification-bridge` `telegram` provider proof with default-disabled
+  Bot API `sendMessage` delivery, fixture-backed tests, and redaction-safe
+  diagnostics.
 - Opt-in `nako-notification-bridge` live provider smoke script that skips by
   default and never requires CI secrets.
 

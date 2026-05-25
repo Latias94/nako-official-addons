@@ -25,6 +25,7 @@ use crate::{
         NotificationProviderRegistry, record_provider_error, record_provider_outcome,
         select_primary_provider_output,
     },
+    telegram::{TelegramClient, TelegramSendOutcome},
     template::{TemplateContext, render_template},
 };
 
@@ -33,6 +34,7 @@ pub struct AppState {
     config: Config,
     http_webhook: HttpWebhookClient,
     discord_webhook: DiscordWebhookClient,
+    telegram: TelegramClient,
     provider_attempt_history: ProviderAttemptHistory,
 }
 
@@ -51,6 +53,7 @@ pub fn router(config: Config) -> Router {
             config,
             http_webhook: HttpWebhookClient::new(),
             discord_webhook: DiscordWebhookClient::new(),
+            telegram: TelegramClient::new(),
             provider_attempt_history,
         })
 }
@@ -231,16 +234,32 @@ async fn send_library_scanned_event_to_providers(
             return Err((error.status_code(), Json(error.safe_body())));
         }
     };
+    let telegram = match state
+        .telegram
+        .send_library_scanned_event(&state.config.telegram, request, payload_keys, summary)
+        .await
+    {
+        Ok(outcome) => {
+            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
+            outcome
+        }
+        Err(error) => {
+            record_provider_error(&state.provider_attempt_history, request, &error);
+            return Err((error.status_code(), Json(error.safe_body())));
+        }
+    };
 
     Ok(ProviderSendOutcomes {
         http_webhook,
         discord_webhook,
+        telegram,
     })
 }
 
 struct ProviderSendOutcomes {
     http_webhook: HttpWebhookSendOutcome,
     discord_webhook: DiscordWebhookSendOutcome,
+    telegram: TelegramSendOutcome,
 }
 
 impl ProviderSendOutcomes {
@@ -248,12 +267,14 @@ impl ProviderSendOutcomes {
         vec![
             self.http_webhook.provider_output(),
             self.discord_webhook.provider_output(),
+            self.telegram.provider_output(),
         ]
     }
 
     const fn mode(&self) -> &'static str {
         if matches!(self.http_webhook, HttpWebhookSendOutcome::Sent { .. })
             || matches!(self.discord_webhook, DiscordWebhookSendOutcome::Sent { .. })
+            || matches!(self.telegram, TelegramSendOutcome::Sent { .. })
         {
             "provider_send"
         } else {
@@ -296,6 +317,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     let provider_diagnostics = providers.diagnostics();
     let http_webhook = provider_diagnostics.http_webhook;
     let discord_webhook = provider_diagnostics.discord_webhook;
+    let telegram = provider_diagnostics.telegram;
     let template = &state.config.template;
     let http_webhook_enabled = yes_no_label(http_webhook.enabled);
     let http_webhook_target_configured = yes_no_label(http_webhook.target_url_configured);
@@ -306,6 +328,12 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured);
     let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid);
     let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled);
+    let telegram_enabled = yes_no_label(telegram.enabled);
+    let telegram_api_base_url_configured = yes_no_label(telegram.api_base_url_configured);
+    let telegram_api_base_url_valid = yes_no_label(telegram.api_base_url_valid);
+    let telegram_bot_token_configured = yes_no_label(telegram.bot_token_configured);
+    let telegram_chat_id_configured = yes_no_label(telegram.chat_id_configured);
+    let telegram_send_path_enabled = yes_no_label(telegram.send_path_enabled);
     let provider_send_configured = yes_no_label(providers.send_path_configured());
     let provider_send_path_count = providers.send_path_count();
     let configuration_status = providers.configuration_status();
@@ -340,6 +368,13 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Discord webhook URL configured: {discord_webhook_url_configured}</p>
   <p>Discord webhook URL valid: {discord_webhook_url_valid}</p>
   <p>Discord webhook send path enabled: {discord_webhook_send_path_enabled}</p>
+  <p>Telegram provider status: {}</p>
+  <p>Telegram enabled: {telegram_enabled}</p>
+  <p>Telegram API base URL configured: {telegram_api_base_url_configured}</p>
+  <p>Telegram API base URL valid: {telegram_api_base_url_valid}</p>
+  <p>Telegram bot token configured: {telegram_bot_token_configured}</p>
+  <p>Telegram chat id configured: {telegram_chat_id_configured}</p>
+  <p>Telegram send path enabled: {telegram_send_path_enabled}</p>
   <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
 </body>
 </html>"#,
@@ -347,7 +382,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         configuration_status.as_str(),
         template.status().as_str(),
         http_webhook.status,
-        discord_webhook.status
+        discord_webhook.status,
+        telegram.status
     ))
 }
 
@@ -395,12 +431,14 @@ mod tests {
 
     #[derive(Clone, Debug)]
     struct FixtureRequest {
+        path: String,
         secret_header: Option<String>,
         body: serde_json::Value,
     }
 
     async fn record_webhook(
         AxumState(state): AxumState<FixtureState>,
+        uri: axum::http::Uri,
         headers: HeaderMap,
         Json(body): Json<serde_json::Value>,
     ) -> StatusCode {
@@ -409,6 +447,7 @@ mod tests {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
         state.requests.lock().unwrap().push(FixtureRequest {
+            path: uri.path().to_owned(),
             secret_header,
             body,
         });
@@ -431,6 +470,7 @@ mod tests {
         let addr = listener.local_addr().unwrap();
         let app = Router::new()
             .route("/hook", axum_post(record_webhook))
+            .fallback(axum_post(record_webhook))
             .with_state(state.clone());
         let handle = tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
@@ -882,6 +922,82 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn library_scanned_event_endpoint_sends_telegram_payload_without_raw_event_values() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let api_base_url = target_url.strip_suffix("/hook").unwrap().to_owned();
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL" => Some(api_base_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN" => {
+                Some("telegram-token-should-not-appear".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID" => {
+                Some("telegram-chat-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(LIBRARY_SCANNED_EVENT_PATH)
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonEventResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.output["mode"], "provider_send");
+        assert_eq!(payload.output["provider"]["id"], "telegram");
+        assert_eq!(payload.output["provider"]["status"], "sent");
+        assert!(!text.contains("127.0.0.1"));
+        assert!(!text.contains("telegram-token-should-not-appear"));
+        assert!(!text.contains("telegram-chat-should-not-appear"));
+        assert!(!text.contains("nako_at_should_not_echo"));
+
+        let requests = fixture.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].path,
+            "/bottelegram-token-should-not-appear/sendMessage"
+        );
+        assert_eq!(
+            requests[0].body["chat_id"],
+            "telegram-chat-should-not-appear"
+        );
+        assert_eq!(
+            requests[0].body["text"],
+            "Nako library.scanned event for library library-1"
+        );
+        let telegram_body = serde_json::to_string(&requests[0].body).unwrap();
+        assert!(!telegram_body.contains("nako_at_should_not_echo"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
     async fn provider_test_send_endpoint_sends_http_webhook_without_leaking_values() {
         let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
         let response = router(Config::from_env_lookup(|name| match name {
@@ -943,6 +1059,62 @@ mod tests {
         assert_eq!(requests[0].body["event"]["subject_id"], "provider-test");
         let webhook_body = serde_json::to_string(&requests[0].body).unwrap();
         assert!(!webhook_body.contains("test-secret-should-not-appear"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_test_send_endpoint_sends_telegram_without_leaking_values() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let api_base_url = target_url.strip_suffix("/hook").unwrap().to_owned();
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL" => Some(api_base_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN" => {
+                Some("test-token-should-not-appear".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID" => {
+                Some("test-chat-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/providers/test-send")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload["mode"], "provider_send");
+        assert_eq!(payload["provider"]["id"], "telegram");
+        assert_eq!(payload["provider"]["status"], "sent");
+        assert_eq!(payload["provider_send_path_count"], 1);
+        assert_eq!(payload["configuration_status"], "provider_send_ready");
+        assert!(!text.contains("127.0.0.1"));
+        assert!(!text.contains("test-token-should-not-appear"));
+        assert!(!text.contains("test-chat-should-not-appear"));
+
+        let requests = fixture.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].path,
+            "/bottest-token-should-not-appear/sendMessage"
+        );
+        assert_eq!(requests[0].body["chat_id"], "test-chat-should-not-appear");
+        assert_eq!(
+            requests[0].body["text"],
+            "Nako library.scanned event for library provider-test"
+        );
 
         handle.abort();
     }
@@ -1375,7 +1547,7 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["providers"].as_array().unwrap().len(),
-            2
+            3
         );
         assert_eq!(payload.diagnostics["providers"][0]["id"], "http_webhook");
         assert_eq!(payload.diagnostics["providers"][0]["enabled"], false);
@@ -1389,6 +1561,13 @@ mod tests {
         assert_eq!(payload.diagnostics["providers"][1]["status"], "disabled");
         assert_eq!(
             payload.diagnostics["providers"][1]["send_path_enabled"],
+            false
+        );
+        assert_eq!(payload.diagnostics["providers"][2]["id"], "telegram");
+        assert_eq!(payload.diagnostics["providers"][2]["enabled"], false);
+        assert_eq!(payload.diagnostics["providers"][2]["status"], "disabled");
+        assert_eq!(
+            payload.diagnostics["providers"][2]["send_path_enabled"],
             false
         );
     }
@@ -1525,6 +1704,81 @@ mod tests {
         let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
         assert!(!diagnostics.contains("discord.example"));
         assert!(!diagnostics.contains("api/webhooks"));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_reports_telegram_config_without_leaking_values() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL" => {
+                Some("https://api.telegram.example".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN" => {
+                Some("telegram-token-should-not-appear".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID" => {
+                Some("telegram-chat-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(payload.diagnostics["provider_fan_out"], true);
+        assert_eq!(payload.diagnostics["provider_send_path_count"], 1);
+        assert_eq!(
+            payload.diagnostics["configuration_status"],
+            "provider_send_ready"
+        );
+        assert_eq!(payload.diagnostics["providers"][2]["id"], "telegram");
+        assert_eq!(payload.diagnostics["providers"][2]["enabled"], true);
+        assert_eq!(payload.diagnostics["providers"][2]["status"], "configured");
+        assert_eq!(
+            payload.diagnostics["providers"][2]["api_base_url_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][2]["api_base_url_valid"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][2]["bot_token_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][2]["chat_id_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][2]["send_path_enabled"],
+            true
+        );
+
+        let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
+        assert!(!diagnostics.contains("api.telegram.example"));
+        assert!(!diagnostics.contains("telegram-token-should-not-appear"));
+        assert!(!diagnostics.contains("telegram-chat-should-not-appear"));
     }
 
     #[tokio::test]
@@ -1801,5 +2055,50 @@ mod tests {
         assert!(text.contains("Discord webhook send path enabled: yes"));
         assert!(!text.contains("discord.example"));
         assert!(!text.contains("api/webhooks"));
+    }
+
+    #[tokio::test]
+    async fn diagnostics_page_reports_telegram_status_without_leaking_values() {
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL" => {
+                Some("https://api.telegram.example".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN" => {
+                Some("telegram-token-should-not-appear".to_owned())
+            }
+            "NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID" => {
+                Some("telegram-chat-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .uri(DIAGNOSTICS_PATH)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+
+        assert!(text.contains("Provider send configured: yes"));
+        assert!(text.contains("Provider send path count: 1"));
+        assert!(text.contains("Configuration status: provider_send_ready"));
+        assert!(text.contains("Telegram provider status: configured"));
+        assert!(text.contains("Telegram enabled: yes"));
+        assert!(text.contains("Telegram API base URL configured: yes"));
+        assert!(text.contains("Telegram API base URL valid: yes"));
+        assert!(text.contains("Telegram bot token configured: yes"));
+        assert!(text.contains("Telegram chat id configured: yes"));
+        assert!(text.contains("Telegram send path enabled: yes"));
+        assert!(!text.contains("api.telegram.example"));
+        assert!(!text.contains("telegram-token-should-not-appear"));
+        assert!(!text.contains("telegram-chat-should-not-appear"));
     }
 }

@@ -15,8 +15,8 @@ as one suite later:
   protected writeback, bulk metadata scrape, and the existing event proof;
 - users can install `nako-notification-bridge` for the first notification
   bridge ACK proof plus sidecar-owned, fixture-tested `http_webhook` provider
-  and `discord_webhook` provider sends when exactly one provider is explicitly
-  configured;
+  plus `discord_webhook` and `telegram` provider sends when exactly one
+  provider is explicitly configured;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -41,8 +41,8 @@ as one suite later:
   Addon Protocol metadata resource, bulk task, and library-scanned event proof.
 - `crates/nako-notification-bridge`: Rust HTTP sidecar that implements the
   first ACK-only notification bridge proof for scheduled `library.scanned`
-  Addon Events and redaction-safe `http_webhook` / `discord_webhook` provider
-  sends.
+  Addon Events and redaction-safe `http_webhook`, `discord_webhook`, and
+  `telegram` provider sends.
 
 ## Development
 
@@ -84,6 +84,12 @@ Provider defaults:
   with a valid URL, it sends a fixed Discord-compatible payload containing event
   facts and payload keys only. The sidecar rejects multiple simultaneously
   configured provider send paths.
+- `notification_bridge.telegram`: disabled by default; configured through
+  `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_*` sidecar environment variables and
+  reported only through redaction-safe diagnostics. When enabled with a valid
+  API base URL, bot token, and chat id, it sends a fixed Telegram `sendMessage`
+  payload containing only the safe rendered summary. The sidecar rejects
+  multiple simultaneously configured provider send paths.
 - `notification_bridge.template`: default-safe summary rendering through
   `NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY`, with whitelisted event fact
   tokens only and no raw event payload value access.

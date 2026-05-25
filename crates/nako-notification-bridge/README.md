@@ -115,6 +115,25 @@ values. The sidecar rejects configurations where more than one provider send
 path is enabled at the same time, which avoids partial multi-provider sends
 being duplicated by host-level retry.
 
+## Telegram Configuration
+
+`telegram` is a small platform adapter proof behind the provider registry. It
+is disabled by default and sends a Telegram Bot API `sendMessage` request when
+explicitly configured:
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_ENABLED` | `false` | Enables the `telegram` provider send path when the API base URL, bot token, and chat id are valid. |
+| `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Telegram API base URL. Override only for local fixtures or controlled deployments; diagnostics report only whether it is customized and valid. |
+| `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_BOT_TOKEN` | unset | Telegram bot token. Treat as secret and inject through operator secret/config tooling. |
+| `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_CHAT_ID` | unset | Telegram chat id. Treat as secret-adjacent and inject through operator secret/config tooling. |
+| `NAKO_NOTIFICATION_BRIDGE_TELEGRAM_TIMEOUT_MS` | `10000` | Provider HTTP timeout. Invalid or non-positive values fall back to the default. |
+
+The Telegram payload contains only `chat_id`, the rendered safe summary as
+`text`, and `disable_web_page_preview`. It does not include raw event payload
+values. Health, diagnostics, provider output, and attempt history never echo
+the API base URL, bot token, chat id, or message body.
+
 ## Safe Template Controls
 
 The sidecar supports one optional summary template:
@@ -159,5 +178,5 @@ Nako core owns event facts, scheduling, Addon grants, delivery attempts, replay,
 filters, and redaction-safe delivery attempts. This sidecar owns notification
 message formatting, provider configuration, provider calls, and provider retry
 decisions. This sidecar can call the configured HTTP webhook provider or the
-configured Discord webhook provider. It does not call Telegram, Home Assistant,
-email, or additional platform-specific providers yet.
+configured Discord webhook or Telegram provider. It does not call Home
+Assistant, email, or additional platform-specific providers yet.
