@@ -2,20 +2,20 @@ use std::time::Duration;
 
 use axum::http::StatusCode;
 use nako_addon_protocol::AddonEventRequest;
-use reqwest::header::{CONTENT_TYPE, HeaderName, HeaderValue};
+use reqwest::header::CONTENT_TYPE;
 
-use crate::config::{HttpWebhookConfig, HttpWebhookConfigStatus};
+use crate::config::{DiscordWebhookConfig, DiscordWebhookConfigStatus};
 
-pub const HTTP_WEBHOOK_PROVIDER_ID: &str = "http_webhook";
-pub const HTTP_WEBHOOK_LIBRARY_SCANNED_SCHEMA: &str =
-    "nako.official.notification-bridge.http-webhook.library-scanned.v1";
+pub const DISCORD_WEBHOOK_PROVIDER_ID: &str = "discord_webhook";
+pub const DISCORD_WEBHOOK_LIBRARY_SCANNED_SCHEMA: &str =
+    "nako.official.notification-bridge.discord-webhook.library-scanned.v1";
 
 #[derive(Clone, Debug)]
-pub struct HttpWebhookClient {
+pub struct DiscordWebhookClient {
     client: reqwest::Client,
 }
 
-impl HttpWebhookClient {
+impl DiscordWebhookClient {
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -25,96 +25,77 @@ impl HttpWebhookClient {
 
     pub async fn send_library_scanned_event(
         &self,
-        config: &HttpWebhookConfig,
+        config: &DiscordWebhookConfig,
         request: &AddonEventRequest,
         payload_keys: &[String],
         summary: &str,
-    ) -> Result<HttpWebhookSendOutcome, HttpWebhookSendError> {
+    ) -> Result<DiscordWebhookSendOutcome, DiscordWebhookSendError> {
         match config.status() {
-            HttpWebhookConfigStatus::Disabled => {
-                return Ok(HttpWebhookSendOutcome::SkippedDisabled);
+            DiscordWebhookConfigStatus::Disabled => {
+                return Ok(DiscordWebhookSendOutcome::SkippedDisabled);
             }
-            HttpWebhookConfigStatus::MissingTargetUrl => {
-                return Err(HttpWebhookSendError::configuration(
-                    "missing_target_url",
-                    "http_webhook_configuration_invalid",
+            DiscordWebhookConfigStatus::MissingWebhookUrl => {
+                return Err(DiscordWebhookSendError::configuration(
+                    "missing_webhook_url",
+                    "discord_webhook_configuration_invalid",
                 ));
             }
-            HttpWebhookConfigStatus::InvalidTargetUrl => {
-                return Err(HttpWebhookSendError::configuration(
-                    "invalid_target_url",
-                    "http_webhook_configuration_invalid",
+            DiscordWebhookConfigStatus::InvalidWebhookUrl => {
+                return Err(DiscordWebhookSendError::configuration(
+                    "invalid_webhook_url",
+                    "discord_webhook_configuration_invalid",
                 ));
             }
-            HttpWebhookConfigStatus::Configured => {}
+            DiscordWebhookConfigStatus::Configured => {}
         }
 
-        let target_url = config.target_url.as_deref().ok_or_else(|| {
-            HttpWebhookSendError::configuration(
-                "missing_target_url",
-                "http_webhook_configuration_invalid",
+        let webhook_url = config.webhook_url.as_deref().ok_or_else(|| {
+            DiscordWebhookSendError::configuration(
+                "missing_webhook_url",
+                "discord_webhook_configuration_invalid",
             )
         })?;
         let body = serde_json::to_vec(&library_scanned_payload(request, payload_keys, summary))
             .map_err(|_| {
-                HttpWebhookSendError::configuration(
+                DiscordWebhookSendError::configuration(
                     "payload_serialization_failed",
-                    "http_webhook_configuration_invalid",
+                    "discord_webhook_configuration_invalid",
                 )
             })?;
-        let mut builder = self
+        let response = self
             .client
-            .post(target_url)
+            .post(webhook_url)
             .timeout(Duration::from_millis(config.timeout_ms))
             .header(CONTENT_TYPE, "application/json")
-            .body(body);
-
-        if let Some(shared_secret) = config.shared_secret.as_deref() {
-            let header_name = HeaderName::from_bytes(config.secret_header_name.as_bytes())
-                .map_err(|_| {
-                    HttpWebhookSendError::configuration(
-                        "invalid_secret_header_name",
-                        "http_webhook_configuration_invalid",
-                    )
-                })?;
-            let header_value = HeaderValue::from_str(shared_secret).map_err(|_| {
-                HttpWebhookSendError::configuration(
-                    "invalid_shared_secret_header_value",
-                    "http_webhook_configuration_invalid",
-                )
-            })?;
-            builder = builder.header(header_name, header_value);
-        }
-
-        let response = builder
+            .body(body)
             .send()
             .await
-            .map_err(|_| HttpWebhookSendError::retryable(None))?;
+            .map_err(|_| DiscordWebhookSendError::retryable(None))?;
         let http_status = response.status().as_u16();
 
         if response.status().is_success() {
-            Ok(HttpWebhookSendOutcome::Sent { http_status })
+            Ok(DiscordWebhookSendOutcome::Sent { http_status })
         } else if is_retryable_provider_status(http_status) {
-            Err(HttpWebhookSendError::retryable(Some(http_status)))
+            Err(DiscordWebhookSendError::retryable(Some(http_status)))
         } else {
-            Err(HttpWebhookSendError::non_retryable(http_status))
+            Err(DiscordWebhookSendError::non_retryable(http_status))
         }
     }
 }
 
-impl Default for HttpWebhookClient {
+impl Default for DiscordWebhookClient {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum HttpWebhookSendOutcome {
+pub enum DiscordWebhookSendOutcome {
     SkippedDisabled,
     Sent { http_status: u16 },
 }
 
-impl HttpWebhookSendOutcome {
+impl DiscordWebhookSendOutcome {
     #[must_use]
     pub const fn provider_status(&self) -> &'static str {
         match self {
@@ -143,12 +124,12 @@ impl HttpWebhookSendOutcome {
     pub fn provider_output(&self) -> serde_json::Value {
         match self {
             Self::SkippedDisabled => serde_json::json!({
-                "id": HTTP_WEBHOOK_PROVIDER_ID,
+                "id": DISCORD_WEBHOOK_PROVIDER_ID,
                 "status": "disabled",
                 "send_path_enabled": false
             }),
             Self::Sent { http_status } => serde_json::json!({
-                "id": HTTP_WEBHOOK_PROVIDER_ID,
+                "id": DISCORD_WEBHOOK_PROVIDER_ID,
                 "status": "sent",
                 "send_path_enabled": true,
                 "http_status": http_status
@@ -158,18 +139,18 @@ impl HttpWebhookSendOutcome {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HttpWebhookSendError {
+pub struct DiscordWebhookSendError {
     safe_error_code: &'static str,
     provider_status: &'static str,
     retryable: bool,
     provider_http_status: Option<u16>,
 }
 
-impl HttpWebhookSendError {
+impl DiscordWebhookSendError {
     fn configuration(
         provider_status: &'static str,
         safe_error_code: &'static str,
-    ) -> HttpWebhookSendError {
+    ) -> DiscordWebhookSendError {
         Self {
             safe_error_code,
             provider_status,
@@ -180,7 +161,7 @@ impl HttpWebhookSendError {
 
     fn retryable(provider_http_status: Option<u16>) -> Self {
         Self {
-            safe_error_code: "http_webhook_retryable_failure",
+            safe_error_code: "discord_webhook_retryable_failure",
             provider_status: "retryable_failure",
             retryable: true,
             provider_http_status,
@@ -189,7 +170,7 @@ impl HttpWebhookSendError {
 
     fn non_retryable(provider_http_status: u16) -> Self {
         Self {
-            safe_error_code: "http_webhook_non_retryable_failure",
+            safe_error_code: "discord_webhook_non_retryable_failure",
             provider_status: "non_retryable_failure",
             retryable: false,
             provider_http_status: Some(provider_http_status),
@@ -226,7 +207,7 @@ impl HttpWebhookSendError {
     pub fn safe_body(&self) -> serde_json::Value {
         serde_json::json!({
             "safe_error_code": self.safe_error_code,
-            "provider_id": HTTP_WEBHOOK_PROVIDER_ID,
+            "provider_id": DISCORD_WEBHOOK_PROVIDER_ID,
             "provider_status": self.provider_status,
             "provider_http_status": self.provider_http_status,
             "retryable": self.retryable
@@ -239,18 +220,47 @@ fn library_scanned_payload(
     payload_keys: &[String],
     summary: &str,
 ) -> serde_json::Value {
+    let payload_keys = if payload_keys.is_empty() {
+        "none".to_owned()
+    } else {
+        payload_keys.join(", ")
+    };
+
     serde_json::json!({
-        "schema": HTTP_WEBHOOK_LIBRARY_SCANNED_SCHEMA,
-        "summary": summary,
-        "event": {
-            "event_id": request.event_id,
-            "event_kind": request.event_kind,
-            "subject_kind": request.subject_kind,
-            "subject_id": request.subject_id,
-            "occurred_at": request.occurred_at,
-            "attempt": request.attempt
-        },
-        "payload_keys": payload_keys
+        "schema": DISCORD_WEBHOOK_LIBRARY_SCANNED_SCHEMA,
+        "content": summary,
+        "embeds": [
+            {
+                "title": "Nako library scanned",
+                "fields": [
+                    {
+                        "name": "Event",
+                        "value": request.event_kind,
+                        "inline": true
+                    },
+                    {
+                        "name": "Subject",
+                        "value": format!("{} {}", request.subject_kind, request.subject_id),
+                        "inline": true
+                    },
+                    {
+                        "name": "Attempt",
+                        "value": request.attempt.to_string(),
+                        "inline": true
+                    },
+                    {
+                        "name": "Occurred at",
+                        "value": request.occurred_at,
+                        "inline": false
+                    },
+                    {
+                        "name": "Payload keys",
+                        "value": payload_keys,
+                        "inline": false
+                    }
+                ]
+            }
+        ]
     })
 }
 

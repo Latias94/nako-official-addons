@@ -15,7 +15,8 @@ as one suite later:
   protected writeback, bulk metadata scrape, and the existing event proof;
 - users can install `nako-notification-bridge` for the first notification
   bridge ACK proof plus sidecar-owned, fixture-tested `http_webhook` provider
-  fan-out when explicitly configured;
+  and `discord_webhook` provider sends when exactly one provider is explicitly
+  configured;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -40,7 +41,8 @@ as one suite later:
   Addon Protocol metadata resource, bulk task, and library-scanned event proof.
 - `crates/nako-notification-bridge`: Rust HTTP sidecar that implements the
   first ACK-only notification bridge proof for scheduled `library.scanned`
-  Addon Events and redaction-safe `http_webhook` provider sends.
+  Addon Events and redaction-safe `http_webhook` / `discord_webhook` provider
+  sends.
 
 ## Development
 
@@ -76,6 +78,18 @@ Provider defaults:
   reported only through redaction-safe diagnostics. When enabled with a valid
   URL, it sends a fixed JSON summary containing event facts and payload keys
   only.
+- `notification_bridge.discord_webhook`: disabled by default; configured
+  through `NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_*` sidecar environment
+  variables and reported only through redaction-safe diagnostics. When enabled
+  with a valid URL, it sends a fixed Discord-compatible payload containing event
+  facts and payload keys only. The sidecar rejects multiple simultaneously
+  configured provider send paths.
+- `notification_bridge.template`: default-safe summary rendering through
+  `NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY`, with whitelisted event fact
+  tokens only and no raw event payload value access.
+- `notification_bridge.provider_attempt_history`: bounded in-memory recent
+  provider outcome history for redaction-safe sidecar diagnostics, controlled by
+  `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY`.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -92,6 +106,11 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
 pwsh -File addons/notification-bridge/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9110
 ```
+
+Optional notification provider live smoke is skipped by default and must be
+enabled explicitly with `NAKO_NOTIFICATION_BRIDGE_LIVE_SMOKE=1` before running
+`addons/notification-bridge/smoke.live.ps1` against a locally configured
+sidecar.
 
 Optional Nako Admin-mediated smoke:
 

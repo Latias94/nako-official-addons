@@ -13,20 +13,33 @@ use tower_http::trace::TraceLayer;
 
 use crate::{
     Config,
-    http_webhook::HttpWebhookClient,
+    attempt_history::{ProviderAttemptHistory, ProviderAttemptRecord},
+    discord_webhook::{
+        DISCORD_WEBHOOK_PROVIDER_ID, DiscordWebhookClient, DiscordWebhookSendError,
+        DiscordWebhookSendOutcome,
+    },
+    http_webhook::{
+        HTTP_WEBHOOK_PROVIDER_ID, HttpWebhookClient, HttpWebhookSendError, HttpWebhookSendOutcome,
+    },
     manifest::{
         ADDON_ID, ADDON_VERSION, DIAGNOSTICS_PATH, LIBRARY_SCANNED_EVENT_KIND,
         LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID, addon_manifest,
     },
+    template::{DEFAULT_SUMMARY_TEMPLATE, TemplateContext, render_template},
 };
 
 #[derive(Clone)]
 pub struct AppState {
     config: Config,
     http_webhook: HttpWebhookClient,
+    discord_webhook: DiscordWebhookClient,
+    provider_attempt_history: ProviderAttemptHistory,
 }
 
 pub fn router(config: Config) -> Router {
+    let provider_attempt_history =
+        ProviderAttemptHistory::new(config.provider_attempt_history_capacity);
+
     Router::new()
         .route("/manifest.json", get(manifest))
         .route("/health", post(health))
@@ -36,6 +49,8 @@ pub fn router(config: Config) -> Router {
         .with_state(AppState {
             config,
             http_webhook: HttpWebhookClient::new(),
+            discord_webhook: DiscordWebhookClient::new(),
+            provider_attempt_history,
         })
 }
 
@@ -53,6 +68,8 @@ async fn health(
         AddonHealthStatus::Degraded
     };
     let http_webhook = &state.config.http_webhook;
+    let discord_webhook = &state.config.discord_webhook;
+    let template = &state.config.template;
 
     Json(AddonHealthCheckResponse {
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -66,7 +83,16 @@ async fn health(
         diagnostics: serde_json::json!({
             "safe_note": "notification bridge sidecar is reachable",
             "mode": "ack_only",
-            "provider_fan_out": http_webhook.send_path_enabled(),
+            "provider_fan_out": http_webhook.send_path_enabled() || discord_webhook.send_path_enabled(),
+            "template": {
+                "summary_template_configured": template.summary_template_configured(),
+                "summary_template_valid": template.summary_template_valid(),
+                "status": template.status().as_str()
+            },
+            "provider_attempt_history": {
+                "capacity": state.provider_attempt_history.capacity(),
+                "recent": state.provider_attempt_history.snapshot()
+            },
             "providers": [
                 {
                     "id": "http_webhook",
@@ -78,6 +104,15 @@ async fn health(
                     "shared_secret_configured": http_webhook.shared_secret_configured(),
                     "timeout_ms": http_webhook.timeout_ms,
                     "send_path_enabled": http_webhook.send_path_enabled()
+                },
+                {
+                    "id": "discord_webhook",
+                    "enabled": discord_webhook.enabled,
+                    "status": discord_webhook.status().as_str(),
+                    "webhook_url_configured": discord_webhook.webhook_url_configured(),
+                    "webhook_url_valid": discord_webhook.webhook_url_valid(),
+                    "timeout_ms": discord_webhook.timeout_ms,
+                    "send_path_enabled": discord_webhook.send_path_enabled()
                 }
             ]
         }),
@@ -110,11 +145,86 @@ async fn library_scanned_event(
             keys
         })
         .unwrap_or_default();
-    let provider_outcome = state
+    if state.config.http_webhook.send_path_enabled()
+        && state.config.discord_webhook.send_path_enabled()
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "safe_error_code": "multiple_notification_provider_send_paths_configured",
+                "retryable": false
+            })),
+        ));
+    }
+    let summary_template =
+        if state.config.http_webhook.enabled || state.config.discord_webhook.enabled {
+            state.config.template.summary_template.as_str()
+        } else {
+            DEFAULT_SUMMARY_TEMPLATE
+        };
+    let summary = render_template(
+        summary_template,
+        &TemplateContext {
+            request: &request,
+            payload_keys: &payload_keys,
+        },
+    )
+    .map_err(invalid_template_error)?;
+
+    let provider_outcome = match state
         .http_webhook
-        .send_library_scanned_event(&state.config.http_webhook, &request, &payload_keys)
+        .send_library_scanned_event(
+            &state.config.http_webhook,
+            &request,
+            &payload_keys,
+            &summary,
+        )
         .await
-        .map_err(|error| (error.status_code(), Json(error.safe_body())))?;
+    {
+        Ok(outcome) => {
+            record_http_webhook_outcome(&state.provider_attempt_history, &request, &outcome);
+            outcome
+        }
+        Err(error) => {
+            record_http_webhook_error(&state.provider_attempt_history, &request, &error);
+            return Err((error.status_code(), Json(error.safe_body())));
+        }
+    };
+    let discord_provider_outcome = match state
+        .discord_webhook
+        .send_library_scanned_event(
+            &state.config.discord_webhook,
+            &request,
+            &payload_keys,
+            &summary,
+        )
+        .await
+    {
+        Ok(outcome) => {
+            record_discord_webhook_outcome(&state.provider_attempt_history, &request, &outcome);
+            outcome
+        }
+        Err(error) => {
+            record_discord_webhook_error(&state.provider_attempt_history, &request, &error);
+            return Err((error.status_code(), Json(error.safe_body())));
+        }
+    };
+    let provider_outputs = vec![
+        provider_outcome.provider_output(),
+        discord_provider_outcome.provider_output(),
+    ];
+    let primary_provider_output = provider_outputs
+        .iter()
+        .find(|provider| provider["send_path_enabled"] == true)
+        .cloned()
+        .unwrap_or_else(|| provider_outputs[0].clone());
+    let mode = if provider_outcome.mode() == "provider_send"
+        || discord_provider_outcome.mode() == "provider_send"
+    {
+        "provider_send"
+    } else {
+        "ack_only"
+    };
 
     Ok(Json(AddonEventResponse {
         protocol_version: request.protocol_version,
@@ -124,24 +234,37 @@ async fn library_scanned_event(
         output: serde_json::json!({
             "schema": "nako.official.notification-bridge.library-scanned.event.v1",
             "accepted": true,
-            "mode": provider_outcome.mode(),
+            "mode": mode,
             "attempt": request.attempt,
             "subject_kind": request.subject_kind,
             "subject_id": request.subject_id,
             "payload_keys": payload_keys,
-            "provider": provider_outcome.provider_output()
+            "provider": primary_provider_output,
+            "providers": provider_outputs
         }),
     }))
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     let http_webhook = &state.config.http_webhook;
+    let discord_webhook = &state.config.discord_webhook;
+    let template = &state.config.template;
     let http_webhook_enabled = yes_no_label(http_webhook.enabled);
     let http_webhook_target_configured = yes_no_label(http_webhook.target_url_configured());
     let http_webhook_target_valid = yes_no_label(http_webhook.target_url_valid());
     let http_webhook_shared_secret_configured =
         yes_no_label(http_webhook.shared_secret_configured());
     let http_webhook_send_path_enabled = yes_no_label(http_webhook.send_path_enabled());
+    let discord_webhook_enabled = yes_no_label(discord_webhook.enabled);
+    let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured());
+    let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid());
+    let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled());
+    let provider_fan_out =
+        yes_no_label(http_webhook.send_path_enabled() || discord_webhook.send_path_enabled());
+    let summary_template_configured = yes_no_label(template.summary_template_configured());
+    let summary_template_valid = yes_no_label(template.summary_template_valid());
+    let provider_attempt_history_count = state.provider_attempt_history.snapshot().len();
+    let provider_attempt_history_capacity = state.provider_attempt_history.capacity();
     Html(format!(
         r#"<!doctype html>
 <html lang="en">
@@ -150,19 +273,100 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <h1>Nako Notification Bridge</h1>
   <p>Base URL: {}</p>
   <p>Mode: ack only</p>
-  <p>Provider fan-out: disabled</p>
+  <p>Provider fan-out: {provider_fan_out}</p>
+  <p>Summary template status: {}</p>
+  <p>Summary template configured: {summary_template_configured}</p>
+  <p>Summary template valid: {summary_template_valid}</p>
+  <p>Provider attempt history count: {provider_attempt_history_count}</p>
+  <p>Provider attempt history capacity: {provider_attempt_history_capacity}</p>
   <p>HTTP webhook provider status: {}</p>
   <p>HTTP webhook enabled: {http_webhook_enabled}</p>
   <p>HTTP webhook target configured: {http_webhook_target_configured}</p>
   <p>HTTP webhook target valid: {http_webhook_target_valid}</p>
   <p>HTTP webhook shared secret configured: {http_webhook_shared_secret_configured}</p>
   <p>HTTP webhook send path enabled: {http_webhook_send_path_enabled}</p>
+  <p>Discord webhook provider status: {}</p>
+  <p>Discord webhook enabled: {discord_webhook_enabled}</p>
+  <p>Discord webhook URL configured: {discord_webhook_url_configured}</p>
+  <p>Discord webhook URL valid: {discord_webhook_url_valid}</p>
+  <p>Discord webhook send path enabled: {discord_webhook_send_path_enabled}</p>
   <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
 </body>
 </html>"#,
         state.config.base_url,
-        http_webhook.status().as_str()
+        template.status().as_str(),
+        http_webhook.status().as_str(),
+        discord_webhook.status().as_str()
     ))
+}
+
+fn invalid_template_error(
+    error: crate::template::TemplateError,
+) -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({
+            "safe_error_code": "notification_template_invalid",
+            "template_error": error.safe_code(),
+            "retryable": false
+        })),
+    )
+}
+
+fn record_http_webhook_outcome(
+    history: &ProviderAttemptHistory,
+    request: &AddonEventRequest,
+    outcome: &HttpWebhookSendOutcome,
+) {
+    history.record(ProviderAttemptRecord::new(
+        HTTP_WEBHOOK_PROVIDER_ID,
+        request,
+        outcome.provider_status(),
+        false,
+        outcome.provider_http_status(),
+    ));
+}
+
+fn record_http_webhook_error(
+    history: &ProviderAttemptHistory,
+    request: &AddonEventRequest,
+    error: &HttpWebhookSendError,
+) {
+    history.record(ProviderAttemptRecord::new(
+        HTTP_WEBHOOK_PROVIDER_ID,
+        request,
+        error.provider_status(),
+        error.is_retryable(),
+        error.provider_http_status(),
+    ));
+}
+
+fn record_discord_webhook_outcome(
+    history: &ProviderAttemptHistory,
+    request: &AddonEventRequest,
+    outcome: &DiscordWebhookSendOutcome,
+) {
+    history.record(ProviderAttemptRecord::new(
+        DISCORD_WEBHOOK_PROVIDER_ID,
+        request,
+        outcome.provider_status(),
+        false,
+        outcome.provider_http_status(),
+    ));
+}
+
+fn record_discord_webhook_error(
+    history: &ProviderAttemptHistory,
+    request: &AddonEventRequest,
+    error: &DiscordWebhookSendError,
+) {
+    history.record(ProviderAttemptRecord::new(
+        DISCORD_WEBHOOK_PROVIDER_ID,
+        request,
+        error.provider_status(),
+        error.is_retryable(),
+        error.provider_http_status(),
+    ));
 }
 
 const fn yes_no_label(value: bool) -> &'static str {
@@ -419,6 +623,331 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn library_scanned_event_endpoint_sends_discord_webhook_payload_without_raw_event_values()
+    {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "source_id": "source-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(target_url.clone()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(LIBRARY_SCANNED_EVENT_PATH)
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonEventResponse = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload.output["mode"], "provider_send");
+        assert_eq!(payload.output["provider"]["id"], "discord_webhook");
+        assert_eq!(payload.output["provider"]["status"], "sent");
+        assert_eq!(payload.output["provider"]["http_status"], 202);
+        assert_eq!(payload.output["providers"][0]["id"], "http_webhook");
+        assert_eq!(payload.output["providers"][0]["status"], "disabled");
+        assert_eq!(payload.output["providers"][1]["id"], "discord_webhook");
+        assert_eq!(payload.output["providers"][1]["status"], "sent");
+        assert!(!text.contains("nako_at_should_not_echo"));
+        assert!(!text.contains("source-1"));
+        assert!(!text.contains("127.0.0.1"));
+
+        let requests = fixture.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].body["schema"],
+            "nako.official.notification-bridge.discord-webhook.library-scanned.v1"
+        );
+        assert_eq!(
+            requests[0].body["content"],
+            "Nako library.scanned event for library library-1"
+        );
+        assert_eq!(
+            requests[0].body["embeds"][0]["title"],
+            "Nako library scanned"
+        );
+        let webhook_body = serde_json::to_string(&requests[0].body).unwrap();
+        assert!(webhook_body.contains("library_id, secret, source_id"));
+        assert!(!webhook_body.contains("nako_at_should_not_echo"));
+        assert!(!webhook_body.contains("source-1"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn library_scanned_event_endpoint_uses_safe_template_without_raw_payload_values() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "source_id": "source-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY" => {
+                Some("{{event_kind}} keys={{payload_keys}} attempt={{attempt}}".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(LIBRARY_SCANNED_EVENT_PATH)
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let requests = fixture.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].body["content"],
+            "library.scanned keys=library_id, secret, source_id attempt=1"
+        );
+        let webhook_body = serde_json::to_string(&requests[0].body).unwrap();
+        assert!(!webhook_body.contains("nako_at_should_not_echo"));
+        assert!(!webhook_body.contains("source-1"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn library_scanned_event_endpoint_rejects_invalid_template_before_provider_send() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY" => Some("{{payload.secret}}".to_owned()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(LIBRARY_SCANNED_EVENT_PATH)
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(payload["safe_error_code"], "notification_template_invalid");
+        assert_eq!(payload["template_error"], "unknown_template_token");
+        assert_eq!(payload["retryable"], false);
+        assert!(!text.contains("payload.secret"));
+        assert!(!text.contains("nako_at_should_not_echo"));
+        assert_eq!(fixture.requests.lock().unwrap().len(), 0);
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_attempt_history_records_safe_recent_provider_outcomes() {
+        let (target_url, fixture, handle) = spawn_http_webhook_fixture().await;
+        let app = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY" => Some("4".to_owned()),
+            _ => None,
+        }));
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "source_id": "source-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(LIBRARY_SCANNED_EVENT_PATH)
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(fixture.requests.lock().unwrap().len(), 1);
+
+        let health_request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/health")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&health_request).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_str(&text).unwrap();
+        let attempts = payload.diagnostics["provider_attempt_history"]["recent"]
+            .as_array()
+            .unwrap();
+
+        assert_eq!(
+            payload.diagnostics["provider_attempt_history"]["capacity"],
+            4
+        );
+        assert_eq!(attempts.len(), 2);
+        assert_eq!(attempts[0]["provider_id"], "http_webhook");
+        assert_eq!(attempts[0]["provider_status"], "disabled");
+        assert_eq!(attempts[1]["provider_id"], "discord_webhook");
+        assert_eq!(attempts[1]["provider_status"], "sent");
+        assert_eq!(attempts[1]["provider_http_status"], 202);
+        assert!(!text.contains("nako_at_should_not_echo"));
+        assert!(!text.contains("source-1"));
+        assert!(!text.contains("127.0.0.1"));
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn library_scanned_event_endpoint_rejects_multiple_provider_send_paths_without_sending() {
+        let (http_target_url, http_fixture, http_handle) = spawn_http_webhook_fixture().await;
+        let (discord_target_url, discord_fixture, discord_handle) =
+            spawn_http_webhook_fixture().await;
+        let request = AddonEventRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            subscription_id: LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID.to_owned(),
+            event_id: "event-1".to_owned(),
+            event_kind: LIBRARY_SCANNED_EVENT_KIND.to_owned(),
+            subject_kind: "library".to_owned(),
+            subject_id: "library-1".to_owned(),
+            occurred_at: "2026-05-25T00:00:00.000Z".to_owned(),
+            attempt: 1,
+            payload: serde_json::json!({
+                "library_id": "library-1",
+                "secret": "nako_at_should_not_echo"
+            }),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_URL" => Some(http_target_url.clone()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => Some(discord_target_url.clone()),
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(LIBRARY_SCANNED_EVENT_PATH)
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(
+            payload["safe_error_code"],
+            "multiple_notification_provider_send_paths_configured"
+        );
+        assert_eq!(payload["retryable"], false);
+        assert!(!text.contains("nako_at_should_not_echo"));
+        assert!(!text.contains("127.0.0.1"));
+        assert_eq!(http_fixture.requests.lock().unwrap().len(), 0);
+        assert_eq!(discord_fixture.requests.lock().unwrap().len(), 0);
+
+        http_handle.abort();
+        discord_handle.abort();
+    }
+
+    #[tokio::test]
     async fn library_scanned_event_endpoint_returns_retryable_safe_failure_for_rate_limited_http_webhook()
      {
         let (target_url, fixture, handle) =
@@ -610,11 +1139,42 @@ mod tests {
         );
         assert_eq!(payload.diagnostics["mode"], "ack_only");
         assert_eq!(payload.diagnostics["provider_fan_out"], false);
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_valid"],
+            true
+        );
+        assert_eq!(payload.diagnostics["template"]["status"], "valid");
+        assert_eq!(
+            payload.diagnostics["provider_attempt_history"]["capacity"],
+            20
+        );
+        assert_eq!(
+            payload.diagnostics["provider_attempt_history"]["recent"]
+                .as_array()
+                .unwrap()
+                .len(),
+            0
+        );
+        assert_eq!(
+            payload.diagnostics["providers"].as_array().unwrap().len(),
+            2
+        );
         assert_eq!(payload.diagnostics["providers"][0]["id"], "http_webhook");
         assert_eq!(payload.diagnostics["providers"][0]["enabled"], false);
         assert_eq!(payload.diagnostics["providers"][0]["status"], "disabled");
         assert_eq!(
             payload.diagnostics["providers"][0]["send_path_enabled"],
+            false
+        );
+        assert_eq!(payload.diagnostics["providers"][1]["id"], "discord_webhook");
+        assert_eq!(payload.diagnostics["providers"][1]["enabled"], false);
+        assert_eq!(payload.diagnostics["providers"][1]["status"], "disabled");
+        assert_eq!(
+            payload.diagnostics["providers"][1]["send_path_enabled"],
             false
         );
     }
@@ -689,6 +1249,106 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn health_endpoint_reports_discord_webhook_config_without_leaking_values() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => {
+                Some("https://discord.example/api/webhooks/secret".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(payload.diagnostics["provider_fan_out"], true);
+        assert_eq!(payload.diagnostics["providers"][1]["id"], "discord_webhook");
+        assert_eq!(payload.diagnostics["providers"][1]["enabled"], true);
+        assert_eq!(payload.diagnostics["providers"][1]["status"], "configured");
+        assert_eq!(
+            payload.diagnostics["providers"][1]["webhook_url_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][1]["webhook_url_valid"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["providers"][1]["send_path_enabled"],
+            true
+        );
+
+        let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
+        assert!(!diagnostics.contains("discord.example"));
+        assert!(!diagnostics.contains("api/webhooks"));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_reports_template_status_without_leaking_template_text() {
+        let request = AddonHealthCheckRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            manifest_id: ADDON_ID.to_owned(),
+            request_id: "health-1".to_owned(),
+            expected_addon_version: ADDON_VERSION.to_owned(),
+            expected_resource_count: crate::manifest::container_manifest().resources.len(),
+        };
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_TEMPLATE_SUMMARY" => {
+                Some("{{event_kind}} secret-literal-should-not-appear".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_configured"],
+            true
+        );
+        assert_eq!(
+            payload.diagnostics["template"]["summary_template_valid"],
+            true
+        );
+        assert_eq!(payload.diagnostics["template"]["status"], "valid");
+        let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
+        assert!(!diagnostics.contains("secret-literal-should-not-appear"));
+    }
+
+    #[tokio::test]
     async fn diagnostics_page_reports_http_webhook_status_without_leaking_values() {
         let response = router(Config::from_env_lookup(|name| match name {
             "NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_ENABLED" => Some("true".to_owned()),
@@ -722,5 +1382,39 @@ mod tests {
         assert!(text.contains("HTTP webhook send path enabled: yes"));
         assert!(!text.contains("hooks.example"));
         assert!(!text.contains("webhook-secret-should-not-appear"));
+    }
+
+    #[tokio::test]
+    async fn diagnostics_page_reports_discord_webhook_status_without_leaking_values() {
+        let response = router(Config::from_env_lookup(|name| match name {
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_ENABLED" => Some("true".to_owned()),
+            "NAKO_NOTIFICATION_BRIDGE_DISCORD_WEBHOOK_URL" => {
+                Some("https://discord.example/api/webhooks/secret".to_owned())
+            }
+            _ => None,
+        }))
+        .oneshot(
+            Request::builder()
+                .uri(DIAGNOSTICS_PATH)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+
+        assert!(text.contains("Provider fan-out: yes"));
+        assert!(text.contains("Discord webhook provider status: configured"));
+        assert!(text.contains("Discord webhook enabled: yes"));
+        assert!(text.contains("Discord webhook URL configured: yes"));
+        assert!(text.contains("Discord webhook URL valid: yes"));
+        assert!(text.contains("Discord webhook send path enabled: yes"));
+        assert!(!text.contains("discord.example"));
+        assert!(!text.contains("api/webhooks"));
     }
 }

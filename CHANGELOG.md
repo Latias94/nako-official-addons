@@ -22,6 +22,16 @@ builds.
 - `nako-notification-bridge` `http_webhook` configuration contract,
   fixture-backed send path, and redaction-safe provider diagnostics without
   live CI secrets.
+- `nako-notification-bridge` `discord_webhook` platform adapter with
+  default-disabled configuration, fixture-backed send path, redaction-safe
+  diagnostics, and fail-closed multi-provider protection.
+- `nako-notification-bridge` safe summary template controls with whitelisted
+  event fact tokens and no raw event payload value access.
+- `nako-notification-bridge` bounded in-memory provider attempt history for
+  redaction-safe sidecar diagnostics without adding provider retry state to Nako
+  core.
+- Opt-in `nako-notification-bridge` live provider smoke script that skips by
+  default and never requires CI secrets.
 
 ### Changed
 
