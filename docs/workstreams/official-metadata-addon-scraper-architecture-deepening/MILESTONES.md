@@ -39,13 +39,14 @@ Exit criteria:
 - Resolver, fusion, ranking, artwork, and native writeback projection have
   narrower Interfaces with direct tests.
 
-## M5 - Side Effect Writeback Consolidated
+## M5 - Side Effect Writeback Consolidated (Complete)
 
 Exit criteria:
 
 - Metadata and artwork writeback use one shared state machine.
 - Type-specific adapters own selection, payload, provenance, and summary shape.
-- Runtime writeback tests prove old state paths through the shared Module.
+- Shared state-machine tests prove disabled runtime, invalid target, access
+  denied, access failure, submit failure, and success paths.
 
 ## M6 - Verification And Closeout
 

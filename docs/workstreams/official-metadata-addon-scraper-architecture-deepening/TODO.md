@@ -4,21 +4,14 @@ Prefix: OMSAD
 
 ## Active
 
-- [ ] OMSAD-070 [owner=codex] [deps=OMSAD-020,OMSAD-060] [scope=crates/nako-metadata-scraper/src/engine/writeback.rs,crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/runtime.rs]
-  Goal: Consolidate metadata/artwork side-effect writeback into one state machine Module with type-specific adapters for payload and provenance.
-  Validation: `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm disabled runtime, invalid target, access denied, access failure, submit failure, and success statuses are tested through the shared Interface.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMSAD-080 [owner=codex] [deps=OMSAD-070] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-scraper-architecture-deepening]
   Goal: Run full gates, update docs, review module boundaries, and close or split follow-ups.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check`
   Review: Confirm no architecture-review candidate remains unresolved unless explicitly split.
   Evidence:
   Handoff:
+
+## Pending
 
 ## Completed
 
@@ -63,6 +56,13 @@ Prefix: OMSAD
   Review: Confirmed resolver owns cluster identity and merge evidence, `fusion` owns field selection/evidence, ranking owns ordering/evidence scoring, and native writeback projection is explicit in `native_writeback`.
   Evidence: PASS on 2026-05-26; 56 focused Rust tests passed.
   Handoff: DONE. OMSAD-070 is active.
+
+- [x] OMSAD-070 [owner=codex] [deps=OMSAD-020,OMSAD-060] [scope=crates/nako-metadata-scraper/src/engine/writeback.rs,crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/runtime.rs]
+  Goal: Consolidate metadata/artwork side-effect writeback into one state machine Module with type-specific adapters for payload and provenance.
+  Validation: `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed metadata/artwork writeback share `side_effect::run_side_effect_writeback`; disabled runtime, invalid target, access denied, access failure, submit failure, and success statuses are covered by shared state-machine tests.
+  Evidence: PASS on 2026-05-26; 37 focused writeback/artwork/runtime tests passed, 6 shared state-machine tests passed, formatting passed.
+  Handoff: DONE. OMSAD-080 is active.
 
 ## Follow-Up Candidates
 

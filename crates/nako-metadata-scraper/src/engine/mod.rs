@@ -11,6 +11,7 @@ pub(crate) mod resolver;
 mod response;
 mod runtime;
 mod scrape;
+mod side_effect;
 pub mod title;
 mod writeback;
 

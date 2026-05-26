@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::nako_runtime::{NakoSideEffectSummary, NakoSideEffectTarget, NakoSideEffectTargetKind};
 
-use super::ranking::MetadataCandidate;
+use super::{ranking::MetadataCandidate, side_effect::SideEffectWritebackInput};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProviderArtworkCandidate {
@@ -60,12 +60,7 @@ pub(crate) struct ArtworkWritebackRequest {
     pub kind: AddonArtworkKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum ArtworkWritebackInput {
-    Absent,
-    Invalid { safe_error_code: &'static str },
-    Requested(ArtworkWritebackRequest),
-}
+pub(crate) type ArtworkWritebackInput = SideEffectWritebackInput<ArtworkWritebackRequest>;
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 pub struct ArtworkWritebackResult {
@@ -84,20 +79,15 @@ pub enum ArtworkWritebackStatus {
     Failed,
 }
 
-impl ArtworkWritebackInput {
-    #[must_use]
-    pub fn from_payload(payload: &serde_json::Value) -> Self {
-        let Some(writeback) = payload.get("artwork_writeback") else {
-            return Self::Absent;
-        };
-
-        match serde_json::from_value::<ArtworkWritebackRequest>(writeback.clone()) {
-            Ok(writeback_request) => Self::Requested(writeback_request),
-            Err(_) => Self::Invalid {
-                safe_error_code: "invalid_artwork_writeback_request",
-            },
-        }
-    }
+#[must_use]
+pub(crate) fn artwork_writeback_input_from_payload(
+    payload: &serde_json::Value,
+) -> ArtworkWritebackInput {
+    ArtworkWritebackInput::from_payload(
+        payload,
+        "artwork_writeback",
+        "invalid_artwork_writeback_request",
+    )
 }
 
 #[must_use]
@@ -160,14 +150,14 @@ pub fn artwork_write_provenance(
 }
 
 #[must_use]
-pub fn artwork_write_summary(
+pub(crate) fn artwork_write_summary(
     status: ArtworkWritebackStatus,
-    safe_error_code: Option<&'static str>,
+    safe_error_code: Option<String>,
     side_effect: Option<NakoSideEffectSummary>,
 ) -> ArtworkWritebackResult {
     ArtworkWritebackResult {
         status,
-        safe_error_code: safe_error_code.map(str::to_owned),
+        safe_error_code,
         side_effect,
     }
 }
@@ -243,7 +233,7 @@ mod tests {
 
     #[test]
     fn artwork_writeback_input_parses_explicit_payload() {
-        let input = ArtworkWritebackInput::from_payload(&serde_json::json!({
+        let input = artwork_writeback_input_from_payload(&serde_json::json!({
             "artwork_writeback": {
                 "library_id": "library-1",
                 "target": {

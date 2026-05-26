@@ -131,8 +131,8 @@ where
                 self.external_id_capabilities.as_ref().as_slice(),
             )
         };
-        let writeback_request = writeback::MetadataWritebackInput::from_payload(payload);
-        let artwork_writeback_request = artwork::ArtworkWritebackInput::from_payload(payload);
+        let writeback_request = writeback::metadata_writeback_input_from_payload(payload);
+        let artwork_writeback_request = artwork::artwork_writeback_input_from_payload(payload);
         let provider_field_policy = ProviderFieldPolicy::from_payload_or_default(
             payload,
             self.default_provider_field_policy.as_ref(),

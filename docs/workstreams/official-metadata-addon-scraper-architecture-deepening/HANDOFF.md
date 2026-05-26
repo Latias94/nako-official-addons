@@ -23,6 +23,10 @@ and request-provided `provider_field_policy` still overrides it.
 OMSAD-060 is complete: resolver owns cluster identity and merge evidence,
 `fusion` owns field selection/evidence, ranking owns score ordering, and native
 writeback projection is exposed through `native_writeback`.
+OMSAD-070 is complete: metadata and artwork writeback now share
+`side_effect::run_side_effect_writeback`; metadata/artwork adapters own target
+validation, candidate/payload preparation, provenance, submission, and result
+shape.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -30,15 +34,14 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-070
+- Task ID: OMSAD-080
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/engine/writeback.rs`, `crates/nako-metadata-scraper/src/engine/artwork.rs`, `crates/nako-metadata-scraper/src/engine/runtime.rs`
-- Validation: `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/engine`, `crates/nako-metadata-scraper/src/providers`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`, `docs/workstreams/official-metadata-addon-scraper-architecture-deepening`
+- Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check`
 - Status: READY
-- Review: Confirm disabled runtime, invalid target, access denied, access
-  failure, submit failure, and success statuses are tested through the shared
-  Interface.
-- Evidence:
+- Review: Confirm no architecture-review candidate remains unresolved unless
+  explicitly split.
+- Evidence: OMSAD-070 passed `cargo nextest run -p nako-metadata-scraper side_effect_state_machine --no-fail-fast`, `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`, and `cargo fmt -p nako-metadata-scraper -- --check`.
 
 ## Decisions
 
@@ -56,6 +59,5 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-070 by consolidating metadata and artwork side-effect writeback
-  into one shared state machine with type-specific adapters for payload and
-  provenance.
+- Execute OMSAD-080 by running full gates, checking docs/readmes against the
+  shipped architecture, and closing or splitting any remaining follow-up work.
