@@ -92,6 +92,7 @@ mod tests {
         assert_eq!(provider_properties["javdb"]["default"], false);
         assert_eq!(provider_properties["dmm"]["default"], false);
         assert_eq!(provider_properties["fc2"]["default"], false);
+        assert_eq!(provider_properties["fc2ppvdb"]["default"], false);
         assert_eq!(provider_properties["javbus"]["default"], false);
         assert_eq!(provider_properties["javlibrary"]["default"], false);
         assert_eq!(provider_properties["mgstage"]["default"], false);
@@ -110,6 +111,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
@@ -149,6 +151,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["fc2"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["fc2ppvdb"]["default"],
             true
         );
         assert_eq!(
@@ -197,6 +203,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Javdb),
                 ProviderConfig::disabled(ProviderId::Dmm),
                 ProviderConfig::disabled(ProviderId::Fc2),
+                ProviderConfig::disabled(ProviderId::Fc2ppvdb),
                 ProviderConfig::disabled(ProviderId::Javbus),
                 ProviderConfig::disabled(ProviderId::Javlibrary),
                 ProviderConfig::disabled(ProviderId::Mgstage),

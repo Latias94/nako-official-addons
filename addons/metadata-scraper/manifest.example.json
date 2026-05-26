@@ -51,6 +51,7 @@
           "javdb": { "type": "boolean", "default": false },
           "dmm": { "type": "boolean", "default": false },
           "fc2": { "type": "boolean", "default": false },
+          "fc2ppvdb": { "type": "boolean", "default": false },
           "javbus": { "type": "boolean", "default": false },
           "javlibrary": { "type": "boolean", "default": false },
           "mgstage": { "type": "boolean", "default": false },

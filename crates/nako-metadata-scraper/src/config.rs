@@ -2,8 +2,9 @@ use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
     dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
-    mgstage::MgstageProviderConfig, prestige::PrestigeProviderConfig, tmdb::TmdbProviderConfig,
+    fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig, javdb::JavdbProviderConfig,
+    javlibrary::JavlibraryProviderConfig, mgstage::MgstageProviderConfig,
+    prestige::PrestigeProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -75,6 +76,7 @@ pub enum ProviderId {
     Javdb,
     Dmm,
     Fc2,
+    Fc2ppvdb,
     Javbus,
     Javlibrary,
     Mgstage,
@@ -93,6 +95,7 @@ impl ProviderId {
             Self::Javdb => "javdb",
             Self::Dmm => "dmm",
             Self::Fc2 => "fc2",
+            Self::Fc2ppvdb => "fc2ppvdb",
             Self::Javbus => "javbus",
             Self::Javlibrary => "javlibrary",
             Self::Mgstage => "mgstage",
@@ -192,6 +195,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn fc2ppvdb(enabled: bool, config: Fc2ppvdbProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Fc2ppvdb,
+            enabled,
+            kind: ProviderConfigKind::Fc2ppvdb(config),
+        }
+    }
+
+    #[must_use]
     pub fn javbus(enabled: bool, config: JavbusProviderConfig) -> Self {
         Self {
             id: ProviderId::Javbus,
@@ -284,6 +296,14 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn fc2ppvdb_config(&self) -> Option<&Fc2ppvdbProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Fc2ppvdb(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn javbus_config(&self) -> Option<&JavbusProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Javbus(config) => Some(config),
@@ -334,6 +354,9 @@ impl ProviderConfig {
             }
             ProviderId::Dmm => Self::dmm(enabled, DmmProviderConfig::from_env_lookup(|_| None)),
             ProviderId::Fc2 => Self::fc2(enabled, Fc2ProviderConfig::from_env_lookup(|_| None)),
+            ProviderId::Fc2ppvdb => {
+                Self::fc2ppvdb(enabled, Fc2ppvdbProviderConfig::from_env_lookup(|_| None))
+            }
             ProviderId::Javbus => {
                 Self::javbus(enabled, JavbusProviderConfig::from_env_lookup(|_| None))
             }
@@ -360,6 +383,7 @@ pub enum ProviderConfigKind {
     Javdb(JavdbProviderConfig),
     Dmm(DmmProviderConfig),
     Fc2(Fc2ProviderConfig),
+    Fc2ppvdb(Fc2ppvdbProviderConfig),
     Javbus(JavbusProviderConfig),
     Javlibrary(JavlibraryProviderConfig),
     Mgstage(MgstageProviderConfig),
@@ -448,6 +472,7 @@ impl ProviderConfig {
             ProviderConfigKind::Javdb(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Dmm(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Javbus(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.proxy_policy_configured()
@@ -469,6 +494,7 @@ impl ProviderConfig {
             ProviderConfigKind::Javdb(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Dmm(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Javbus(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.session_key_configured()
@@ -617,9 +643,19 @@ mod tests {
         );
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[8].id, ProviderId::Javbus);
+        assert_eq!(config.providers[8].id, ProviderId::Fc2ppvdb);
         assert!(!config.providers[8].enabled);
-        let javbus = config.providers[8].javbus_config().unwrap();
+        let fc2ppvdb = config.providers[8].fc2ppvdb_config().unwrap();
+        assert_eq!(fc2ppvdb.base_url, "https://fc2ppvdb.com");
+        assert_eq!(
+            fc2ppvdb.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(fc2ppvdb.render_path, "/render");
+        assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[9].id, ProviderId::Javbus);
+        assert!(!config.providers[9].enabled);
+        let javbus = config.providers[9].javbus_config().unwrap();
         assert_eq!(javbus.base_url, "https://www.javbus.com");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -627,9 +663,9 @@ mod tests {
         );
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[9].id, ProviderId::Javlibrary);
-        assert!(!config.providers[9].enabled);
-        let javlibrary = config.providers[9].javlibrary_config().unwrap();
+        assert_eq!(config.providers[10].id, ProviderId::Javlibrary);
+        assert!(!config.providers[10].enabled);
+        let javlibrary = config.providers[10].javlibrary_config().unwrap();
         assert_eq!(javlibrary.base_url, "https://www.javlibrary.com");
         assert_eq!(javlibrary.language_path, "cn");
         assert_eq!(
@@ -638,9 +674,9 @@ mod tests {
         );
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[10].id, ProviderId::Mgstage);
-        assert!(!config.providers[10].enabled);
-        let mgstage = config.providers[10].mgstage_config().unwrap();
+        assert_eq!(config.providers[11].id, ProviderId::Mgstage);
+        assert!(!config.providers[11].enabled);
+        let mgstage = config.providers[11].mgstage_config().unwrap();
         assert_eq!(mgstage.base_url, "https://www.mgstage.com");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -648,9 +684,9 @@ mod tests {
         );
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[11].id, ProviderId::Prestige);
-        assert!(!config.providers[11].enabled);
-        let prestige = config.providers[11].prestige_config().unwrap();
+        assert_eq!(config.providers[12].id, ProviderId::Prestige);
+        assert!(!config.providers[12].enabled);
+        let prestige = config.providers[12].prestige_config().unwrap();
         assert_eq!(prestige.base_url, "https://www.prestige-av.com");
         assert_eq!(prestige.timeout_ms, 10_000);
         assert!(prestige.proxy_url.is_none());
@@ -662,6 +698,7 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Javdb));
         assert!(!config.provider_enabled(ProviderId::Dmm));
         assert!(!config.provider_enabled(ProviderId::Fc2));
+        assert!(!config.provider_enabled(ProviderId::Fc2ppvdb));
         assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_enabled(ProviderId::Javlibrary));
         assert!(!config.provider_enabled(ProviderId::Mgstage));
@@ -695,6 +732,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
@@ -736,6 +774,10 @@ mod tests {
             "NAKO_METADATA_SCRAPER_DMM_TIMEOUT_MS" => Some("3500".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS" => Some("4500".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2PPVDB_BASE_URL" => {
+                Some("https://fc2ppvdb.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_FC2PPVDB_TIMEOUT_MS" => Some("4700".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL" => Some("https://javbus.example".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS" => Some("8500".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_BASE_URL" => {
@@ -849,8 +891,17 @@ mod tests {
         );
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 4500);
+        assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
+        let fc2ppvdb = config.providers[8].fc2ppvdb_config().unwrap();
+        assert_eq!(fc2ppvdb.base_url, "https://fc2ppvdb.example");
+        assert_eq!(
+            fc2ppvdb.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(fc2ppvdb.render_path, "/render");
+        assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 4700);
         assert!(config.provider_enabled(ProviderId::Javbus));
-        let javbus = config.providers[8].javbus_config().unwrap();
+        let javbus = config.providers[9].javbus_config().unwrap();
         assert_eq!(javbus.base_url, "https://javbus.example");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -859,7 +910,7 @@ mod tests {
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 8500);
         assert!(config.provider_enabled(ProviderId::Javlibrary));
-        let javlibrary = config.providers[9].javlibrary_config().unwrap();
+        let javlibrary = config.providers[10].javlibrary_config().unwrap();
         assert_eq!(javlibrary.base_url, "https://javlibrary.example");
         assert_eq!(javlibrary.language_path, "ja");
         assert_eq!(
@@ -869,7 +920,7 @@ mod tests {
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 9500);
         assert!(config.provider_enabled(ProviderId::Mgstage));
-        let mgstage = config.providers[10].mgstage_config().unwrap();
+        let mgstage = config.providers[11].mgstage_config().unwrap();
         assert_eq!(mgstage.base_url, "https://mgstage.example");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -878,7 +929,7 @@ mod tests {
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10500);
         assert!(config.provider_enabled(ProviderId::Prestige));
-        let prestige = config.providers[11].prestige_config().unwrap();
+        let prestige = config.providers[12].prestige_config().unwrap();
         assert_eq!(prestige.base_url, "https://prestige.example");
         assert_eq!(prestige.timeout_ms, 11500);
         assert_eq!(

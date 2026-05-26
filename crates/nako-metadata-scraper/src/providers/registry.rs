@@ -260,6 +260,7 @@ mod tests {
                 "mgstage".to_owned(),
                 "javdb".to_owned(),
                 "fc2".to_owned(),
+                "fc2ppvdb".to_owned(),
                 "javbus".to_owned(),
                 "javlibrary".to_owned(),
             ]
@@ -270,6 +271,7 @@ mod tests {
                 "javlibrary".to_owned(),
                 "javdb".to_owned(),
                 "dmm".to_owned(),
+                "fc2ppvdb".to_owned(),
                 "mgstage".to_owned(),
                 "prestige".to_owned(),
                 "javbus".to_owned(),
@@ -283,6 +285,7 @@ mod tests {
                 "mgstage".to_owned(),
                 "dmm".to_owned(),
                 "javdb".to_owned(),
+                "fc2ppvdb".to_owned(),
                 "fc2".to_owned(),
                 "javbus".to_owned(),
             ]
@@ -316,6 +319,7 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
+                "fc2ppvdb",
                 "javbus",
                 "javlibrary",
                 "mgstage",
@@ -426,6 +430,22 @@ mod tests {
         assert_eq!(
             diagnostics.supported[8],
             ProviderDescriptor {
+                id: "fc2ppvdb",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "fc2ppvdb_direct_lookup",
+                    "fc2_long_tail",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[9],
+            ProviderDescriptor {
                 id: "javbus",
                 enabled: false,
                 available: false,
@@ -440,7 +460,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[9],
+            diagnostics.supported[10],
             ProviderDescriptor {
                 id: "javlibrary",
                 enabled: false,
@@ -456,7 +476,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[10],
+            diagnostics.supported[11],
             ProviderDescriptor {
                 id: "mgstage",
                 enabled: false,
@@ -472,7 +492,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[11],
+            diagnostics.supported[12],
             ProviderDescriptor {
                 id: "prestige",
                 enabled: false,
@@ -561,6 +581,20 @@ mod tests {
                 && capability.top_level_fields.contains(&"fc2_id")
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "fc2ppvdb"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"fc2ppvdb_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "fc2ppvdb_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"fc2ppvdb_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "javbus"
                 && capability.value_kind == ExternalIdValueKind::Opaque
                 && capability.accepts_direct_lookup
@@ -638,6 +672,12 @@ mod tests {
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_id", "dmm", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_url", "dmm_url", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("fc2_id", "fc2", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("fc2ppvdb_id", "fc2ppvdb", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "fc2ppvdb_url",
+            "fc2ppvdb_url",
+            false
+        )));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javbus_id", "javbus", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "javbus_url",
@@ -689,6 +729,7 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
+                "fc2ppvdb",
                 "javbus",
                 "javlibrary",
                 "mgstage",
@@ -743,6 +784,7 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
+                "fc2ppvdb",
                 "javbus",
                 "javlibrary",
                 "mgstage",

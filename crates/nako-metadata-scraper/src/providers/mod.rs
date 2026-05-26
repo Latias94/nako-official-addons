@@ -8,6 +8,7 @@ pub mod browser_worker;
 pub mod dmm;
 pub mod douban;
 pub mod fc2;
+pub mod fc2ppvdb;
 pub mod fixture;
 pub mod http_runtime;
 pub mod javbus;
@@ -40,6 +41,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         javdb::catalog_entry(),
         dmm::catalog_entry(),
         fc2::catalog_entry(),
+        fc2ppvdb::catalog_entry(),
         javbus::catalog_entry(),
         javlibrary::catalog_entry(),
         mgstage::catalog_entry(),

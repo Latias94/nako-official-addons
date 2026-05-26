@@ -36,8 +36,8 @@ Exit criteria:
 
 ## M4 - Provider Wave 3
 
-Status: In progress on 2026-05-26. Prestige provider complete; FC2 long-tail
-and uncensored official provider work remains.
+Status: In progress on 2026-05-26. Prestige and FC2PPVDB provider work is
+complete; uncensored official provider work remains.
 
 Exit criteria:
 

@@ -4,21 +4,14 @@ Prefix: OMAV3
 
 ## Active
 
-- [ ] OMAV3-050 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Add one FC2 long-tail provider after evaluating FC2PPVDB, FC2Hub, and FC2Club for testable value.
-  Validation: `cargo nextest run -p nako-metadata-scraper fc2 av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm it does not duplicate the existing FC2 official source and improves fallback coverage.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV3-060 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Add the official uncensored provider trio path for Caribbeancom, 1Pondo, and 10Musume, or split if one site needs a separate lane.
   Validation: `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm each provider has independent fixtures, route gates, external IDs, field quality descriptors, and docs.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMAV3-070 [owner=codex] [deps=OMAV3-040,OMAV3-050,OMAV3-060] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-provider-wave3]
   Goal: Run full gates, document provider wave 3 behavior, and close or split remaining provider candidates.
@@ -56,6 +49,13 @@ Prefix: OMAV3
   Review: Prestige is disabled by default, exposes `prestige_id`/`prestige_url` aliases, emits `prestige`, `prestige_url`, and `av_number` external IDs, supports censored-route AV search only, and uses independent JSON API fixtures.
   Evidence: PASS on 2026-05-26: 62 prestige/config/registry/manifest/AV tests; dedicated Prestige provider fixture tests covered search, direct ID lookup, URL lookup, route skip, official field mapping, artwork, trailer, and proxy runtime config.
   Handoff: DONE. OMAV3-050 is active.
+
+- [x] OMAV3-050 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add one FC2 long-tail provider after evaluating FC2PPVDB, FC2Hub, and FC2Club for testable value.
+  Validation: `cargo nextest run -p nako-metadata-scraper fc2 av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: FC2PPVDB was selected because it has deterministic article URLs and richer release/runtime/actor/tag/seller/trailer fallback coverage than FC2Hub/FC2Club for this slice; it does not replace the official FC2 provider.
+  Evidence: PASS on 2026-05-26: 68 fc2/AV/config/registry/manifest tests; dedicated FC2PPVDB provider fixture tests covered FC2 route search, explicit ID lookup, explicit URL lookup, route skip, long-tail field mapping, artwork, and trailer separation.
+  Handoff: DONE. OMAV3-060 is active.
 
 ## Follow-Up Candidates
 

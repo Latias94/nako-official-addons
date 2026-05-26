@@ -319,10 +319,10 @@ defaults.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
-and `av_number`. These aliases are derived from provider-owned external ID
-capabilities.
+`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `javbus_id`,
+`javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`,
+`prestige_id`, `prestige_url`, and `av_number`. These aliases are derived from
+provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -333,19 +333,21 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
-JavDB, DMM, FC2, JavBus, JavLibrary, MGStage, and Prestige metadata are
-available when their providers are enabled. JavDB, DMM, FC2, JavBus,
-JavLibrary, and MGStage use the browser-worker companion service for rendered
-HTML. Prestige uses the official JSON API and can use
+JavDB, DMM, FC2, FC2PPVDB, JavBus, JavLibrary, MGStage, and Prestige metadata
+are available when their providers are enabled. JavDB, DMM, FC2, FC2PPVDB,
+JavBus, JavLibrary, and MGStage use the browser-worker companion service for
+rendered HTML. Prestige uses the official JSON API and can use
 `NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL` directly from the Rust sidecar.
 JavDB searches by normalized non-FC2 AV numbers and supports explicit
 `javdb_id` direct lookup. DMM is an official censored-release tracer that
 searches by normalized AV number and supports explicit `dmm_id` or `dmm_url`
 direct lookup. FC2 handles FC2-number direct article lookup and supports
-explicit `fc2_id` direct lookup. JavBus is a broad disabled-by-default AV
-fallback for normalized censored and uncensored numbers and supports explicit
-`javbus_id` or `javbus_url` direct lookup. JavLibrary contributes community
-facts such as actors, score, and wanted count, and supports `javlibrary_id` or
+explicit `fc2_id` direct lookup. FC2PPVDB is an FC2 long-tail fallback that
+uses deterministic article URLs and supports `fc2ppvdb_id` or `fc2ppvdb_url`
+direct lookup. JavBus is a broad disabled-by-default AV fallback for normalized
+censored and uncensored numbers and supports explicit `javbus_id` or
+`javbus_url` direct lookup. JavLibrary contributes community facts such as
+actors, score, and wanted count, and supports `javlibrary_id` or
 `javlibrary_url` direct lookup. MGStage is a route-specific official source for
 amateur/MGS numbers such as `300MIUM-382`, and supports `mgstage_id` or
 `mgstage_url` direct lookup. Prestige is a censored-route official source and
@@ -411,12 +413,13 @@ after providers have emitted compatible external IDs such as the same
 `av_number`. When no request policy is supplied, AV clusters use a conservative
 default derived from provider quality descriptors inspired by MDCx's
 field-priority behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2,
-JavBus, and JavLibrary for official title, overview, release/runtime, and
-studio-like facts. Community actor and wanted-count fields prefer
-JavLibrary/JavDB first. Trailer and image fields prefer providers that usually
-carry media URLs, starting with Prestige/MGStage/DMM/JavDB. Passing an explicit
-`provider_field_policy` object replaces that descriptor-derived default for the
-request.
+FC2PPVDB, JavBus, and JavLibrary for official title, overview, release/runtime,
+and studio-like facts. Community actor and wanted-count fields prefer
+JavLibrary/JavDB first, with FC2PPVDB above the official FC2 source when it has
+actor labels. Trailer and image fields prefer providers that usually carry
+media URLs, starting with Prestige/MGStage/DMM/JavDB/FC2PPVDB. Passing an
+explicit `provider_field_policy` object replaces that descriptor-derived
+default for the request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

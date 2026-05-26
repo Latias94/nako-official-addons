@@ -33,6 +33,11 @@ Current alpha provider defaults:
 - `fc2`: disabled by default; calls the companion browser worker for rendered
   HTML and uses FC2 AV numbers for direct article lookup. It emits `fc2`,
   `fc2_url`, and `av_number` external IDs.
+- `fc2ppvdb`: disabled by default; calls the companion browser worker for
+  rendered HTML and acts as an FC2 long-tail fallback. It searches deterministic
+  FC2PPVDB article URLs by normalized FC2 number, supports `fc2ppvdb_id` or
+  `fc2ppvdb_url` direct lookup, and emits `fc2ppvdb`, `fc2ppvdb_url`, and
+  `av_number` external IDs.
 - `javbus`: disabled by default; calls the companion browser worker for
   rendered HTML and acts as a broad AV fallback for normalized censored and
   uncensored numbers. It emits `javbus`, `javbus_url`, and `av_number`
@@ -52,10 +57,10 @@ Current alpha provider defaults:
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
-and `av_number`. These aliases are derived from provider-owned external ID
-capabilities.
+`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `javbus_id`,
+`javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`,
+`prestige_id`, `prestige_url`, and `av_number`. These aliases are derived from
+provider-owned external ID capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
@@ -63,12 +68,12 @@ AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 redaction-safe `query.av` facts when a number is recognized; full local paths
 are not echoed.
 
-When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`,
-`javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`,
-or `prestige_url` is supplied, the matching provider performs direct detail
-lookup before falling back to inferred AV-number search. This is useful for
-appointed-source corrections where a user already knows the authoritative site
-record.
+When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`,
+`fc2ppvdb_url`, `javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`,
+`mgstage_id`, `mgstage_url`, `prestige_id`, or `prestige_url` is supplied, the
+matching provider performs direct detail lookup before falling back to inferred
+AV-number search. This is useful for appointed-source corrections where a user
+already knows the authoritative site record.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
@@ -113,11 +118,12 @@ The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
 When no request policy is supplied, AV clusters use a conservative default
 derived from provider quality descriptors inspired by MDCx's field-priority
-behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2, JavBus, and
-JavLibrary for official title, overview, release/runtime, and studio-like
-facts. Community actor and wanted-count fields prefer JavLibrary/JavDB first.
-Trailer and image fields prefer providers that usually carry media URLs,
-starting with Prestige/MGStage/DMM/JavDB. Passing an explicit
+behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2, FC2PPVDB,
+JavBus, and JavLibrary for official title, overview, release/runtime, and
+studio-like facts. Community actor and wanted-count fields prefer
+JavLibrary/JavDB first, with FC2PPVDB above the official FC2 source when it
+has actor labels. Trailer and image fields prefer providers that usually carry
+media URLs, starting with Prestige/MGStage/DMM/JavDB/FC2PPVDB. Passing an explicit
 `provider_field_policy` object replaces that descriptor-derived default for the
 request.
 

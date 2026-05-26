@@ -545,6 +545,7 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
+                "fc2ppvdb",
                 "javbus",
                 "javlibrary",
                 "mgstage",
