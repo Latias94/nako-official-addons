@@ -4,12 +4,14 @@ use nako_addon_protocol::{
 
 use super::{
     MetadataCandidate, MetadataQuery, MetadataWritebackResult, artwork::ArtworkWritebackResult, av,
+    orchestration::ProviderExecutionSummary,
 };
 
 pub(crate) fn metadata_response(
     request: AddonResourceRequest,
     query: &MetadataQuery,
     candidates: Vec<MetadataCandidate>,
+    provider_execution: ProviderExecutionSummary,
     writeback_result: Option<MetadataWritebackResult>,
     artwork_writeback_result: Option<ArtworkWritebackResult>,
 ) -> AddonResourceResponse {
@@ -20,6 +22,7 @@ pub(crate) fn metadata_response(
             "year": query.year,
             "language": &query.language
         },
+        "provider_execution": provider_execution,
         "candidates": candidates
     });
     if let Some(writeback_result) = writeback_result {

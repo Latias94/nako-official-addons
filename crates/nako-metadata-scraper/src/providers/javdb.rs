@@ -169,7 +169,7 @@ where
 mod tests {
     use crate::{
         config::JavdbProviderConfig,
-        engine::{MetadataQuery, av::AvNumberSource},
+        engine::{MetadataQuery, QueryExternalId, av::AvNumberSource},
         providers::http_runtime::{ProviderHttpRuntime, ProviderHttpRuntimeConfig},
     };
 
@@ -344,6 +344,78 @@ mod tests {
 
         assert!(candidates.is_empty());
         assert!(transport.requests().is_empty());
+    }
+
+    #[tokio::test]
+    async fn javdb_provider_uses_explicit_javdb_id_for_direct_detail_lookup() {
+        let transport = FakeTransport::default();
+        transport.push_rendered_html(
+            "https://javdb.example/v/abc123",
+            "SSNI-644 Direct Lookup Title",
+            r#"
+<!doctype html>
+<html>
+<head>
+  <meta property="og:image" content="https://img.example/direct-cover.jpg">
+</head>
+<body>
+  <h2 class="title"><strong class="current-title">SSNI-644 Direct Lookup Title</strong></h2>
+  <a class="copy-to-clipboard" data-clipboard-text="SSNI-644">SSNI-644</a>
+  <div class="movie-panel-info">
+    <span>日期:</span> 2024-05-01
+    <span>時長:</span> 121 分鐘
+  </div>
+  <a href="/tags/t1">剧情</a>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavdbMetadataProvider::with_runtime(
+            JavdbProviderConfig::new(
+                "https://javdb.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Untrusted Raw Title".to_owned(),
+                year: None,
+                language: "zh-CN".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "javdb".to_owned(),
+                    value: "abc123".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "javdb:movie:abc123");
+        assert_eq!(
+            candidates[0].patch.title.as_deref(),
+            Some("SSNI-644 Direct Lookup Title")
+        );
+        assert!(
+            candidates[0].facts.external_ids.iter().any(|id| {
+                id.provider == AV_NUMBER_EXTERNAL_ID_PROVIDER && id.value == "SSNI-644"
+            })
+        );
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 1);
+        let body: serde_json::Value =
+            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(body["url"], "https://javdb.example/v/abc123");
     }
 
     #[tokio::test]

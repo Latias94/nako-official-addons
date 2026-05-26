@@ -442,6 +442,25 @@ mod tests {
         assert_eq!(candidates.len(), 2);
         assert_eq!(candidates[0]["provider_id"], "fixture:high");
         assert_eq!(candidates[1]["provider_id"], "fixture:low");
+        assert_eq!(
+            response.payload["provider_execution"]["selected_provider_ids"],
+            serde_json::json!(["fixture"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["failed_provider_ids"],
+            serde_json::json!(["fixture"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["providers"][1]["status"],
+            "failed"
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["providers"][1]["safe_failure_reason"],
+            "provider_error"
+        );
+
+        let payload_text = serde_json::to_string(&response.payload).unwrap();
+        assert!(!payload_text.contains("synthetic provider failure"));
     }
 
     #[tokio::test]
@@ -613,6 +632,26 @@ mod tests {
         assert_eq!(*fc2_calls.lock().unwrap(), 1);
         assert_eq!(response.payload["candidates"][0]["provider"], "fc2");
         assert_eq!(response.payload["query"]["av"]["route"], "fc2");
+        assert_eq!(
+            response.payload["provider_execution"]["selected_provider_ids"],
+            serde_json::json!(["fc2"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["skipped_provider_ids"],
+            serde_json::json!(["javdb"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["returned_provider_ids"],
+            serde_json::json!(["fc2"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["providers"][0]["status"],
+            "skipped_by_av_route"
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["providers"][0]["av_route"],
+            "fc2"
+        );
     }
 
     #[tokio::test]
@@ -652,6 +691,14 @@ mod tests {
         assert_eq!(*fc2_calls.lock().unwrap(), 0);
         assert_eq!(response.payload["candidates"][0]["provider"], "javdb");
         assert_eq!(response.payload["query"]["av"]["route"], "censored");
+        assert_eq!(
+            response.payload["provider_execution"]["selected_provider_ids"],
+            serde_json::json!(["javdb"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["skipped_provider_ids"],
+            serde_json::json!(["fc2"])
+        );
     }
 
     #[test]

@@ -86,13 +86,13 @@ where
         let writeback_request = writeback::MetadataWritebackInput::from_payload(&request.payload);
         let artwork_writeback_request =
             artwork::ArtworkWritebackInput::from_payload(&request.payload);
-        let candidates = orchestration::suggest_candidates(
+        let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),
             &query,
             self.external_id_capabilities.as_ref().as_slice(),
         )
         .await;
-        let selected_candidate = candidates.first().cloned();
+        let selected_candidate = suggestions.candidates.first().cloned();
         let writeback_result = writeback::maybe_submit_metadata_writeback(
             self.nako_runtime.as_ref(),
             &request.request_id,
@@ -105,7 +105,7 @@ where
             self.nako_runtime.as_ref(),
             &request.request_id,
             &query,
-            &candidates,
+            &suggestions.candidates,
             artwork_writeback_request,
         )
         .await;
@@ -113,7 +113,8 @@ where
         response::metadata_response(
             request,
             &query,
-            candidates,
+            suggestions.candidates,
+            suggestions.execution,
             writeback_result,
             artwork_writeback_result,
         )

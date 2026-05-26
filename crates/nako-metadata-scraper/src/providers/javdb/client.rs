@@ -43,6 +43,14 @@ where
         )
     }
 
+    pub(super) fn detail_url(&self, movie_id: &str) -> String {
+        format!(
+            "{}/v/{}",
+            self.config.base_url.trim_end_matches('/'),
+            percent_encode_path_segment(movie_id)
+        )
+    }
+
     pub(super) fn absolute_url(&self, href: &str) -> String {
         if href.starts_with("http://") || href.starts_with("https://") {
             return href.to_owned();
@@ -79,4 +87,8 @@ fn percent_encode_query(value: &str) -> String {
         }
     }
     encoded
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    percent_encode_query(value)
 }

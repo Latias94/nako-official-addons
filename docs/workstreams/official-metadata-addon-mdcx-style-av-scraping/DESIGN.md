@@ -1,6 +1,6 @@
 # Official Metadata Addon MDCx-Style AV Scraping
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Problem
@@ -21,6 +21,9 @@ MDCx shows the mature shape of this domain: clean file names before search, norm
 - Add a disabled-by-default browser-worker-backed JavDB provider baseline using the existing rendered-page runtime.
 - Make JavDB search by normalized AV number, parse search/detail pages separately, and emit external IDs for `javdb`, `javdb_url`, and `av_number`.
 - Keep Nako-owned scheduling/retry/cancel semantics by extending the existing `bulk-metadata-scrape` task instead of adding a second batch executor.
+- Treat declared provider external ID capabilities as executable contracts: `javdb_id` and `fc2_id` must perform direct lookup without relying on filename-derived AV numbers.
+- Add provider execution diagnostics so batch and single-scrape users can see which route-aware providers were selected, skipped, failed, or produced candidates.
+- Add resumable bounded-batch accounting so retries can continue from a cursor and aggregate provider/failure categories without owning Nako's scheduler.
 
 ## Scope
 
@@ -50,6 +53,8 @@ MDCx shows the mature shape of this domain: clean file names before search, norm
 
 AV recognition belongs in `engine::query`, not in one provider. Providers should consume normalized facts and return external IDs. This keeps future providers such as FC2, JavBus-like, or DMM-like sources from each implementing incompatible file-name parsing.
 
+Direct provider IDs are a stronger signal than inferred AV numbers. Provider implementations should try explicit IDs first, then fall back to normalized AV facts and route-aware search/direct lookup. This matches MDCx's mature behavior of preferring appointed/exact sources when the user supplied one.
+
 JavDB is introduced disabled by default. Enabling it should require:
 
 - `NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED=true`
@@ -57,3 +62,4 @@ JavDB is introduced disabled by default. Enabling it should require:
 
 The first bulk upgrade is diagnostic: every processed item gets an optional `av` summary copied from the scrape response query. It is intentionally small and stable so core Nako task history can index it without provider-specific coupling.
 
+The maturity pass keeps the same ownership split: Nako still owns job scheduling and retries; this sidecar only returns enough cursor, item, failure, provider, and reuse accounting for Nako to resume safely.

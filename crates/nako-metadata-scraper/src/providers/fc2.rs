@@ -169,7 +169,7 @@ where
 mod tests {
     use crate::{
         config::Fc2ProviderConfig,
-        engine::MetadataQuery,
+        engine::{MetadataQuery, QueryExternalId},
         providers::http_runtime::{ProviderHttpRuntime, ProviderHttpRuntimeConfig},
     };
 
@@ -292,5 +292,76 @@ mod tests {
 
         assert!(candidates.is_empty());
         assert!(transport.requests().is_empty());
+    }
+
+    #[tokio::test]
+    async fn fc2_provider_uses_explicit_fc2_id_for_direct_detail_lookup() {
+        let transport = FakeTransport::default();
+        transport.push_rendered_html(
+            "https://fc2.example/article/1723984/",
+            "FC2-1723984 Direct Lookup Title",
+            r#"
+<!doctype html>
+<html>
+<head>
+  <meta property="og:image" content="https://img.example/fc2-direct-cover.jpg">
+</head>
+<body>
+  <h1>FC2-1723984 Direct Lookup Title</h1>
+  <div class="items_article_info">
+    <span>販売日:</span> 2024-04-20
+    <span>販売者:</span> FC2 Seller
+    <span>収録時間:</span> 88分
+  </div>
+  <section class="items_article_Comment">Direct lookup outline.</section>
+  <a href="/genre/1">素人</a>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = Fc2MetadataProvider::with_runtime(
+            Fc2ProviderConfig::new(
+                "https://fc2.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Untrusted Raw Title".to_owned(),
+                year: None,
+                language: "zh-CN".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "fc2".to_owned(),
+                    value: "1723984".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "fc2:article:1723984");
+        assert_eq!(
+            candidates[0].patch.title.as_deref(),
+            Some("FC2-1723984 Direct Lookup Title")
+        );
+        assert!(candidates[0].facts.external_ids.iter().any(|id| {
+            id.provider == AV_NUMBER_EXTERNAL_ID_PROVIDER && id.value == "FC2-1723984"
+        }));
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 1);
+        let body: serde_json::Value =
+            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(body["url"], "https://fc2.example/article/1723984/");
     }
 }

@@ -48,6 +48,8 @@ Status: Complete
 
 ## Follow-Up - Batch Maturity
 
-Status: Candidate
+Status: Complete
 
-- Add cross-batch failure accounting beyond this vertical slice.
+- `javdb_id` and `fc2_id` perform direct lookup through provider-owned code paths.
+- Single scrape responses expose redaction-safe provider execution summaries.
+- Bulk output supports resumable cursor accounting, richer failure categories, and provider-level summaries.

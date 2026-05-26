@@ -5,7 +5,7 @@ use crate::engine::{
 
 use super::{
     JavdbMetadataProvider,
-    parser::{parse_detail_page, parse_search_results},
+    parser::{JavdbSearchResult, parse_detail_page, parse_search_results},
 };
 
 impl<T> JavdbMetadataProvider<T>
@@ -16,6 +16,27 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        if let Some(movie_id) = explicit_javdb_id(query) {
+            let detail_url = self.detail_url(&movie_id);
+            let detail = self.render(detail_url.clone()).await?;
+            let search_result = JavdbSearchResult {
+                movie_id,
+                url: detail_url.clone(),
+                title: query.title.clone(),
+                number: query.title.clone(),
+            };
+            if let Some(detail) = parse_detail_page(
+                &detail.html,
+                &search_result,
+                &detail_url,
+                facts_from_query(query)
+                    .or_else(|| facts_from_text(&query.title, AvNumberSource::QueryTitle)),
+            ) {
+                return Ok(vec![detail.into_candidate(query)]);
+            }
+            return Ok(Vec::new());
+        }
+
         let Some(av_facts) = facts_from_query(query) else {
             return Ok(Vec::new());
         };
@@ -36,7 +57,7 @@ where
             let detail_av_facts = facts_from_text(&result.number, AvNumberSource::ExternalId)
                 .unwrap_or_else(|| av_facts.clone());
             if let Some(detail) =
-                parse_detail_page(&detail.html, &result, &detail_url, detail_av_facts)
+                parse_detail_page(&detail.html, &result, &detail_url, Some(detail_av_facts))
             {
                 candidates.push(detail.into_candidate(query));
             }
@@ -44,4 +65,14 @@ where
 
         Ok(candidates)
     }
+}
+
+fn explicit_javdb_id(query: &MetadataQuery) -> Option<String> {
+    query
+        .external_ids
+        .iter()
+        .find(|external_id| external_id.provider.eq_ignore_ascii_case("javdb"))
+        .map(|external_id| external_id.value.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
 }

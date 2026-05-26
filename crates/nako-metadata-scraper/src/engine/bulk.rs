@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonResource, AddonResourceRequest, AddonTaskRequest,
@@ -42,6 +42,8 @@ struct BulkMetadataScrapeTaskInput {
     cursor: Option<usize>,
     #[serde(default)]
     batch_size: Option<usize>,
+    #[serde(default)]
+    resume_state: BulkMetadataScrapeResumeState,
 }
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
@@ -56,6 +58,7 @@ struct BulkMetadataScrapeTaskOutput {
     remaining_items: usize,
     next_cursor: Option<usize>,
     summary: BulkMetadataScrapeTaskSummary,
+    resume_state: BulkMetadataScrapeResumeState,
     items: Vec<BulkMetadataScrapeTaskItemOutput>,
 }
 
@@ -65,6 +68,20 @@ struct BulkMetadataScrapeTaskSummary {
     reused_items: usize,
     av_items: usize,
     empty_candidate_items: usize,
+    failed_items: usize,
+    failure_reasons: BTreeMap<String, usize>,
+    provider_execution: Vec<BulkMetadataScrapeProviderSummary>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Eq, PartialEq)]
+struct BulkMetadataScrapeProviderSummary {
+    provider_id: String,
+    selected_items: usize,
+    skipped_by_route_items: usize,
+    returned_items: usize,
+    empty_items: usize,
+    failed_items: usize,
+    returned_candidate_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
@@ -89,6 +106,23 @@ struct BulkMetadataScrapeReuseKey {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct BulkMetadataScrapeReuseEntry {
     index: usize,
+    av: Option<Value>,
+    payload: Value,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+struct BulkMetadataScrapeResumeState {
+    #[serde(default)]
+    reusable_items: Vec<BulkMetadataScrapeResumeItem>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+struct BulkMetadataScrapeResumeItem {
+    av_number: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    language_hint: Option<String>,
+    index: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     av: Option<Value>,
     payload: Value,
 }
@@ -161,8 +195,7 @@ where
 
         let mut items = Vec::with_capacity(plan.item_indexes.len());
         let mut summary = BulkMetadataScrapeTaskSummary::default();
-        let mut reuse_cache =
-            HashMap::<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry>::new();
+        let mut reuse_cache = input.resume_state.into_reuse_cache();
         for index in &plan.item_indexes {
             let item_request_id = format!("{}:item-{}", request_id, index);
             let payload = input.items[*index].clone();
@@ -178,9 +211,7 @@ where
                 let item_av = planned_av.or_else(|| entry.av.clone());
                 let item_payload = reused_item_payload(&entry.payload, item_av.as_ref());
                 let safe_failure_reason = safe_failure_reason_for_payload(&item_payload);
-                if safe_failure_reason.is_some() {
-                    summary.empty_candidate_items += 1;
-                }
+                summary.record_failure(safe_failure_reason);
                 summary.reused_items += 1;
                 items.push(BulkMetadataScrapeTaskItemOutput {
                     index: *index,
@@ -205,9 +236,8 @@ where
             let av = item_response.payload["query"].get("av").cloned();
             let item_av = planned_av.or(av);
             let safe_failure_reason = safe_failure_reason_for_payload(&item_response.payload);
-            if safe_failure_reason.is_some() {
-                summary.empty_candidate_items += 1;
-            }
+            summary.record_failure(safe_failure_reason);
+            summary.record_provider_execution(&item_response.payload);
             summary.scraped_items += 1;
             if let Some(cache_key) = reuse_key {
                 reuse_cache.insert(
@@ -240,6 +270,7 @@ where
             remaining_items: plan.remaining_items(),
             next_cursor: plan.next_cursor,
             summary,
+            resume_state: BulkMetadataScrapeResumeState::from_reuse_cache(&reuse_cache),
             items,
         };
 
@@ -251,6 +282,82 @@ where
             request_id,
             output: serde_json::to_value(output).expect("bulk task output is serializable"),
         })
+    }
+}
+
+impl BulkMetadataScrapeTaskSummary {
+    fn record_failure(&mut self, safe_failure_reason: Option<&'static str>) {
+        let Some(reason) = safe_failure_reason else {
+            return;
+        };
+
+        self.empty_candidate_items += 1;
+        self.failed_items += 1;
+        *self.failure_reasons.entry(reason.to_owned()).or_default() += 1;
+    }
+
+    fn record_provider_execution(&mut self, payload: &Value) {
+        let Some(reports) = payload
+            .get("provider_execution")
+            .and_then(|value| value.get("providers"))
+            .and_then(Value::as_array)
+        else {
+            return;
+        };
+
+        for report in reports {
+            let Some(provider_id) = report.get("provider_id").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(status) = report.get("status").and_then(Value::as_str) else {
+                continue;
+            };
+            let candidate_count = report
+                .get("candidate_count")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as usize;
+            let provider = self.provider_summary_mut(provider_id);
+
+            match status {
+                "skipped_by_av_route" => provider.skipped_by_route_items += 1,
+                "returned_candidates" => {
+                    provider.selected_items += 1;
+                    provider.returned_items += 1;
+                    provider.returned_candidate_count += candidate_count;
+                }
+                "empty" => {
+                    provider.selected_items += 1;
+                    provider.empty_items += 1;
+                }
+                "failed" => {
+                    provider.selected_items += 1;
+                    provider.failed_items += 1;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn provider_summary_mut(
+        &mut self,
+        provider_id: &str,
+    ) -> &mut BulkMetadataScrapeProviderSummary {
+        if let Some(index) = self
+            .provider_execution
+            .iter()
+            .position(|summary| summary.provider_id == provider_id)
+        {
+            return &mut self.provider_execution[index];
+        }
+
+        self.provider_execution
+            .push(BulkMetadataScrapeProviderSummary {
+                provider_id: provider_id.to_owned(),
+                ..BulkMetadataScrapeProviderSummary::default()
+            });
+        self.provider_execution
+            .last_mut()
+            .expect("provider summary was just pushed")
     }
 }
 
@@ -270,6 +377,60 @@ impl BulkMetadataScrapeReuseKey {
     }
 }
 
+impl BulkMetadataScrapeResumeState {
+    fn into_reuse_cache(self) -> HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry> {
+        self.reusable_items
+            .into_iter()
+            .filter_map(|item| {
+                let key = item.reuse_key()?;
+                let entry = BulkMetadataScrapeReuseEntry {
+                    index: item.index,
+                    av: item.av,
+                    payload: item.payload,
+                };
+                Some((key, entry))
+            })
+            .collect()
+    }
+
+    fn from_reuse_cache(
+        reuse_cache: &HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry>,
+    ) -> Self {
+        let mut reusable_items = reuse_cache
+            .iter()
+            .map(|(key, entry)| BulkMetadataScrapeResumeItem {
+                av_number: key.av_number.clone(),
+                language_hint: key.language_hint.clone(),
+                index: entry.index,
+                av: entry.av.clone(),
+                payload: entry.payload.clone(),
+            })
+            .collect::<Vec<_>>();
+        reusable_items.sort_by(|left, right| {
+            left.av_number
+                .cmp(&right.av_number)
+                .then_with(|| left.language_hint.cmp(&right.language_hint))
+                .then_with(|| left.index.cmp(&right.index))
+        });
+        Self { reusable_items }
+    }
+}
+
+impl BulkMetadataScrapeResumeItem {
+    fn reuse_key(&self) -> Option<BulkMetadataScrapeReuseKey> {
+        let av_facts = av::facts_from_text(&self.av_number, av::AvNumberSource::ExternalId)?;
+        Some(BulkMetadataScrapeReuseKey {
+            av_number: av_facts.number,
+            language_hint: self
+                .language_hint
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned),
+        })
+    }
+}
+
 fn av_facts_value_from_payload(payload: &Value) -> Option<Value> {
     av::facts_from_payload(payload)
         .map(|facts| serde_json::to_value(facts).expect("AV query facts are serializable"))
@@ -284,11 +445,35 @@ fn reused_item_payload(payload: &Value, av: Option<&Value>) -> Value {
 }
 
 fn safe_failure_reason_for_payload(payload: &Value) -> Option<&'static str> {
-    payload
+    let has_no_candidates = payload
         .get("candidates")
         .and_then(Value::as_array)
+        .is_some_and(Vec::is_empty);
+    if !has_no_candidates {
+        return None;
+    }
+
+    let provider_execution = payload.get("provider_execution");
+    if provider_execution
+        .and_then(|value| value.get("failed_provider_ids"))
+        .and_then(Value::as_array)
+        .is_some_and(|values| !values.is_empty())
+    {
+        return Some("provider_failed");
+    }
+    if provider_execution
+        .and_then(|value| value.get("selected_provider_ids"))
+        .and_then(Value::as_array)
         .is_some_and(Vec::is_empty)
-        .then_some("no_candidates")
+        && provider_execution
+            .and_then(|value| value.get("skipped_provider_ids"))
+            .and_then(Value::as_array)
+            .is_some_and(|values| !values.is_empty())
+    {
+        return Some("provider_skipped_by_route");
+    }
+
+    Some("no_candidates")
 }
 
 fn has_side_effect_request(payload: &Value, key: &str) -> bool {
@@ -479,6 +664,76 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bulk_metadata_scrape_reuses_resume_state_across_batches() {
+        let runtime =
+            MetadataScrapeRuntime::<crate::nako_runtime::ReqwestNakoRuntimeTransport>::new(
+                "zh-CN",
+                vec![Box::new(BulkCandidateProvider)],
+                None,
+            );
+
+        let first_response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-1".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "cursor": 0,
+                    "batch_size": 1,
+                    "items": [
+                        {"file_name": "SSNI-00644-CD1.mp4"},
+                        {"file_name": "ssni00644-CD2.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        let resume_state = first_response.output["resume_state"].clone();
+        let second_response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-2".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "cursor": 1,
+                    "batch_size": 1,
+                    "resume_state": resume_state,
+                    "items": [
+                        {"file_name": "SSNI-00644-CD1.mp4"},
+                        {"file_name": "ssni00644-CD2.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            first_response.output["resume_state"]["reusable_items"][0]["av_number"],
+            "SSNI-644"
+        );
+        assert_eq!(second_response.output["summary"]["scraped_items"], 0);
+        assert_eq!(second_response.output["summary"]["reused_items"], 1);
+        assert_eq!(
+            second_response.output["items"][0]["payload"]["query"]["title"],
+            "SSNI-644"
+        );
+        assert_eq!(second_response.output["items"][0]["reused_from_index"], 0);
+    }
+
+    #[tokio::test]
     async fn bulk_metadata_scrape_does_not_reuse_items_with_side_effect_requests() {
         let transport = FakeTransport::default();
         transport.push(Ok(NakoRuntimeHttpResponse {
@@ -601,10 +856,70 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.output["summary"]["empty_candidate_items"], 1);
+        assert_eq!(response.output["summary"]["failed_items"], 1);
+        assert_eq!(
+            response.output["summary"]["failure_reasons"]["no_candidates"],
+            1
+        );
         assert_eq!(
             response.output["items"][0]["safe_failure_reason"],
             "no_candidates"
         );
+    }
+
+    #[tokio::test]
+    async fn bulk_metadata_scrape_summarizes_provider_execution_failures() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![Box::new(FailingBulkProvider)],
+            None,
+        );
+
+        let response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-1".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "batch_size": 1,
+                    "items": [
+                        {"file_name": "SSNI-00644.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(response.output["summary"]["failed_items"], 1);
+        assert_eq!(
+            response.output["summary"]["failure_reasons"]["provider_failed"],
+            1
+        );
+        assert_eq!(
+            response.output["items"][0]["safe_failure_reason"],
+            "provider_failed"
+        );
+        assert_eq!(
+            response.output["summary"]["provider_execution"][0]["provider_id"],
+            "fixture"
+        );
+        assert_eq!(
+            response.output["summary"]["provider_execution"][0]["selected_items"],
+            1
+        );
+        assert_eq!(
+            response.output["summary"]["provider_execution"][0]["failed_items"],
+            1
+        );
+
+        let output_text = serde_json::to_string(&response.output).unwrap();
+        assert!(!output_text.contains("raw provider failure"));
     }
 
     #[tokio::test]
@@ -789,6 +1104,8 @@ mod tests {
 
     struct BulkCandidateProvider;
 
+    struct FailingBulkProvider;
+
     #[async_trait]
     impl MetadataProvider for BulkCandidateProvider {
         fn id(&self) -> crate::config::ProviderId {
@@ -836,6 +1153,20 @@ mod tests {
                     },
                 }],
             }])
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for FailingBulkProvider {
+        fn id(&self) -> crate::config::ProviderId {
+            crate::config::ProviderId::Fixture
+        }
+
+        async fn suggest(
+            &self,
+            _query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            anyhow::bail!("raw provider failure with https://private.example/secret")
         }
     }
 }

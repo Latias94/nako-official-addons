@@ -28,19 +28,23 @@ The user asked to reference `repo-ref/mdcx` for mature AV scraping and batch str
 - Provider registry, manifest schema, README, example manifest, and diagnostics know about JavDB and FC2.
 - AV route-aware orchestration keeps FC2 numbers on the FC2 path and non-FC2 AV numbers on the JavDB path.
 - Candidate evidence includes redaction-safe `field_sources`, `provider_sources`, and `merge_reasons` for merged provider facts.
+- Explicit `javdb` and `fc2` query external IDs now trigger direct provider-owned detail lookup before inferred AV-number search.
+- Metadata scrape responses include `provider_execution` with selected, skipped-by-route, returned, empty, and failed provider reports.
+- Bulk task output includes `resume_state`, richer `failure_reasons`, `failed_items`, and provider-level execution summaries.
 
 ## Validation
 
 - `cargo nextest run -p nako-metadata-scraper av --no-fail-fast`: passed.
 - `cargo nextest run -p nako-metadata-scraper engine --no-fail-fast`: 66 passed.
-- `cargo nextest run -p nako-metadata-scraper javdb --no-fail-fast`: 5 passed.
-- `cargo nextest run -p nako-metadata-scraper fc2 --no-fail-fast`: 6 passed.
-- `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`: 8 passed.
-- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: 171 passed, 2 skipped.
+- `cargo nextest run -p nako-metadata-scraper javdb --no-fail-fast`: 6 passed.
+- `cargo nextest run -p nako-metadata-scraper fc2 --no-fail-fast`: 7 passed.
+- `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`: 10 passed.
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast`: 175 passed, 2 skipped.
 - `rustfmt --edition 2024 --check <modified nako-metadata-scraper rust files>`: passed.
 - `git diff --check`: passed.
 
 ## Next Steps
 
-1. Commit this vertical slice.
-2. Decide whether to open OMAV-080 for richer cross-batch failure accounting and resume semantics.
+1. Run final package, format, JSON, and diff gates after any last edits.
+2. Commit the completed maturity pass.
+3. Keep any future AV work as a new workstream, likely for additional providers or field-reducer policy.

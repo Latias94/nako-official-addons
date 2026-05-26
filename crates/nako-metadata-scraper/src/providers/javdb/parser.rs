@@ -65,7 +65,7 @@ pub(super) fn parse_detail_page(
     html: &str,
     search_result: &JavdbSearchResult,
     detail_url: &str,
-    av: AvQueryFacts,
+    av: Option<AvQueryFacts>,
 ) -> Option<JavdbDetailFacts> {
     let document = Html::parse_document(html);
     let body_text = element_text(&document, "body").unwrap_or_default();
@@ -87,6 +87,17 @@ pub(super) fn parse_detail_page(
     let director = labeled_value(&info_text, &["導演", "导演", "Director"]);
     let actors = link_texts(&document, "a[href*=\"/actors/\"]");
     let tags = link_texts(&document, "a[href*=\"/tags/\"]");
+    let detail_number = first_non_empty(&[
+        attr_value(
+            &document,
+            ".copy-to-clipboard[data-clipboard-text]",
+            "data-clipboard-text",
+        )
+        .as_deref(),
+        detail_number_from_info_text(&info_text).as_deref(),
+        Some(search_result.number.as_str()),
+    ])
+    .unwrap_or_else(|| search_result.number.clone());
     let rating_milli = element_text(&document, ".score, .rating, strong.score")
         .and_then(|value| parse_rating_milli(&value));
     let wanted_count = element_text(&document, ".wanted, .want")
@@ -98,6 +109,12 @@ pub(super) fn parse_detail_page(
         &document,
         ".preview-images img, .tile-images img, a.tile-item img",
     );
+
+    let av = crate::engine::av::facts_from_text(
+        &detail_number,
+        crate::engine::av::AvNumberSource::ExternalId,
+    )
+    .or(av)?;
 
     Some(JavdbDetailFacts {
         movie_id: search_result.movie_id.clone(),
@@ -118,6 +135,10 @@ pub(super) fn parse_detail_page(
         poster_url: poster_url.map(normalize_url),
         backdrop_urls: backdrop_urls.into_iter().map(normalize_url).collect(),
     })
+}
+
+fn detail_number_from_info_text(text: &str) -> Option<String> {
+    labeled_value(text, &["番號", "番号", "識別碼", "ID", "Number"])
 }
 
 fn element_text(document: &Html, selector: &str) -> Option<String> {
@@ -205,6 +226,11 @@ fn labeled_value_by_label(text: &str, label: &str) -> Option<String> {
         "Director:",
         "想看:",
         "Wanted:",
+        "番號:",
+        "番号:",
+        "識別碼:",
+        "ID:",
+        "Number:",
     ]
     .into_iter()
     .filter(|next_marker| *next_marker != marker)
