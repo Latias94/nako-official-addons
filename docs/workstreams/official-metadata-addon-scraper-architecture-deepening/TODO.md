@@ -4,21 +4,14 @@ Prefix: OMSAD
 
 ## Active
 
-- [ ] OMSAD-050 [owner=codex] [deps=OMSAD-040] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers/mod.rs,crates/nako-metadata-scraper/src/providers/*,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/resolver.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Move AV provider field-quality/default policy facts toward provider descriptors and stop hard-coding default provider identity lists in engine query code.
-  Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm request-provided `provider_field_policy` still overrides defaults and docs describe descriptor-derived defaults.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMSAD-060 [owner=codex] [deps=OMSAD-050] [scope=crates/nako-metadata-scraper/src/engine/resolver.rs,crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/native_writeback.rs]
   Goal: Split entity resolution from candidate fusion/ranking/native writeback projection so each Interface is testable at one Seam.
   Validation: `cargo nextest run -p nako-metadata-scraper resolver ranking artwork writeback av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm resolver owns cluster identity, fusion owns field selection/evidence, ranking owns ordering, and native writeback projection is not hidden inside ranking.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMSAD-070 [owner=codex] [deps=OMSAD-020,OMSAD-060] [scope=crates/nako-metadata-scraper/src/engine/writeback.rs,crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/runtime.rs]
   Goal: Consolidate metadata/artwork side-effect writeback into one state machine Module with type-specific adapters for payload and provenance.
@@ -62,7 +55,14 @@ Prefix: OMSAD
   Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirmed `RenderedAvFlow` owns direct URL/ID lookup, AV route gating, search-to-detail, first-result empty behavior, and detail rendering; provider adapters retain URL construction, parser, and mapper quirks.
   Evidence: PASS on 2026-05-26; rendered AV flow red/green tracer passed and 33 focused Rust tests passed.
-  Handoff: DONE. OMSAD-050 is active.
+  Handoff: DONE. OMSAD-050 completed.
+
+- [x] OMSAD-050 [owner=codex] [deps=OMSAD-040] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers/mod.rs,crates/nako-metadata-scraper/src/providers/*,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/routes.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Move AV provider field-quality/default policy facts toward provider descriptors and stop hard-coding default provider identity lists in engine query code.
+  Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed request-provided `provider_field_policy` still overrides defaults; default AV field policy is generated from `ProviderFieldQualityDescriptor` scores in provider catalog entries and docs describe descriptor-derived defaults.
+  Evidence: PASS on 2026-05-26; provider descriptor red/green tracer passed and 62 focused Rust tests passed.
+  Handoff: DONE. OMSAD-060 is active.
 
 ## Follow-Up Candidates
 

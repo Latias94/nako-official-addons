@@ -29,7 +29,7 @@ Exit criteria:
 - JavBus/JavLibrary/MGStage share rendered AV flow for direct lookup, route
   gating, search-to-detail, and empty/failure behavior.
 
-## M4 - Provider Quality And Candidate Fusion
+## M4 - Provider Quality And Candidate Fusion (In Progress)
 
 Exit criteria:
 

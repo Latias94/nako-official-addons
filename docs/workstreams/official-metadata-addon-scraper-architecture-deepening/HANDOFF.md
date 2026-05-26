@@ -17,6 +17,9 @@ shape all rendered-page requests without provider-local JSON assembly.
 OMSAD-040 is complete: `RenderedAvFlow` owns direct lookup, route gating,
 search-to-detail, empty result behavior, and detail rendering for JavBus,
 JavLibrary, and MGStage; provider adapters keep URL construction and parsing.
+OMSAD-050 is complete: default AV field policy is generated from provider
+quality descriptors in the catalog, runtime receives that default explicitly,
+and request-provided `provider_field_policy` still overrides it.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -24,13 +27,14 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-050
+- Task ID: OMSAD-060
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers/registry.rs`, `crates/nako-metadata-scraper/src/providers/mod.rs`, `crates/nako-metadata-scraper/src/providers/*`, `crates/nako-metadata-scraper/src/engine/query.rs`, `crates/nako-metadata-scraper/src/engine/resolver.rs`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
-- Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/engine/resolver.rs`, `crates/nako-metadata-scraper/src/engine/ranking.rs`, `crates/nako-metadata-scraper/src/engine/artwork.rs`, `crates/nako-metadata-scraper/src/engine/native_writeback.rs`
+- Validation: `cargo nextest run -p nako-metadata-scraper resolver ranking artwork writeback av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm request-provided `provider_field_policy` still overrides
-  defaults and docs describe descriptor-derived defaults.
+- Review: Confirm resolver owns cluster identity, fusion owns field
+  selection/evidence, ranking owns ordering, and native writeback projection is
+  not hidden inside ranking.
 - Evidence:
 
 ## Decisions
@@ -49,6 +53,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-050 by moving default AV field-quality/profile facts into
-  provider descriptors and removing provider identity lists from engine query
-  policy construction.
+- Execute OMSAD-060 by splitting resolver cluster identity, candidate
+  field-fusion/evidence, ranking, artwork selection, and native writeback
+  projection behind narrower test seams.

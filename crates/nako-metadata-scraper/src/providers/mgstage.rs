@@ -115,6 +115,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "mgstage_amateur_route",
             "browser_worker_rendered_html",
         ],
+        field_quality: crate::engine::ProviderFieldQualityDescriptor::new(550, 450, 550, 600),
         secret_reference: None,
         external_id_capabilities: MGSTAGE_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

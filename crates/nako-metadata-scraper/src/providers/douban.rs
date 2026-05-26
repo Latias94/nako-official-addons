@@ -101,6 +101,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "movie_search",
             "browser_worker_rendered_html",
         ],
+        field_quality: Default::default(),
         secret_reference: None,
         external_id_capabilities: DOUBAN_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

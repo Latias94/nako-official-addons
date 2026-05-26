@@ -380,13 +380,13 @@ priority inside an already-merged candidate cluster:
 The policy does not merge unrelated candidates by itself; it only chooses fields
 after providers have emitted compatible external IDs such as the same
 `av_number`. When no request policy is supplied, AV clusters use a conservative
-built-in policy inspired by MDCx's field-priority behavior: DMM is preferred
-before MGStage, JavDB, FC2, JavBus, and JavLibrary for official title,
-overview, release/runtime, and studio-like facts. Community actor and
-wanted-count fields prefer JavLibrary/JavDB first. Trailer and image fields
-prefer providers that usually carry media URLs, starting with MGStage/DMM/JavDB.
-Passing an explicit `provider_field_policy` object replaces that default for
-the request.
+default derived from provider quality descriptors inspired by MDCx's
+field-priority behavior: DMM is preferred before MGStage, JavDB, FC2, JavBus,
+and JavLibrary for official title, overview, release/runtime, and studio-like
+facts. Community actor and wanted-count fields prefer JavLibrary/JavDB first.
+Trailer and image fields prefer providers that usually carry media URLs,
+starting with MGStage/DMM/JavDB. Passing an explicit `provider_field_policy`
+object replaces that descriptor-derived default for the request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

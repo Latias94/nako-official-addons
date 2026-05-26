@@ -98,6 +98,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         default_enabled: false,
         enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
         capabilities: &["metadata_suggestion", "movie_search"],
+        field_quality: Default::default(),
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             TmdbProviderConfig::secret_field_id(),
             "TMDB Read Access Token",

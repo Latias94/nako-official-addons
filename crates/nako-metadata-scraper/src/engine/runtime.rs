@@ -20,6 +20,7 @@ where
     default_language: String,
     external_id_aliases: Arc<Vec<QueryExternalIdAlias>>,
     external_id_capabilities: Arc<Vec<ProviderExternalIdCapability>>,
+    default_provider_field_policy: Arc<ProviderFieldPolicy>,
     providers: Arc<Vec<Box<dyn MetadataProvider>>>,
     nako_runtime: Option<NakoRuntimeClient<T>>,
 }
@@ -44,10 +45,28 @@ where
         providers: Vec<Box<dyn MetadataProvider>>,
         nako_runtime: Option<NakoRuntimeClient<T>>,
     ) -> Self {
+        Self::with_external_id_aliases_and_provider_field_policy(
+            default_language,
+            external_id_aliases,
+            ProviderFieldPolicy::default(),
+            providers,
+            nako_runtime,
+        )
+    }
+
+    #[must_use]
+    pub fn with_external_id_aliases_and_provider_field_policy(
+        default_language: impl Into<String>,
+        external_id_aliases: Vec<QueryExternalIdAlias>,
+        default_provider_field_policy: ProviderFieldPolicy,
+        providers: Vec<Box<dyn MetadataProvider>>,
+        nako_runtime: Option<NakoRuntimeClient<T>>,
+    ) -> Self {
         Self {
             default_language: default_language.into(),
             external_id_aliases: Arc::new(external_id_aliases),
             external_id_capabilities: Arc::new(Vec::new()),
+            default_provider_field_policy: Arc::new(default_provider_field_policy),
             providers: Arc::new(providers),
             nako_runtime,
         }
@@ -60,10 +79,28 @@ where
         providers: Vec<Box<dyn MetadataProvider>>,
         nako_runtime: Option<NakoRuntimeClient<T>>,
     ) -> Self {
+        Self::with_external_id_capabilities_and_provider_field_policy(
+            default_language,
+            external_id_capabilities,
+            ProviderFieldPolicy::default(),
+            providers,
+            nako_runtime,
+        )
+    }
+
+    #[must_use]
+    pub fn with_external_id_capabilities_and_provider_field_policy(
+        default_language: impl Into<String>,
+        external_id_capabilities: Vec<ProviderExternalIdCapability>,
+        default_provider_field_policy: ProviderFieldPolicy,
+        providers: Vec<Box<dyn MetadataProvider>>,
+        nako_runtime: Option<NakoRuntimeClient<T>>,
+    ) -> Self {
         Self {
             default_language: default_language.into(),
             external_id_aliases: Arc::new(Vec::new()),
             external_id_capabilities: Arc::new(external_id_capabilities),
+            default_provider_field_policy: Arc::new(default_provider_field_policy),
             providers: Arc::new(providers),
             nako_runtime,
         }
@@ -96,7 +133,10 @@ where
         };
         let writeback_request = writeback::MetadataWritebackInput::from_payload(payload);
         let artwork_writeback_request = artwork::ArtworkWritebackInput::from_payload(payload);
-        let provider_field_policy = ProviderFieldPolicy::from_payload(payload);
+        let provider_field_policy = ProviderFieldPolicy::from_payload_or_default(
+            payload,
+            self.default_provider_field_policy.as_ref(),
+        );
         let provider_run_policy = ProviderRunPolicy::from_payload(payload);
         let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),

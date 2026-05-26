@@ -107,6 +107,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "fc2_direct_lookup",
             "browser_worker_rendered_html",
         ],
+        field_quality: crate::engine::ProviderFieldQualityDescriptor::new(450, 350, 450, 300),
         secret_reference: None,
         external_id_capabilities: FC2_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

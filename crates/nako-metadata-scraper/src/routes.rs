@@ -35,18 +35,21 @@ pub struct AppState {
 pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
     let external_id_capabilities = registry.external_id_capabilities();
+    let default_provider_field_policy = ProviderRegistry::default_provider_field_policy();
     let provider_assembly = registry.assemble();
     let provider_diagnostics = provider_assembly.diagnostics;
     let providers = provider_assembly.providers;
     let nako_runtime = NakoRuntimeClientConfig::from_runtime_config(&config.nako_runtime)
         .map(NakoRuntimeClient::new);
     let state = AppState {
-        metadata_runtime: MetadataScrapeRuntime::with_external_id_capabilities(
-            config.preferred_language.clone(),
-            external_id_capabilities,
-            providers,
-            nako_runtime,
-        ),
+        metadata_runtime:
+            MetadataScrapeRuntime::with_external_id_capabilities_and_provider_field_policy(
+                config.preferred_language.clone(),
+                external_id_capabilities,
+                default_provider_field_policy,
+                providers,
+                nako_runtime,
+            ),
         provider_diagnostics,
         config,
     };

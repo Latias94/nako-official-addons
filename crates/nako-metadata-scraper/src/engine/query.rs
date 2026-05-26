@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::{av, title};
@@ -25,6 +25,36 @@ pub struct ProviderFieldPolicy {
     preferences: BTreeMap<String, Vec<String>>,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
+pub struct ProviderFieldQualityDescriptor {
+    pub official_av: u16,
+    pub community_av: u16,
+    pub artwork_av: u16,
+    pub trailer_av: u16,
+}
+
+impl ProviderFieldQualityDescriptor {
+    #[must_use]
+    pub const fn new(
+        official_av: u16,
+        community_av: u16,
+        artwork_av: u16,
+        trailer_av: u16,
+    ) -> Self {
+        Self {
+            official_av,
+            community_av,
+            artwork_av,
+            trailer_av,
+        }
+    }
+
+    #[must_use]
+    pub const fn none() -> Self {
+        Self::new(0, 0, 0, 0)
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct ProviderRunPolicy {
     disabled_provider_ids: Vec<String>,
@@ -32,51 +62,50 @@ pub(crate) struct ProviderRunPolicy {
 
 impl ProviderFieldPolicy {
     #[must_use]
-    pub fn default_av() -> Self {
-        const OFFICIAL_FIRST: &[&str] = &["dmm", "mgstage", "javdb", "fc2", "javbus", "javlibrary"];
-        const COMMUNITY_FIRST: &[&str] =
-            &["javlibrary", "javdb", "dmm", "mgstage", "javbus", "fc2"];
-        const ARTWORK_FIRST: &[&str] = &["dmm", "mgstage", "javdb", "fc2", "javbus"];
-        let preferences = [
-            ("title", OFFICIAL_FIRST),
-            ("original_title", OFFICIAL_FIRST),
-            ("sort_title", OFFICIAL_FIRST),
-            ("overview", OFFICIAL_FIRST),
-            ("release_date", OFFICIAL_FIRST),
-            ("runtime_minutes", OFFICIAL_FIRST),
-            ("tagline", OFFICIAL_FIRST),
-            ("genres", OFFICIAL_FIRST),
-            ("tags", OFFICIAL_FIRST),
-            ("actors", COMMUNITY_FIRST),
-            ("all_actors", COMMUNITY_FIRST),
-            ("directors", OFFICIAL_FIRST),
-            ("series", OFFICIAL_FIRST),
-            ("studio", OFFICIAL_FIRST),
-            ("publisher", OFFICIAL_FIRST),
-            ("maker", OFFICIAL_FIRST),
-            ("label", OFFICIAL_FIRST),
-            ("wanted_count", COMMUNITY_FIRST),
-            ("thumb_url", ARTWORK_FIRST),
-            (
-                "trailer_url",
-                &["mgstage", "dmm", "javdb", "fc2", "javbus"][..],
-            ),
-            ("extrafanart_urls", ARTWORK_FIRST),
-            ("poster", ARTWORK_FIRST),
-            ("backdrop", ARTWORK_FIRST),
-            ("artwork", ARTWORK_FIRST),
-        ]
-        .into_iter()
-        .map(|(field, providers)| {
-            (
-                field.to_owned(),
-                providers
-                    .iter()
-                    .map(|provider| (*provider).to_owned())
-                    .collect(),
-            )
-        })
-        .collect();
+    pub fn from_provider_field_quality_descriptors(
+        descriptors: impl IntoIterator<Item = (&'static str, ProviderFieldQualityDescriptor)>,
+    ) -> Self {
+        const OFFICIAL_AV_FIELDS: &[&str] = &[
+            "title",
+            "original_title",
+            "sort_title",
+            "overview",
+            "release_date",
+            "runtime_minutes",
+            "tagline",
+            "genres",
+            "tags",
+            "directors",
+            "series",
+            "studio",
+            "publisher",
+            "maker",
+            "label",
+        ];
+        const COMMUNITY_AV_FIELDS: &[&str] = &["actors", "all_actors", "wanted_count"];
+        const ARTWORK_AV_FIELDS: &[&str] = &[
+            "thumb_url",
+            "extrafanart_urls",
+            "poster",
+            "backdrop",
+            "artwork",
+        ];
+        const TRAILER_AV_FIELDS: &[&str] = &["trailer_url"];
+
+        let descriptors = descriptors
+            .into_iter()
+            .enumerate()
+            .collect::<Vec<(usize, (&'static str, ProviderFieldQualityDescriptor))>>();
+        let official = providers_by_quality(&descriptors, |quality| quality.official_av);
+        let community = providers_by_quality(&descriptors, |quality| quality.community_av);
+        let artwork = providers_by_quality(&descriptors, |quality| quality.artwork_av);
+        let trailer = providers_by_quality(&descriptors, |quality| quality.trailer_av);
+
+        let mut preferences = BTreeMap::new();
+        insert_policy_fields(&mut preferences, OFFICIAL_AV_FIELDS, &official);
+        insert_policy_fields(&mut preferences, COMMUNITY_AV_FIELDS, &community);
+        insert_policy_fields(&mut preferences, ARTWORK_AV_FIELDS, &artwork);
+        insert_policy_fields(&mut preferences, TRAILER_AV_FIELDS, &trailer);
 
         Self { preferences }
     }
@@ -94,12 +123,15 @@ impl ProviderFieldPolicy {
     }
 
     #[must_use]
-    pub fn from_payload(payload: &serde_json::Value) -> Self {
+    pub fn from_payload_or_default(
+        payload: &serde_json::Value,
+        default_policy: &ProviderFieldPolicy,
+    ) -> Self {
         let Some(policy) = payload.get("provider_field_policy") else {
-            return Self::default_av();
+            return default_policy.clone();
         };
         let Some(values) = policy.as_object() else {
-            return Self::default_av();
+            return default_policy.clone();
         };
 
         let mut preferences = BTreeMap::<String, Vec<String>>::new();
@@ -115,6 +147,37 @@ impl ProviderFieldPolicy {
         }
 
         Self { preferences }
+    }
+}
+
+fn providers_by_quality(
+    descriptors: &[(usize, (&'static str, ProviderFieldQualityDescriptor))],
+    score: impl Fn(ProviderFieldQualityDescriptor) -> u16,
+) -> Vec<String> {
+    let mut providers = descriptors
+        .iter()
+        .filter_map(|(index, (provider, quality))| {
+            let score = score(*quality);
+            (score > 0).then_some((*index, *provider, score))
+        })
+        .collect::<Vec<_>>();
+    providers.sort_by(|left, right| right.2.cmp(&left.2).then_with(|| left.0.cmp(&right.0)));
+    providers
+        .into_iter()
+        .map(|(_, provider, _)| provider.to_owned())
+        .collect()
+}
+
+fn insert_policy_fields(
+    preferences: &mut BTreeMap<String, Vec<String>>,
+    fields: &[&str],
+    providers: &[String],
+) {
+    if providers.is_empty() {
+        return;
+    }
+    for field in fields {
+        preferences.insert((*field).to_owned(), providers.to_vec());
     }
 }
 

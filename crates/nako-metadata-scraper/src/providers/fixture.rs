@@ -17,6 +17,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         default_enabled: true,
         enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED",
         capabilities: &["metadata_suggestion"],
+        field_quality: Default::default(),
         secret_reference: None,
         external_id_capabilities: &[],
         load_config: load_config,

@@ -107,6 +107,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "javdb_movie_search",
             "browser_worker_rendered_html",
         ],
+        field_quality: crate::engine::ProviderFieldQualityDescriptor::new(500, 550, 500, 400),
         secret_reference: None,
         external_id_capabilities: JAVDB_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

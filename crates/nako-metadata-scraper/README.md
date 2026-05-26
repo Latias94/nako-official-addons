@@ -90,13 +90,14 @@ prefer JavDB for `title` while using another provider for `overview` and
 
 The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
-When no request policy is supplied, AV clusters use a conservative built-in
-policy inspired by MDCx's field-priority behavior: DMM is preferred before
-MGStage, JavDB, FC2, JavBus, and JavLibrary for official title, overview,
-release/runtime, and studio-like facts. Community actor and wanted-count fields
-prefer JavLibrary/JavDB first. Trailer and image fields prefer providers that
-usually carry media URLs, starting with MGStage/DMM/JavDB. Passing an explicit
-`provider_field_policy` object replaces that default for the request.
+When no request policy is supplied, AV clusters use a conservative default
+derived from provider quality descriptors inspired by MDCx's field-priority
+behavior: DMM is preferred before MGStage, JavDB, FC2, JavBus, and JavLibrary
+for official title, overview, release/runtime, and studio-like facts. Community
+actor and wanted-count fields prefer JavLibrary/JavDB first. Trailer and image
+fields prefer providers that usually carry media URLs, starting with
+MGStage/DMM/JavDB. Passing an explicit `provider_field_policy` object replaces
+that descriptor-derived default for the request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,

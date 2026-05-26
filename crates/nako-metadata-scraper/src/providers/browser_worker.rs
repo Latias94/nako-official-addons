@@ -76,6 +76,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "metadata_suggestion",
             BROWSER_WORKER_RENDERED_PAGE_CAPABILITY,
         ],
+        field_quality: Default::default(),
         secret_reference: None,
         external_id_capabilities: BROWSER_WORKER_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

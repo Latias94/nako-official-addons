@@ -24,7 +24,7 @@ pub use outcome::{ProviderOutcome, render_provider_note};
 pub(crate) use query::ProviderRunPolicy;
 pub use query::{
     ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy,
-    QueryExternalId, QueryExternalIdAlias,
+    ProviderFieldQualityDescriptor, QueryExternalId, QueryExternalIdAlias,
 };
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
@@ -53,7 +53,7 @@ mod tests {
             NakoRuntimeClient, NakoRuntimeClientConfig, NakoRuntimeError, NakoRuntimeHttpRequest,
             NakoRuntimeHttpResponse, NakoRuntimeResult, NakoRuntimeTransport,
         },
-        providers::MetadataProvider,
+        providers::{MetadataProvider, ProviderRegistry},
     };
 
     const TEST_EXTERNAL_ID_ALIASES: &[QueryExternalIdAlias] = &[
@@ -683,9 +683,10 @@ mod tests {
 
     #[tokio::test]
     async fn runtime_exposes_redaction_safe_provider_source_evidence_for_merged_av_candidates() {
-        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities_and_provider_field_policy(
             "zh-CN",
             TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            ProviderRegistry::default_provider_field_policy(),
             vec![
                 Box::new(ExternalIdCandidateProvider {
                     candidate_provider: "javdb",
@@ -743,9 +744,10 @@ mod tests {
 
     #[tokio::test]
     async fn runtime_applies_default_av_provider_field_policy_within_merged_cluster() {
-        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities_and_provider_field_policy(
             "zh-CN",
             TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            ProviderRegistry::default_provider_field_policy(),
             vec![
                 Box::new(PolicyCandidateProvider {
                     candidate_provider: "javdb",

@@ -117,6 +117,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "dmm_movie_search",
             "browser_worker_rendered_html",
         ],
+        field_quality: crate::engine::ProviderFieldQualityDescriptor::new(600, 500, 600, 500),
         secret_reference: None,
         external_id_capabilities: DMM_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

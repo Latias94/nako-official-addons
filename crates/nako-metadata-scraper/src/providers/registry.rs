@@ -5,7 +5,10 @@ use serde::Serialize;
 use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::config::{ProviderConfig, ProviderId};
-use crate::engine::{ProviderExternalIdCapability, QueryExternalIdAlias};
+use crate::engine::{
+    ProviderExternalIdCapability, ProviderFieldPolicy, ProviderFieldQualityDescriptor,
+    QueryExternalIdAlias,
+};
 use crate::{Config, providers::MetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -116,6 +119,15 @@ impl ProviderRegistry {
     }
 
     #[must_use]
+    pub fn default_provider_field_policy() -> ProviderFieldPolicy {
+        ProviderFieldPolicy::from_provider_field_quality_descriptors(
+            Self::catalog()
+                .into_iter()
+                .map(|entry| (entry.id.as_str(), entry.field_quality)),
+        )
+    }
+
+    #[must_use]
     pub fn providers(&self) -> Vec<Box<dyn MetadataProvider>> {
         self.assemble().providers
     }
@@ -199,6 +211,7 @@ pub struct ProviderCatalogEntry {
     pub(crate) default_enabled: bool,
     pub(crate) enabled_env_var: &'static str,
     pub(crate) capabilities: &'static [&'static str],
+    pub(crate) field_quality: ProviderFieldQualityDescriptor,
     pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
     pub(crate) external_id_capabilities: &'static [ProviderExternalIdCapability],
     pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
@@ -233,6 +246,44 @@ mod tests {
 
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].id(), ProviderId::Fixture);
+    }
+
+    #[test]
+    fn registry_builds_default_av_field_policy_from_provider_quality_descriptors() {
+        let policy = ProviderRegistry::default_provider_field_policy();
+
+        assert_eq!(
+            policy.providers_for("title"),
+            &[
+                "dmm".to_owned(),
+                "mgstage".to_owned(),
+                "javdb".to_owned(),
+                "fc2".to_owned(),
+                "javbus".to_owned(),
+                "javlibrary".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("actors"),
+            &[
+                "javlibrary".to_owned(),
+                "javdb".to_owned(),
+                "dmm".to_owned(),
+                "mgstage".to_owned(),
+                "javbus".to_owned(),
+                "fc2".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("trailer_url"),
+            &[
+                "mgstage".to_owned(),
+                "dmm".to_owned(),
+                "javdb".to_owned(),
+                "fc2".to_owned(),
+                "javbus".to_owned(),
+            ]
+        );
     }
 
     #[test]
