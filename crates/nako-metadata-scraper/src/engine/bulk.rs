@@ -19,6 +19,8 @@ pub const BULK_METADATA_SCRAPE_OUTPUT_SCHEMA: &str =
 
 const DEFAULT_BATCH_SIZE: usize = 4;
 const MAX_BATCH_SIZE: usize = 12;
+const DEFAULT_PROVIDER_SUPPRESS_AFTER_FAILURES: usize = 2;
+const DEFAULT_PROVIDER_COOLDOWN_ITEMS: usize = 3;
 
 #[derive(Debug, thiserror::Error)]
 #[error("{message}")]
@@ -42,6 +44,8 @@ struct BulkMetadataScrapeTaskInput {
     cursor: Option<usize>,
     #[serde(default)]
     batch_size: Option<usize>,
+    #[serde(default)]
+    provider_policy: BulkProviderPolicy,
     #[serde(default)]
     resume_state: BulkMetadataScrapeResumeState,
 }
@@ -69,7 +73,9 @@ struct BulkMetadataScrapeTaskSummary {
     av_items: usize,
     empty_candidate_items: usize,
     failed_items: usize,
+    suppressed_items: usize,
     failure_reasons: BTreeMap<String, usize>,
+    retry_classes: BTreeMap<String, usize>,
     provider_execution: Vec<BulkMetadataScrapeProviderSummary>,
 }
 
@@ -81,6 +87,11 @@ struct BulkMetadataScrapeProviderSummary {
     returned_items: usize,
     empty_items: usize,
     failed_items: usize,
+    suppressed_items: usize,
+    retryable_failed_items: usize,
+    permanent_failed_items: usize,
+    operator_action_failed_items: usize,
+    cooldown_remaining_items: usize,
     returned_candidate_count: usize,
 }
 
@@ -94,6 +105,8 @@ struct BulkMetadataScrapeTaskItemOutput {
     reused_from_index: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     safe_failure_reason: Option<&'static str>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    suppressed_provider_ids: Vec<String>,
     payload: Value,
 }
 
@@ -114,6 +127,8 @@ struct BulkMetadataScrapeReuseEntry {
 struct BulkMetadataScrapeResumeState {
     #[serde(default)]
     reusable_items: Vec<BulkMetadataScrapeResumeItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    provider_states: Vec<BulkProviderResumeState>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -125,6 +140,59 @@ struct BulkMetadataScrapeResumeItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     av: Option<Value>,
     payload: Value,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct BulkProviderPolicy {
+    #[serde(default = "default_provider_suppress_after_failures")]
+    suppress_after_failures: usize,
+    #[serde(default = "default_provider_cooldown_items")]
+    cooldown_items: usize,
+}
+
+impl Default for BulkProviderPolicy {
+    fn default() -> Self {
+        Self {
+            suppress_after_failures: DEFAULT_PROVIDER_SUPPRESS_AFTER_FAILURES,
+            cooldown_items: DEFAULT_PROVIDER_COOLDOWN_ITEMS,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+struct BulkProviderResumeState {
+    provider_id: String,
+    #[serde(default)]
+    consecutive_failures: usize,
+    #[serde(default)]
+    cooldown_remaining_items: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_failure_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    retry_class: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct BulkProviderState {
+    consecutive_failures: usize,
+    cooldown_remaining_items: usize,
+    last_failure_reason: Option<String>,
+    retry_class: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct BulkProviderStateTable {
+    states: BTreeMap<String, BulkProviderState>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct BulkProviderRunReport {
+    provider_id: String,
+    status: String,
+    candidate_count: usize,
+    safe_failure_reason: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -187,18 +255,30 @@ where
             serde_json::from_value::<BulkMetadataScrapeTaskInput>(payload).map_err(|error| {
                 BulkMetadataScrapeError::invalid(format!("invalid bulk task payload: {error}"))
             })?;
+        let BulkMetadataScrapeTaskInput {
+            items: input_items,
+            cursor,
+            batch_size,
+            provider_policy,
+            resume_state,
+        } = input;
         let plan = BulkMetadataScrapeBatchPlan::new(
-            input.items.len(),
-            input.cursor.unwrap_or(0),
-            input.batch_size.unwrap_or(DEFAULT_BATCH_SIZE),
+            input_items.len(),
+            cursor.unwrap_or(0),
+            batch_size.unwrap_or(DEFAULT_BATCH_SIZE),
         );
 
         let mut items = Vec::with_capacity(plan.item_indexes.len());
         let mut summary = BulkMetadataScrapeTaskSummary::default();
-        let mut reuse_cache = input.resume_state.into_reuse_cache();
+        let BulkMetadataScrapeResumeState {
+            reusable_items,
+            provider_states,
+        } = resume_state;
+        let mut reuse_cache = BulkMetadataScrapeResumeState::reuse_cache_from_items(reusable_items);
+        let mut provider_states = BulkProviderStateTable::from_resume(provider_states);
         for index in &plan.item_indexes {
             let item_request_id = format!("{}:item-{}", request_id, index);
-            let payload = input.items[*index].clone();
+            let payload = input_items[*index].clone();
             let planned_av = av_facts_value_from_payload(&payload);
             let reuse_key = BulkMetadataScrapeReuseKey::from_payload(&payload);
             if planned_av.is_some() {
@@ -211,7 +291,9 @@ where
                 let item_av = planned_av.or_else(|| entry.av.clone());
                 let item_payload = reused_item_payload(&entry.payload, item_av.as_ref());
                 let safe_failure_reason = safe_failure_reason_for_payload(&item_payload);
+                let suppressed_provider_ids = suppressed_provider_ids_from_payload(&item_payload);
                 summary.record_failure(safe_failure_reason);
+                summary.record_suppressed_item(&suppressed_provider_ids);
                 summary.reused_items += 1;
                 items.push(BulkMetadataScrapeTaskItemOutput {
                     index: *index,
@@ -219,11 +301,14 @@ where
                     av: item_av,
                     reused_from_index: Some(entry.index),
                     safe_failure_reason,
+                    suppressed_provider_ids,
                     payload: item_payload,
                 });
                 continue;
             }
 
+            let disabled_provider_ids = provider_states.disabled_provider_ids();
+            let payload = payload_with_disabled_provider_ids(payload, &disabled_provider_ids);
             let item_response = self
                 .scrape(AddonResourceRequest {
                     protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -236,8 +321,13 @@ where
             let av = item_response.payload["query"].get("av").cloned();
             let item_av = planned_av.or(av);
             let safe_failure_reason = safe_failure_reason_for_payload(&item_response.payload);
+            let provider_reports = provider_reports_from_payload(&item_response.payload);
+            let suppressed_provider_ids = suppressed_provider_ids_from_reports(&provider_reports);
             summary.record_failure(safe_failure_reason);
-            summary.record_provider_execution(&item_response.payload);
+            summary.record_suppressed_item(&suppressed_provider_ids);
+            summary.record_provider_execution(&provider_reports);
+            provider_states.record_reports(&provider_reports, &provider_policy);
+            provider_states.consume_cooldowns(&disabled_provider_ids);
             summary.scraped_items += 1;
             if let Some(cache_key) = reuse_key {
                 reuse_cache.insert(
@@ -255,9 +345,11 @@ where
                 av: item_av,
                 reused_from_index: None,
                 safe_failure_reason,
+                suppressed_provider_ids,
                 payload: item_response.payload,
             });
         }
+        summary.record_provider_states(provider_states.resume_states());
 
         let output = BulkMetadataScrapeTaskOutput {
             schema: BULK_METADATA_SCRAPE_OUTPUT_SCHEMA,
@@ -270,7 +362,10 @@ where
             remaining_items: plan.remaining_items(),
             next_cursor: plan.next_cursor,
             summary,
-            resume_state: BulkMetadataScrapeResumeState::from_reuse_cache(&reuse_cache),
+            resume_state: BulkMetadataScrapeResumeState::from_caches(
+                &reuse_cache,
+                &provider_states,
+            ),
             items,
         };
 
@@ -296,34 +391,33 @@ impl BulkMetadataScrapeTaskSummary {
         *self.failure_reasons.entry(reason.to_owned()).or_default() += 1;
     }
 
-    fn record_provider_execution(&mut self, payload: &Value) {
-        let Some(reports) = payload
-            .get("provider_execution")
-            .and_then(|value| value.get("providers"))
-            .and_then(Value::as_array)
-        else {
-            return;
-        };
+    fn record_suppressed_item(&mut self, suppressed_provider_ids: &[String]) {
+        if !suppressed_provider_ids.is_empty() {
+            self.suppressed_items += 1;
+        }
+    }
 
+    fn record_provider_execution(&mut self, reports: &[BulkProviderRunReport]) {
         for report in reports {
-            let Some(provider_id) = report.get("provider_id").and_then(Value::as_str) else {
-                continue;
-            };
-            let Some(status) = report.get("status").and_then(Value::as_str) else {
-                continue;
-            };
-            let candidate_count = report
-                .get("candidate_count")
-                .and_then(Value::as_u64)
-                .unwrap_or(0) as usize;
-            let provider = self.provider_summary_mut(provider_id);
+            let retry_class = report
+                .safe_failure_reason
+                .as_deref()
+                .and_then(retry_class_for_failure_reason);
+            if let Some(retry_class) = retry_class {
+                *self
+                    .retry_classes
+                    .entry(retry_class.to_owned())
+                    .or_default() += 1;
+            }
+            let provider = self.provider_summary_mut(&report.provider_id);
 
-            match status {
+            match report.status.as_str() {
                 "skipped_by_av_route" => provider.skipped_by_route_items += 1,
+                "suppressed" => provider.suppressed_items += 1,
                 "returned_candidates" => {
                     provider.selected_items += 1;
                     provider.returned_items += 1;
-                    provider.returned_candidate_count += candidate_count;
+                    provider.returned_candidate_count += report.candidate_count;
                 }
                 "empty" => {
                     provider.selected_items += 1;
@@ -332,9 +426,22 @@ impl BulkMetadataScrapeTaskSummary {
                 "failed" => {
                     provider.selected_items += 1;
                     provider.failed_items += 1;
+                    match retry_class {
+                        Some("retryable") => provider.retryable_failed_items += 1,
+                        Some("permanent") => provider.permanent_failed_items += 1,
+                        Some("operator_action") => provider.operator_action_failed_items += 1,
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
+        }
+    }
+
+    fn record_provider_states(&mut self, provider_states: Vec<BulkProviderResumeState>) {
+        for state in provider_states {
+            let provider = self.provider_summary_mut(&state.provider_id);
+            provider.cooldown_remaining_items = state.cooldown_remaining_items;
         }
     }
 
@@ -378,8 +485,10 @@ impl BulkMetadataScrapeReuseKey {
 }
 
 impl BulkMetadataScrapeResumeState {
-    fn into_reuse_cache(self) -> HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry> {
-        self.reusable_items
+    fn reuse_cache_from_items(
+        reusable_items: Vec<BulkMetadataScrapeResumeItem>,
+    ) -> HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry> {
+        reusable_items
             .into_iter()
             .filter_map(|item| {
                 let key = item.reuse_key()?;
@@ -393,8 +502,9 @@ impl BulkMetadataScrapeResumeState {
             .collect()
     }
 
-    fn from_reuse_cache(
+    fn from_caches(
         reuse_cache: &HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry>,
+        provider_states: &BulkProviderStateTable,
     ) -> Self {
         let mut reusable_items = reuse_cache
             .iter()
@@ -412,7 +522,10 @@ impl BulkMetadataScrapeResumeState {
                 .then_with(|| left.language_hint.cmp(&right.language_hint))
                 .then_with(|| left.index.cmp(&right.index))
         });
-        Self { reusable_items }
+        Self {
+            reusable_items,
+            provider_states: provider_states.resume_states(),
+        }
     }
 }
 
@@ -431,6 +544,148 @@ impl BulkMetadataScrapeResumeItem {
     }
 }
 
+impl BulkProviderPolicy {
+    fn enables_suppression(&self) -> bool {
+        self.suppress_after_failures > 0 && self.cooldown_items > 0
+    }
+}
+
+impl BulkProviderStateTable {
+    fn from_resume(states: Vec<BulkProviderResumeState>) -> Self {
+        let states = states
+            .into_iter()
+            .filter_map(|state| {
+                let provider_id = normalize_provider_id(&state.provider_id)?;
+                Some((
+                    provider_id,
+                    BulkProviderState {
+                        consecutive_failures: state.consecutive_failures,
+                        cooldown_remaining_items: state.cooldown_remaining_items,
+                        last_failure_reason: state
+                            .last_failure_reason
+                            .map(|reason| reason.trim().to_ascii_lowercase())
+                            .filter(|reason| !reason.is_empty()),
+                        retry_class: state
+                            .retry_class
+                            .map(|retry_class| retry_class.trim().to_ascii_lowercase())
+                            .filter(|retry_class| !retry_class.is_empty()),
+                    },
+                ))
+            })
+            .collect();
+
+        Self { states }
+    }
+
+    fn disabled_provider_ids(&self) -> Vec<String> {
+        self.states
+            .iter()
+            .filter_map(|(provider_id, state)| {
+                (state.cooldown_remaining_items > 0).then(|| provider_id.clone())
+            })
+            .collect()
+    }
+
+    fn record_reports(&mut self, reports: &[BulkProviderRunReport], policy: &BulkProviderPolicy) {
+        for report in reports {
+            match report.status.as_str() {
+                "returned_candidates" | "empty" => {
+                    self.states.remove(&report.provider_id);
+                }
+                "failed" => {
+                    self.record_failure(
+                        &report.provider_id,
+                        report
+                            .safe_failure_reason
+                            .as_deref()
+                            .unwrap_or("provider_error"),
+                        policy,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn record_failure(&mut self, provider_id: &str, reason: &str, policy: &BulkProviderPolicy) {
+        let retry_class = retry_class_for_failure_reason(reason).unwrap_or("retryable");
+        let state = self
+            .states
+            .entry(provider_id.to_owned())
+            .or_insert_with(|| BulkProviderState {
+                consecutive_failures: 0,
+                cooldown_remaining_items: 0,
+                last_failure_reason: None,
+                retry_class: None,
+            });
+        state.last_failure_reason = Some(reason.to_owned());
+        state.retry_class = Some(retry_class.to_owned());
+
+        match retry_class {
+            "retryable" => {
+                state.consecutive_failures += 1;
+                if policy.enables_suppression()
+                    && state.consecutive_failures >= policy.suppress_after_failures
+                {
+                    state.cooldown_remaining_items = policy.cooldown_items;
+                }
+            }
+            "operator_action" => {
+                state.consecutive_failures = 1;
+                if policy.enables_suppression() {
+                    state.cooldown_remaining_items = policy.cooldown_items;
+                }
+            }
+            "permanent" => {
+                state.consecutive_failures = 0;
+                state.cooldown_remaining_items = 0;
+            }
+            _ => {}
+        }
+    }
+
+    fn consume_cooldowns(&mut self, provider_ids: &[String]) {
+        for provider_id in provider_ids {
+            let Some(provider_id) = normalize_provider_id(provider_id) else {
+                continue;
+            };
+            let Some(state) = self.states.get_mut(&provider_id) else {
+                continue;
+            };
+            if state.cooldown_remaining_items == 0 {
+                continue;
+            }
+            state.cooldown_remaining_items -= 1;
+            if state.cooldown_remaining_items == 0 {
+                state.consecutive_failures = 0;
+            }
+        }
+    }
+
+    fn resume_states(&self) -> Vec<BulkProviderResumeState> {
+        self.states
+            .iter()
+            .filter_map(|(provider_id, state)| {
+                if state.consecutive_failures == 0
+                    && state.cooldown_remaining_items == 0
+                    && state.last_failure_reason.is_none()
+                    && state.retry_class.is_none()
+                {
+                    return None;
+                }
+
+                Some(BulkProviderResumeState {
+                    provider_id: provider_id.clone(),
+                    consecutive_failures: state.consecutive_failures,
+                    cooldown_remaining_items: state.cooldown_remaining_items,
+                    last_failure_reason: state.last_failure_reason.clone(),
+                    retry_class: state.retry_class.clone(),
+                })
+            })
+            .collect()
+    }
+}
+
 fn av_facts_value_from_payload(payload: &Value) -> Option<Value> {
     av::facts_from_payload(payload)
         .map(|facts| serde_json::to_value(facts).expect("AV query facts are serializable"))
@@ -441,6 +696,30 @@ fn reused_item_payload(payload: &Value, av: Option<&Value>) -> Value {
     if let Some(av) = av {
         payload["query"]["av"] = av.clone();
     }
+    payload
+}
+
+fn payload_with_disabled_provider_ids(mut payload: Value, provider_ids: &[String]) -> Value {
+    if provider_ids.is_empty() {
+        return payload;
+    }
+
+    let mut disabled_provider_ids = existing_provider_ids(&payload, "disabled_provider_ids");
+    if disabled_provider_ids.is_empty() {
+        disabled_provider_ids = existing_provider_ids(&payload, "suppressed_provider_ids");
+    }
+    for provider_id in provider_ids {
+        if let Some(provider_id) = normalize_provider_id(provider_id) {
+            push_unique_string(&mut disabled_provider_ids, provider_id);
+        }
+    }
+
+    payload["disabled_provider_ids"] = Value::Array(
+        disabled_provider_ids
+            .into_iter()
+            .map(Value::String)
+            .collect::<Vec<_>>(),
+    );
     payload
 }
 
@@ -466,6 +745,17 @@ fn safe_failure_reason_for_payload(payload: &Value) -> Option<&'static str> {
         .and_then(Value::as_array)
         .is_some_and(Vec::is_empty)
         && provider_execution
+            .and_then(|value| value.get("suppressed_provider_ids"))
+            .and_then(Value::as_array)
+            .is_some_and(|values| !values.is_empty())
+    {
+        return Some("provider_suppressed");
+    }
+    if provider_execution
+        .and_then(|value| value.get("selected_provider_ids"))
+        .and_then(Value::as_array)
+        .is_some_and(Vec::is_empty)
+        && provider_execution
             .and_then(|value| value.get("skipped_provider_ids"))
             .and_then(Value::as_array)
             .is_some_and(|values| !values.is_empty())
@@ -474,6 +764,109 @@ fn safe_failure_reason_for_payload(payload: &Value) -> Option<&'static str> {
     }
 
     Some("no_candidates")
+}
+
+fn provider_reports_from_payload(payload: &Value) -> Vec<BulkProviderRunReport> {
+    payload
+        .get("provider_execution")
+        .and_then(|value| value.get("providers"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|report| {
+            let provider_id = normalize_provider_id(report.get("provider_id")?.as_str()?)?;
+            let status = report.get("status")?.as_str()?.to_owned();
+            let candidate_count = report
+                .get("candidate_count")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as usize;
+            let safe_failure_reason = report
+                .get("safe_failure_reason")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|reason| !reason.is_empty())
+                .map(str::to_owned);
+
+            Some(BulkProviderRunReport {
+                provider_id,
+                status,
+                candidate_count,
+                safe_failure_reason,
+            })
+        })
+        .collect()
+}
+
+fn suppressed_provider_ids_from_payload(payload: &Value) -> Vec<String> {
+    let provider_ids = payload
+        .get("provider_execution")
+        .and_then(|value| value.get("suppressed_provider_ids"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter_map(normalize_provider_id)
+        .fold(Vec::new(), |mut provider_ids, provider_id| {
+            push_unique_string(&mut provider_ids, provider_id);
+            provider_ids
+        });
+    if !provider_ids.is_empty() {
+        return provider_ids;
+    }
+
+    suppressed_provider_ids_from_reports(&provider_reports_from_payload(payload))
+}
+
+fn suppressed_provider_ids_from_reports(reports: &[BulkProviderRunReport]) -> Vec<String> {
+    reports
+        .iter()
+        .filter(|report| report.status == "suppressed")
+        .fold(Vec::new(), |mut provider_ids, report| {
+            push_unique_string(&mut provider_ids, report.provider_id.clone());
+            provider_ids
+        })
+}
+
+fn existing_provider_ids(payload: &Value, key: &str) -> Vec<String> {
+    payload
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter_map(normalize_provider_id)
+        .fold(Vec::new(), |mut provider_ids, provider_id| {
+            push_unique_string(&mut provider_ids, provider_id);
+            provider_ids
+        })
+}
+
+fn retry_class_for_failure_reason(reason: &str) -> Option<&'static str> {
+    match reason {
+        "timeout" | "rate_limited" | "provider_error" => Some("retryable"),
+        "auth_or_forbidden" => Some("operator_action"),
+        "not_found" | "parse_error" => Some("permanent"),
+        _ => None,
+    }
+}
+
+fn normalize_provider_id(provider_id: &str) -> Option<String> {
+    let provider_id = provider_id.trim().to_ascii_lowercase();
+    (!provider_id.is_empty()).then_some(provider_id)
+}
+
+fn push_unique_string(values: &mut Vec<String>, value: String) {
+    if !values.iter().any(|existing| existing == &value) {
+        values.push(value);
+    }
+}
+
+fn default_provider_suppress_after_failures() -> usize {
+    DEFAULT_PROVIDER_SUPPRESS_AFTER_FAILURES
+}
+
+fn default_provider_cooldown_items() -> usize {
+    DEFAULT_PROVIDER_COOLDOWN_ITEMS
 }
 
 fn has_side_effect_request(payload: &Value, key: &str) -> bool {
@@ -923,6 +1316,145 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bulk_metadata_scrape_suppresses_retryable_provider_across_resume_state() {
+        let calls = Arc::new(Mutex::new(0));
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![Box::new(CountingFailingBulkProvider {
+                calls: calls.clone(),
+            })],
+            None,
+        );
+
+        let first_response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-1".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "batch_size": 2,
+                    "provider_policy": {
+                        "suppress_after_failures": 1,
+                        "cooldown_items": 2
+                    },
+                    "items": [
+                        {"file_name": "SSNI-00644.mp4"},
+                        {"file_name": "IPX-001.mp4"},
+                        {"file_name": "MIDE-010.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(*calls.lock().unwrap(), 1);
+        assert_eq!(first_response.output["summary"]["failed_items"], 2);
+        assert_eq!(first_response.output["summary"]["suppressed_items"], 1);
+        assert_eq!(
+            first_response.output["summary"]["failure_reasons"]["provider_failed"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["failure_reasons"]["provider_suppressed"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["retry_classes"]["retryable"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["provider_id"],
+            "fixture"
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["selected_items"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["failed_items"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["retryable_failed_items"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["suppressed_items"],
+            1
+        );
+        assert_eq!(
+            first_response.output["summary"]["provider_execution"][0]["cooldown_remaining_items"],
+            1
+        );
+        assert_eq!(
+            first_response.output["items"][1]["safe_failure_reason"],
+            "provider_suppressed"
+        );
+        assert_eq!(
+            first_response.output["items"][1]["suppressed_provider_ids"][0],
+            "fixture"
+        );
+        assert_eq!(
+            first_response.output["items"][1]["payload"]["provider_execution"]["providers"][0]["status"],
+            "suppressed"
+        );
+        assert_eq!(
+            first_response.output["resume_state"]["provider_states"][0]["cooldown_remaining_items"],
+            1
+        );
+
+        let second_response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-2".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "cursor": 2,
+                    "batch_size": 1,
+                    "provider_policy": {
+                        "suppress_after_failures": 1,
+                        "cooldown_items": 2
+                    },
+                    "resume_state": first_response.output["resume_state"].clone(),
+                    "items": [
+                        {"file_name": "SSNI-00644.mp4"},
+                        {"file_name": "IPX-001.mp4"},
+                        {"file_name": "MIDE-010.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(*calls.lock().unwrap(), 1);
+        assert_eq!(second_response.output["summary"]["suppressed_items"], 1);
+        assert_eq!(
+            second_response.output["items"][0]["safe_failure_reason"],
+            "provider_suppressed"
+        );
+        assert_eq!(
+            second_response.output["items"][0]["suppressed_provider_ids"][0],
+            "fixture"
+        );
+        assert_eq!(
+            second_response.output["resume_state"]["provider_states"][0]["cooldown_remaining_items"],
+            0
+        );
+    }
+
+    #[tokio::test]
     async fn bulk_metadata_scrape_submits_existing_side_effect_paths() {
         let transport = FakeTransport::default();
         transport.push(Ok(NakoRuntimeHttpResponse {
@@ -1106,6 +1638,10 @@ mod tests {
 
     struct FailingBulkProvider;
 
+    struct CountingFailingBulkProvider {
+        calls: Arc<Mutex<usize>>,
+    }
+
     #[async_trait]
     impl MetadataProvider for BulkCandidateProvider {
         fn id(&self) -> crate::config::ProviderId {
@@ -1169,6 +1705,21 @@ mod tests {
             _query: &MetadataQuery,
         ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
             anyhow::bail!("raw provider failure with https://private.example/secret")
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for CountingFailingBulkProvider {
+        fn id(&self) -> crate::config::ProviderId {
+            crate::config::ProviderId::Fixture
+        }
+
+        async fn suggest(
+            &self,
+            _query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            *self.calls.lock().unwrap() += 1;
+            anyhow::bail!("provider timeout while fetching fixture")
         }
     }
 }

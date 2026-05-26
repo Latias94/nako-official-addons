@@ -4,21 +4,14 @@ Prefix: OMAV2
 
 ## Active
 
-- [ ] OMAV2-040 [owner=codex] [deps=OMAV2-030] [scope=crates/nako-metadata-scraper/src/engine/bulk.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Add bulk scrape mature accounting: retry classes, provider temporary suppression, cooldown hints, and resume-safe provider state.
-  Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`
-  Review: Confirm bulk remains stateless from Nako's perspective and does not add a hidden scheduler.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV2-050 [owner=codex] [deps=OMAV2-030,OMAV2-040] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper]
   Goal: Add provider wave 2 behind disabled-by-default config, starting with JavLibrary plus one high-value route-specific provider.
   Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast`
   Review: Confirm selectors/parsers are independently implemented from reference-only MDCx code.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMAV2-060 [owner=codex] [deps=OMAV2-050] [scope=docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Run closeout gates, document shipped behavior and remaining provider parity, then close or split follow-ups.
@@ -49,6 +42,13 @@ Prefix: OMAV2
   Review: Confirmed response `av` facts remain evidence, while writeback patch carries credits, studios, collections, external IDs, and image references.
   Evidence: PASS on 2026-05-26; 36 related tests passed.
   Handoff: DONE. OMAV2-040 is active.
+
+- [x] OMAV2-040 [owner=codex] [deps=OMAV2-030] [scope=crates/nako-metadata-scraper/src/engine/bulk.rs,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/orchestration.rs,crates/nako-metadata-scraper/src/engine/runtime.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add bulk scrape mature accounting: retry classes, provider temporary suppression, cooldown hints, and resume-safe provider state.
+  Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed suppression state is explicit in task input/output and Nako still owns scheduling, progress, retry, and cancellation.
+  Evidence: PASS on 2026-05-26; 11 bulk tests passed.
+  Handoff: DONE. OMAV2-050 is active.
 
 ## Follow-Up Candidates
 

@@ -192,6 +192,27 @@ and cancellation. Batch output also includes `summary.failed_items`,
 `summary.failure_reasons`, and `summary.provider_execution` for redaction-safe
 failure accounting.
 
+Bulk requests may also include a `provider_policy` object:
+
+```json
+{
+  "provider_policy": {
+    "suppress_after_failures": 2,
+    "cooldown_items": 3
+  }
+}
+```
+
+The default policy suppresses a provider after repeated retryable failures and
+records the cooldown in `resume_state.provider_states`. Callers that submit a
+later batch should pass that `resume_state` back in; the sidecar does not keep a
+hidden scheduler or background provider memory. Bulk output includes
+`summary.suppressed_items`, `summary.retry_classes`, provider-level suppressed
+and retry-class counts, and per-item `suppressed_provider_ids`. Retry classes
+are redaction-safe: `timeout`, `rate_limited`, and `provider_error` are
+retryable; `auth_or_forbidden` requires operator action; `not_found` and
+`parse_error` are permanent for accounting.
+
 ## Library scanned event proof
 
 The manifest declares one event subscription:
@@ -316,9 +337,12 @@ small generic bonus from the shared community score/vote-count facts exposed by
 TMDB, Bangumi, and Douban. The resource response envelope does not change.
 
 Each metadata response includes `provider_execution`, which records the
-provider IDs selected, skipped by AV route, returned, empty, or failed with a
-safe failure category. This is the single-scrape counterpart to the bulk
-provider summary.
+provider IDs selected, skipped by AV route, suppressed by request policy,
+returned, empty, or failed with a safe failure category. This is the
+single-scrape counterpart to the bulk provider summary. A direct metadata
+request may include `disabled_provider_ids` to suppress providers for that one
+request; bulk scrape uses the same field when applying its explicit resume
+state.
 
 Requests may optionally include `provider_field_policy` for field-level source
 priority inside an already-merged candidate cluster:

@@ -4,7 +4,7 @@ use crate::providers::MetadataProvider;
 
 use super::{
     MAX_CANDIDATES_PER_QUERY, MetadataCandidate, MetadataQuery, ProviderExternalIdCapability,
-    ProviderFieldPolicy,
+    ProviderFieldPolicy, ProviderRunPolicy,
     av::{AvNumberRoute, facts_from_query},
     ranking, resolver,
 };
@@ -21,6 +21,7 @@ pub(crate) struct ProviderExecutionSummary {
     pub(crate) skipped_provider_ids: Vec<String>,
     pub(crate) returned_provider_ids: Vec<String>,
     pub(crate) failed_provider_ids: Vec<String>,
+    pub(crate) suppressed_provider_ids: Vec<String>,
     pub(crate) returned_candidate_count: usize,
     pub(crate) providers: Vec<ProviderExecutionReport>,
 }
@@ -41,6 +42,7 @@ pub(crate) struct ProviderExecutionReport {
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ProviderExecutionStatus {
     SkippedByAvRoute,
+    Suppressed,
     ReturnedCandidates,
     Empty,
     Failed,
@@ -51,6 +53,7 @@ pub(crate) async fn suggest_candidates(
     query: &MetadataQuery,
     external_id_capabilities: &[ProviderExternalIdCapability],
     provider_field_policy: &ProviderFieldPolicy,
+    provider_run_policy: &ProviderRunPolicy,
 ) -> ProviderSuggestionSet {
     let mut provider_candidates = Vec::new();
     let mut execution = ProviderExecutionSummary::default();
@@ -58,6 +61,10 @@ pub(crate) async fn suggest_candidates(
 
     for provider in providers {
         let provider_id = provider.id().as_str();
+        if provider_run_policy.disables(provider_id) {
+            execution.record_suppressed(provider_id);
+            continue;
+        }
         if let Some(route) = av_route
             && !provider.supports_av_route(route)
         {
@@ -109,6 +116,18 @@ impl ProviderExecutionSummary {
             provider_id: provider_id.to_owned(),
             status: ProviderExecutionStatus::SkippedByAvRoute,
             av_route: Some(route),
+            candidate_count: None,
+            safe_failure_reason: None,
+        });
+    }
+
+    fn record_suppressed(&mut self, provider_id: &str) {
+        push_unique(&mut self.skipped_provider_ids, provider_id);
+        push_unique(&mut self.suppressed_provider_ids, provider_id);
+        self.providers.push(ProviderExecutionReport {
+            provider_id: provider_id.to_owned(),
+            status: ProviderExecutionStatus::Suppressed,
+            av_route: None,
             candidate_count: None,
             safe_failure_reason: None,
         });

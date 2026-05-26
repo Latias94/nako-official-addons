@@ -20,6 +20,7 @@ pub use artwork::{
 };
 pub use av::AvMetadataFacts;
 pub use outcome::{ProviderOutcome, render_provider_note};
+pub(crate) use query::ProviderRunPolicy;
 pub use query::{
     ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy,
     QueryExternalId, QueryExternalIdAlias,

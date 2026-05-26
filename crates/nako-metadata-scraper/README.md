@@ -56,9 +56,11 @@ corrections where a user already knows the authoritative site record.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
-route, returned candidates, returned no candidates, or failed with a safe
-failure category. Provider errors are logged with a safe category and are not
-echoed as raw error text in the response.
+route, suppressed by request policy, returned candidates, returned no
+candidates, or failed with a safe failure category. Provider errors are logged
+with a safe category and are not echoed as raw error text in the response. A
+request may include `disabled_provider_ids` to suppress providers for that one
+scrape; the response then reports `provider_execution.suppressed_provider_ids`.
 
 Requests may optionally include `provider_field_policy` to choose field-level
 source priority within a merged candidate cluster. For example, a request can
@@ -130,6 +132,27 @@ bounded batches while Nako still owns scheduling and retry. Bulk output also
 includes `summary.failure_reasons`, `summary.failed_items`, and
 `summary.provider_execution` so a batch runner can distinguish empty results,
 provider failures, and route skips without parsing provider-specific payloads.
+
+Bulk requests may also include a `provider_policy`:
+
+```json
+{
+  "provider_policy": {
+    "suppress_after_failures": 2,
+    "cooldown_items": 3
+  }
+}
+```
+
+The policy is explicit batch state, not a hidden scheduler. Retryable provider
+failures (`timeout`, `rate_limited`, `provider_error`) increment a provider
+failure streak and can add cooldown entries to
+`resume_state.provider_states`; `auth_or_forbidden` is classified as
+`operator_action`, while `not_found` and `parse_error` are permanent for
+accounting. The next bulk request can pass the returned `resume_state` to keep
+cooldown suppression across bounded batches. Output includes
+`summary.suppressed_items`, `summary.retry_classes`, provider-level retry-class
+counts, and per-item `suppressed_provider_ids`.
 
 Rendered AV providers use the companion browser worker through `POST /render`.
 The worker is a Crawlee/Playwright execution boundary: it loads pages and

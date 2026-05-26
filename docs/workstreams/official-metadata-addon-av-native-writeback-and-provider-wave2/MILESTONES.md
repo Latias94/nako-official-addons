@@ -28,7 +28,7 @@ Exit criteria:
 - Response evidence still exposes provider fact sources.
 - Existing AV providers remain fixture-tested after the protocol break.
 
-## M4 - Bulk Mature Scrape Accounting
+## M4 - Bulk Mature Scrape Accounting (Complete)
 
 Exit criteria:
 
