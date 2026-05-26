@@ -209,12 +209,12 @@ mod tests {
   <h2 class="title"><strong class="current-title">SSNI-644 Synthetic AV Title</strong></h2>
   <a class="copy-to-clipboard" data-clipboard-text="SSNI-644">SSNI-644</a>
   <div class="movie-panel-info">
-    <span>日期:</span> 2024-05-01
-    <span>時長:</span> 121 分鐘
-    <span>片商:</span> Studio Alpha
-    <span>發行:</span> Publisher Beta
-    <span>系列:</span> Series Gamma
-    <span>導演:</span> Director Delta
+    <p><span>日期:</span> 2024-05-01</p>
+    <p><span>時長:</span> 121 分鐘</p>
+    <p><span>片商:</span> Studio Alpha</p>
+    <p><span>發行:</span> Publisher Beta</p>
+    <p><span>系列:</span> Series Gamma</p>
+    <p><span>導演:</span> Director Delta</p>
   </div>
   <a href="/actors/a1">Actor One</a>
   <a href="/actors/a2">Actor Two</a>
@@ -295,6 +295,18 @@ mod tests {
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().studio.as_deref(),
             Some("Studio Alpha")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().publisher.as_deref(),
+            Some("Publisher Beta")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().series.as_deref(),
+            Some("Series Gamma")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().directors,
+            vec!["Director Delta".to_owned()]
         );
         assert_eq!(candidate.facts.av.as_ref().unwrap().wanted_count, Some(123));
         assert_eq!(

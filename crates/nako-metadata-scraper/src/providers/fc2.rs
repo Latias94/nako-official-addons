@@ -191,9 +191,9 @@ mod tests {
 <body>
   <h1>FC2-1723984 Synthetic Title</h1>
   <div class="items_article_info">
-    <span>販売日:</span> 2024-04-20
-    <span>販売者:</span> FC2 Seller
-    <span>収録時間:</span> 88分
+    <p><span>販売日:</span> 2024-04-20</p>
+    <p><span>販売者:</span> FC2 Seller</p>
+    <p><span>収録時間:</span> 88分</p>
   </div>
   <section class="items_article_Comment">Synthetic outline.</section>
   <a href="/genre/1">素人</a>

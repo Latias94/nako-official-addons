@@ -490,10 +490,10 @@ fn parse_detail_page(
         rendered_av::element_text(&document, "#video_title h3, h3, h1").as_deref(),
         rendered_av::attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
     ])?;
-    let number = rendered_av::labeled_value(
+    let number = javlibrary_labeled_value(
+        &document,
         &info_text,
         &["品番", "識別碼", "识别码", "Number"],
-        JAVLIBRARY_LABELS,
     )
     .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId).map(|facts| facts.number))
     .or_else(|| facts_from_text(detail_url, AvNumberSource::ExternalId).map(|facts| facts.number));
@@ -502,43 +502,35 @@ fn parse_detail_page(
         .and_then(|value| facts_from_text(value, AvNumberSource::ExternalId))
         .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId))
         .or(av)?;
-    let release_date = rendered_av::labeled_value(
+    let release_date = javlibrary_labeled_value(
+        &document,
         &info_text,
         &["発売日", "發行日期", "发行日期", "Release Date"],
-        JAVLIBRARY_LABELS,
     )
     .or_else(|| rendered_av::first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(rendered_av::first_year);
-    let runtime_minutes = rendered_av::labeled_value(
+    let runtime_minutes = javlibrary_labeled_value(
+        &document,
         &info_text,
         &["収録時間", "長度", "长度", "Runtime"],
-        JAVLIBRARY_LABELS,
     )
     .and_then(|value| rendered_av::parse_minutes(&value));
     let studio =
         first_link_text(&document, "a[href*=\"maker\"], a[href*=\"studio\"]").or_else(|| {
-            rendered_av::labeled_value(
-                &info_text,
-                &["メーカー", "片商", "Studio"],
-                JAVLIBRARY_LABELS,
-            )
+            javlibrary_labeled_value(&document, &info_text, &["メーカー", "片商", "Studio"])
         });
     let publisher = first_link_text(&document, "a[href*=\"label\"], a[href*=\"publisher\"]")
         .or_else(|| {
-            rendered_av::labeled_value(
+            javlibrary_labeled_value(
+                &document,
                 &info_text,
                 &["レーベル", "發行商", "发行商", "Label", "Publisher"],
-                JAVLIBRARY_LABELS,
             )
         });
     let series = first_link_text(&document, "a[href*=\"series\"]")
-        .or_else(|| rendered_av::labeled_value(&info_text, &["系列", "Series"], JAVLIBRARY_LABELS));
+        .or_else(|| javlibrary_labeled_value(&document, &info_text, &["系列", "Series"]));
     let director = first_link_text(&document, "a[href*=\"director\"]").or_else(|| {
-        rendered_av::labeled_value(
-            &info_text,
-            &["監督", "導演", "导演", "Director"],
-            JAVLIBRARY_LABELS,
-        )
+        javlibrary_labeled_value(&document, &info_text, &["監督", "導演", "导演", "Director"])
     });
     let actors = rendered_av::link_texts(
         &document,
@@ -552,15 +544,13 @@ fn parse_detail_page(
         &document,
         "#video_review .score, .score, .rating, [class*=\"score\"]",
     )
-    .or_else(|| {
-        rendered_av::labeled_value(&info_text, &["评分", "評分", "Rating"], JAVLIBRARY_LABELS)
-    })
+    .or_else(|| javlibrary_labeled_value(&document, &info_text, &["评分", "評分", "Rating"]))
     .and_then(|value| rendered_av::parse_rating_milli(&value));
     let wanted_count = rendered_av::element_text(
         &document,
         ".wanted, .userswanted, #video_favorite_edit, [class*=\"wanted\"]",
     )
-    .or_else(|| rendered_av::labeled_value(&info_text, &["想看", "Wanted"], JAVLIBRARY_LABELS))
+    .or_else(|| javlibrary_labeled_value(&document, &info_text, &["想看", "Wanted"]))
     .and_then(|value| rendered_av::first_u32(&value));
     let poster_url =
         rendered_av::attr_value(&document, "#video_jacket_img, .video_jacket_img", "src")
@@ -622,6 +612,20 @@ const JAVLIBRARY_LABELS: &[&str] = &[
     "想看",
     "Wanted",
 ];
+
+const JAVLIBRARY_LABEL_ROW_SELECTOR: &str = "#video_info p, #video_info li, #video_info tr, \
+         .video_info p, .video_info li, .video_info tr, \
+         #video p, #video li, #video tr, table tr";
+
+fn javlibrary_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        JAVLIBRARY_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        JAVLIBRARY_LABELS,
+    )
+}
 
 fn first_link_text(document: &Html, selector: &str) -> Option<String> {
     rendered_av::link_texts(document, selector)
@@ -743,6 +747,22 @@ mod tests {
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().actors,
             vec!["Actor One".to_owned(), "Actor Two".to_owned()]
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().studio.as_deref(),
+            Some("Studio Alpha")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().publisher.as_deref(),
+            Some("Publisher Beta")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().series.as_deref(),
+            Some("Series Gamma")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().directors,
+            vec!["Director Delta".to_owned()]
         );
         assert_eq!(candidate.facts.av.as_ref().unwrap().wanted_count, Some(234));
         assert_eq!(candidate.facts.community_score_milli, Some(860));

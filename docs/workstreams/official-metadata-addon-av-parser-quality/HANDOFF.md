@@ -11,12 +11,12 @@ while older AV providers mostly use repeated full-text label scanners.
 
 ## Active Task
 
-- Task ID: APQ-030
+- Task ID: APQ-040
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers/javlibrary.rs`, `crates/nako-metadata-scraper/src/providers/javdb`, `crates/nako-metadata-scraper/src/providers/fc2`
-- Validation: `cargo nextest run -p nako-metadata-scraper javlibrary javdb fc2 rendered_av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/README.md`, `addons/metadata-scraper/README.md`, `docs/workstreams/official-metadata-addon-av-parser-quality`
+- Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json`; `git diff --check`
 - Status: READY
-- Review: Do not force all providers into one shape if their page models differ.
+- Review: Confirm no parser-quality decision exists only in journal notes.
 
 ## Blockers
 
@@ -24,5 +24,5 @@ while older AV providers mostly use repeated full-text label scanners.
 
 ## Next Recommended Action
 
-- Execute APQ-030: audit JavLibrary, JavDB, and FC2 for shared parser reuse and
-  migrate only where tests prove cleaner behavior.
+- Execute APQ-040: run package validation, document parser-quality behavior,
+  and close or split any remaining parser work.

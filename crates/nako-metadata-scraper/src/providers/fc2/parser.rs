@@ -1,6 +1,6 @@
 use scraper::{Html, Selector};
 
-use crate::engine::av::AvQueryFacts;
+use crate::{engine::av::AvQueryFacts, providers::rendered_av};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct Fc2DetailFacts {
@@ -31,12 +31,17 @@ pub(super) fn parse_detail_page(
         element_text(&document, "meta[property=\"og:title\"]").as_deref(),
         Some(av.number.as_str()),
     ])?;
-    let release_date = labeled_value(&info_text, &["販売日", "配信開始日", "Release Date"])
-        .or_else(|| first_iso_date(&body_text));
+    let release_date = fc2_labeled_value(
+        &document,
+        &info_text,
+        &["販売日", "配信開始日", "Release Date"],
+    )
+    .or_else(|| first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(first_year);
-    let runtime_minutes = labeled_value(&info_text, &["収録時間", "再生時間", "Runtime"])
-        .and_then(|value| parse_minutes(&value));
-    let seller = labeled_value(&info_text, &["販売者", "Seller", "メーカー"]);
+    let runtime_minutes =
+        fc2_labeled_value(&document, &info_text, &["収録時間", "再生時間", "Runtime"])
+            .and_then(|value| parse_minutes(&value));
+    let seller = fc2_labeled_value(&document, &info_text, &["販売者", "Seller", "メーカー"]);
     let overview = element_text(
         &document,
         ".items_article_Comment, .items_article_description, .comment",
@@ -108,33 +113,29 @@ fn link_texts(document: &Html, selector: &str) -> Vec<String> {
         })
 }
 
-fn labeled_value(text: &str, labels: &[&str]) -> Option<String> {
-    labels
-        .iter()
-        .find_map(|label| labeled_value_by_label(text, label))
-}
+const FC2_LABELS: &[&str] = &[
+    "販売日",
+    "配信開始日",
+    "Release Date",
+    "収録時間",
+    "再生時間",
+    "Runtime",
+    "販売者",
+    "Seller",
+    "メーカー",
+];
 
-fn labeled_value_by_label(text: &str, label: &str) -> Option<String> {
-    let marker = format!("{label}:");
-    let start = text.find(&marker)? + marker.len();
-    let rest = text[start..].trim();
-    let end = [
-        "販売日:",
-        "配信開始日:",
-        "Release Date:",
-        "収録時間:",
-        "再生時間:",
-        "Runtime:",
-        "販売者:",
-        "Seller:",
-        "メーカー:",
-    ]
-    .into_iter()
-    .filter(|next_marker| *next_marker != marker)
-    .filter_map(|next_marker| rest.find(next_marker))
-    .min()
-    .unwrap_or(rest.len());
-    Some(normalize_whitespace(&rest[..end])).filter(|value| !value.is_empty())
+const FC2_LABEL_ROW_SELECTOR: &str = ".items_article_info p, .items_article_info li, .items_article_info tr, \
+         .items_article_HeadInfo p, .items_article_HeadInfo li, .items_article_HeadInfo tr";
+
+fn fc2_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        FC2_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        FC2_LABELS,
+    )
 }
 
 fn first_non_empty(values: &[Option<&str>]) -> Option<String> {

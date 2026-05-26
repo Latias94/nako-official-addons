@@ -1,6 +1,6 @@
 use scraper::{Html, Selector};
 
-use crate::engine::av::AvQueryFacts;
+use crate::{engine::av::AvQueryFacts, providers::rendered_av};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct JavdbSearchResult {
@@ -76,15 +76,31 @@ pub(super) fn parse_detail_page(
         element_text(&document, "h2.title").as_deref(),
         Some(search_result.title.as_str()),
     ])?;
-    let release_date = labeled_value(&info_text, &["日期", "發行日期", "発売日", "Release Date"])
-        .or_else(|| first_iso_date(&body_text));
+    let release_date = javdb_labeled_value(
+        &document,
+        &info_text,
+        &["日期", "發行日期", "発売日", "Release Date"],
+    )
+    .or_else(|| first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(first_year);
-    let runtime_minutes = labeled_value(&info_text, &["時長", "片長", "収録時間", "Runtime"])
-        .and_then(|value| parse_minutes(&value));
-    let studio = labeled_value(&info_text, &["片商", "製作商", "Studio", "Maker"]);
-    let publisher = labeled_value(&info_text, &["發行", "发行", "Publisher", "Label"]);
-    let series = labeled_value(&info_text, &["系列", "Series"]);
-    let director = labeled_value(&info_text, &["導演", "导演", "Director"]);
+    let runtime_minutes = javdb_labeled_value(
+        &document,
+        &info_text,
+        &["時長", "片長", "収録時間", "Runtime"],
+    )
+    .and_then(|value| parse_minutes(&value));
+    let studio = javdb_labeled_value(
+        &document,
+        &info_text,
+        &["片商", "製作商", "Studio", "Maker"],
+    );
+    let publisher = javdb_labeled_value(
+        &document,
+        &info_text,
+        &["發行", "发行", "Publisher", "Label"],
+    );
+    let series = javdb_labeled_value(&document, &info_text, &["系列", "Series"]);
+    let director = javdb_labeled_value(&document, &info_text, &["導演", "导演", "Director"]);
     let actors = link_texts(&document, "a[href*=\"/actors/\"]");
     let tags = link_texts(&document, "a[href*=\"/tags/\"]");
     let detail_number = first_non_empty(&[
@@ -94,14 +110,14 @@ pub(super) fn parse_detail_page(
             "data-clipboard-text",
         )
         .as_deref(),
-        detail_number_from_info_text(&info_text).as_deref(),
+        detail_number_from_info_text(&document, &info_text).as_deref(),
         Some(search_result.number.as_str()),
     ])
     .unwrap_or_else(|| search_result.number.clone());
     let rating_milli = element_text(&document, ".score, .rating, strong.score")
         .and_then(|value| parse_rating_milli(&value));
     let wanted_count = element_text(&document, ".wanted, .want")
-        .or_else(|| labeled_value(&body_text, &["想看", "Wanted"]))
+        .or_else(|| javdb_labeled_value(&document, &body_text, &["想看", "Wanted"]))
         .and_then(|value| parse_first_u32(&value));
     let poster_url = attr_value(&document, "meta[property=\"og:image\"]", "content")
         .or_else(|| attr_value(&document, ".cover img, .movie-cover img", "src"));
@@ -137,8 +153,8 @@ pub(super) fn parse_detail_page(
     })
 }
 
-fn detail_number_from_info_text(text: &str) -> Option<String> {
-    labeled_value(text, &["番號", "番号", "識別碼", "ID", "Number"])
+fn detail_number_from_info_text(document: &Html, text: &str) -> Option<String> {
+    javdb_labeled_value(document, text, &["番號", "番号", "識別碼", "ID", "Number"])
 }
 
 fn element_text(document: &Html, selector: &str) -> Option<String> {
@@ -192,52 +208,47 @@ fn image_urls(document: &Html, selector: &str) -> Vec<String> {
         })
 }
 
-fn labeled_value(text: &str, labels: &[&str]) -> Option<String> {
-    labels
-        .iter()
-        .find_map(|label| labeled_value_by_label(text, label))
-}
+const JAVDB_LABELS: &[&str] = &[
+    "日期",
+    "發行日期",
+    "発売日",
+    "Release Date",
+    "時長",
+    "片長",
+    "収録時間",
+    "Runtime",
+    "片商",
+    "製作商",
+    "Studio",
+    "Maker",
+    "發行",
+    "发行",
+    "Publisher",
+    "Label",
+    "系列",
+    "Series",
+    "導演",
+    "导演",
+    "Director",
+    "想看",
+    "Wanted",
+    "番號",
+    "番号",
+    "識別碼",
+    "ID",
+    "Number",
+];
 
-fn labeled_value_by_label(text: &str, label: &str) -> Option<String> {
-    let marker = format!("{label}:");
-    let start = text.find(&marker)? + marker.len();
-    let rest = text[start..].trim();
-    let end = [
-        "日期:",
-        "發行日期:",
-        "発売日:",
-        "Release Date:",
-        "時長:",
-        "片長:",
-        "収録時間:",
-        "Runtime:",
-        "片商:",
-        "製作商:",
-        "Studio:",
-        "Maker:",
-        "發行:",
-        "发行:",
-        "Publisher:",
-        "Label:",
-        "系列:",
-        "Series:",
-        "導演:",
-        "导演:",
-        "Director:",
-        "想看:",
-        "Wanted:",
-        "番號:",
-        "番号:",
-        "識別碼:",
-        "ID:",
-        "Number:",
-    ]
-    .into_iter()
-    .filter(|next_marker| *next_marker != marker)
-    .filter_map(|next_marker| rest.find(next_marker))
-    .min()
-    .unwrap_or(rest.len());
-    Some(normalize_whitespace(&rest[..end])).filter(|value| !value.is_empty())
+const JAVDB_LABEL_ROW_SELECTOR: &str = ".movie-panel-info p, .movie-panel-info li, .movie-panel-info tr, .video-meta-panel p, .video-meta-panel li, .video-meta-panel tr";
+
+fn javdb_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        JAVDB_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        JAVDB_LABELS,
+    )
 }
 
 fn first_non_empty(values: &[Option<&str>]) -> Option<String> {
