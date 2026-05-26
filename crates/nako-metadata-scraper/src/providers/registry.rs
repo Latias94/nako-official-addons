@@ -642,6 +642,7 @@ mod tests {
                     "av_number_search",
                     "theporndb_scene_search",
                     "theporndb_direct_lookup",
+                    "theporndb_scene_hash_lookup",
                     "theporndb_official_api"
                 ],
                 status: ProviderStatus::Disabled,
@@ -867,6 +868,20 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"theporndb_url")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "file_oshash"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"file_oshash")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "file_phash"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"file_phash")
+        }));
     }
 
     #[test]
@@ -959,6 +974,16 @@ mod tests {
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "theporndb_url",
             "theporndb_url",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "file_oshash",
+            "file_oshash",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "file_phash",
+            "file_phash",
             false
         )));
     }

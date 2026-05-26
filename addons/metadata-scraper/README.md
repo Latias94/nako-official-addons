@@ -362,8 +362,8 @@ Metadata requests may provide explicit `external_ids` or top-level aliases:
 `10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
 `javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`, `avsox_url`,
 `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
-`theporndb_url`, and `av_number`. These aliases are derived from provider-owned
-external ID capabilities.
+`theporndb_url`, `file_oshash`, `file_phash`, and `av_number`. These aliases
+are derived from provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -403,10 +403,16 @@ amateur/MGS numbers such as `300MIUM-382`, and supports `mgstage_id` or
 `mgstage_url` direct lookup. Prestige is a censored-route official source and
 supports `prestige_id` or `prestige_url` direct lookup. ThePornDB supports
 scene search and explicit `theporndb_id` or `theporndb_url` scene detail lookup,
-and maps performers, directors, site/network, tags, poster/backdrop artwork,
-trailer URL, rating, runtime, and source links. These AV providers emit
-`av_number` external IDs so the resolver can merge compatible AV facts across
-sources.
+direct scene hash lookup through `file_oshash` or `file_phash`, and maps
+performers, directors, site/network, tags, poster/backdrop artwork, trailer URL,
+rating, runtime, and source links. These AV providers emit `av_number` external
+IDs so the resolver can merge compatible AV facts across sources.
+
+ThePornDB hash lookup accepts either top-level fields or `external_ids`, for
+example `{"external_ids": {"file_oshash": "d7dae9cd888c5984"}}`. It calls
+`/scenes/hash/{hash}` before ID, AV-number, or title search. Movie hash lookup
+is kept separate until the query contract can distinguish scene and movie
+intent.
 
 ThePornDB environment knobs:
 

@@ -69,8 +69,8 @@ Current alpha provider defaults:
 - `theporndb`: disabled by default; calls the ThePornDB JSON API for AV scene
   search/detail lookup and requires `NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN`
   when enabled. It emits `theporndb`, `theporndb_url`, and `av_number` external
-  IDs, and accepts `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL` for proxied API
-  access.
+  IDs, supports `file_oshash`/`file_phash` scene hash lookup, and accepts
+  `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL` for proxied API access.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
@@ -78,8 +78,8 @@ Metadata requests may provide explicit `external_ids` or top-level aliases:
 `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
 `javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`,
 `mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
-`theporndb_url`, and `av_number`. These aliases are derived from provider-owned
-external ID capabilities.
+`theporndb_url`, `file_oshash`, `file_phash`, and `av_number`. These aliases
+are derived from provider-owned external ID capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
@@ -96,6 +96,12 @@ When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`,
 direct detail lookup before falling back to inferred AV-number search. This is
 useful for appointed-source corrections where a user already knows the
 authoritative site record.
+
+When `file_oshash` or `file_phash` is supplied, ThePornDB performs direct scene
+hash lookup through `/scenes/hash/{hash}` before ID, AV-number, or title search.
+The request can use top-level fields or `external_ids`, for example
+`{"external_ids": {"file_oshash": "d7dae9cd888c5984"}}`. Movie hash lookup is
+kept separate until the query contract can distinguish scene and movie intent.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV

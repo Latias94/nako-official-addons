@@ -30,6 +30,8 @@ use crate::{
 
 pub const THEPORNDB_PROVIDER_ID: &str = "theporndb";
 const THEPORNDB_URL_EXTERNAL_ID_PROVIDER: &str = "theporndb_url";
+const FILE_OSHASH_EXTERNAL_ID_PROVIDER: &str = "file_oshash";
+const FILE_PHASH_EXTERNAL_ID_PROVIDER: &str = "file_phash";
 const THEPORNDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
     ProviderExternalIdCapability::new(
         THEPORNDB_PROVIDER_ID,
@@ -53,6 +55,22 @@ const THEPORNDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         true,
         true,
         &[],
+        false,
+    ),
+    ProviderExternalIdCapability::new(
+        FILE_OSHASH_EXTERNAL_ID_PROVIDER,
+        ExternalIdValueKind::Opaque,
+        true,
+        true,
+        &["file_oshash"],
+        false,
+    ),
+    ProviderExternalIdCapability::new(
+        FILE_PHASH_EXTERNAL_ID_PROVIDER,
+        ExternalIdValueKind::Opaque,
+        true,
+        true,
+        &["file_phash"],
         false,
     ),
 ];
@@ -113,6 +131,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "av_number_search",
             "theporndb_scene_search",
             "theporndb_direct_lookup",
+            "theporndb_scene_hash_lookup",
             "theporndb_official_api",
         ],
         field_quality: ProviderFieldQualityDescriptor::new(700, 700, 750, 700),
@@ -193,6 +212,12 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        if let Some(hash_lookup) = hash_lookup_from_query(query) {
+            return self
+                .hash_candidates(hash_lookup, facts_from_query(query), query)
+                .await;
+        }
+
         if let Some(slug) =
             rendered_av::direct_external_id(query, THEPORNDB_URL_EXTERNAL_ID_PROVIDER)
                 .and_then(|value| normalize_identifier(&value))
@@ -267,6 +292,30 @@ where
             .unwrap_or_default())
     }
 
+    async fn hash_candidates(
+        &self,
+        lookup: ThePornDbHashLookup,
+        av_hint: Option<AvQueryFacts>,
+        query: &MetadataQuery,
+    ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        let response = self
+            .runtime
+            .get_json(
+                THEPORNDB_PROVIDER_ID,
+                "scene_hash_detail",
+                self.scene_hash_url(&lookup.hash),
+                lookup.query_params(),
+                self.auth_headers(),
+            )
+            .await?;
+        let detail: ThePornDbSceneResponse = serde_json::from_value(response.body)?;
+        Ok(detail
+            .data
+            .and_then(|scene| scene.into_detail_facts(&self.config, av_hint))
+            .map(|facts| vec![facts.into_candidate(query)])
+            .unwrap_or_default())
+    }
+
     fn scene_search_url(&self) -> String {
         format!("{}/scenes", self.config.api_base_url.trim_end_matches('/'))
     }
@@ -276,6 +325,14 @@ where
             "{}/scenes/{}",
             self.config.api_base_url.trim_end_matches('/'),
             rendered_av::percent_encode(identifier)
+        )
+    }
+
+    fn scene_hash_url(&self, hash: &str) -> String {
+        format!(
+            "{}/scenes/hash/{}",
+            self.config.api_base_url.trim_end_matches('/'),
+            rendered_av::percent_encode(hash)
         )
     }
 
@@ -325,6 +382,33 @@ where
 enum ThePornDbSearchTerm {
     Av(AvQueryFacts),
     Title(String),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ThePornDbHashType {
+    Oshash,
+    Phash,
+}
+
+impl ThePornDbHashType {
+    const fn as_api_value(self) -> &'static str {
+        match self {
+            Self::Oshash => "OSHASH",
+            Self::Phash => "PHASH",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ThePornDbHashLookup {
+    hash_type: ThePornDbHashType,
+    hash: String,
+}
+
+impl ThePornDbHashLookup {
+    fn query_params(&self) -> Vec<(String, String)> {
+        vec![("type".to_owned(), self.hash_type.as_api_value().to_owned())]
+    }
 }
 
 impl ThePornDbSearchTerm {
@@ -411,6 +495,8 @@ struct ThePornDbScene {
     site: Option<ThePornDbSite>,
     #[serde(default)]
     tags: Vec<ThePornDbNameResource>,
+    #[serde(default)]
+    hashes: Vec<ThePornDbHashResource>,
     #[serde(default)]
     directors: Vec<ThePornDbNameResource>,
     #[serde(default)]
@@ -501,6 +587,11 @@ impl ThePornDbScene {
                 external_links.push(ProviderExternalId { provider, value });
             }
         }
+        for hash in self.hashes {
+            if let Some(external_id) = hash.into_external_id() {
+                external_links.push(external_id);
+            }
+        }
 
         Some(ThePornDbSceneFacts {
             slug: slug.clone(),
@@ -571,6 +662,34 @@ struct ThePornDbSite {
     short_name: Option<String>,
     network: Option<Box<ThePornDbSite>>,
     parent: Option<Box<ThePornDbSite>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ThePornDbHashResource {
+    #[serde(rename = "type")]
+    hash_type: Option<String>,
+    hash: Option<String>,
+}
+
+impl ThePornDbHashResource {
+    fn into_external_id(self) -> Option<ProviderExternalId> {
+        let hash = non_empty_string(self.hash.as_deref())?;
+        let provider = match self
+            .hash_type
+            .as_deref()?
+            .trim()
+            .to_ascii_uppercase()
+            .as_str()
+        {
+            "OSHASH" => FILE_OSHASH_EXTERNAL_ID_PROVIDER,
+            "PHASH" => FILE_PHASH_EXTERNAL_ID_PROVIDER,
+            _ => return None,
+        };
+        Some(ProviderExternalId {
+            provider: provider.to_owned(),
+            value: hash,
+        })
+    }
 }
 
 impl ThePornDbSite {
@@ -765,6 +884,43 @@ fn normalize_identifier(value: &str) -> Option<String> {
     })
 }
 
+fn hash_lookup_from_query(query: &MetadataQuery) -> Option<ThePornDbHashLookup> {
+    hash_lookup_for_provider(
+        query,
+        FILE_OSHASH_EXTERNAL_ID_PROVIDER,
+        ThePornDbHashType::Oshash,
+    )
+    .or_else(|| {
+        hash_lookup_for_provider(
+            query,
+            FILE_PHASH_EXTERNAL_ID_PROVIDER,
+            ThePornDbHashType::Phash,
+        )
+    })
+}
+
+fn hash_lookup_for_provider(
+    query: &MetadataQuery,
+    provider: &str,
+    hash_type: ThePornDbHashType,
+) -> Option<ThePornDbHashLookup> {
+    let hash = rendered_av::direct_external_id(query, provider)
+        .and_then(|value| normalize_hash_value(&value))?;
+    Some(ThePornDbHashLookup { hash_type, hash })
+}
+
+fn normalize_hash_value(value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty()
+        || value.chars().any(|character| {
+            !(character.is_ascii_hexdigit() || character == '-' || character == '_')
+        })
+    {
+        return None;
+    }
+    Some(value.to_ascii_lowercase())
+}
+
 fn slug_from_url(value: &str) -> Option<String> {
     let without_fragment = value.split('#').next().unwrap_or(value);
     let without_query = without_fragment
@@ -937,6 +1093,10 @@ mod tests {
                         "name": "Studio Site",
                         "network": {"name": "Studio Network"}
                     },
+                    "hashes": [
+                        {"type": "OSHASH", "hash": "d7dae9cd888c5984"},
+                        {"type": "PHASH", "hash": "faceb00c"}
+                    ],
                     "links": {
                         "IAFD": "https://iafd.example/title",
                         "Empty": null
@@ -1014,6 +1174,14 @@ mod tests {
             value: "https://studio.example/scenes/tpdb-001".to_owned(),
         }));
         assert!(candidate.facts.external_ids.contains(&ProviderExternalId {
+            provider: "file_oshash".to_owned(),
+            value: "d7dae9cd888c5984".to_owned(),
+        }));
+        assert!(candidate.facts.external_ids.contains(&ProviderExternalId {
+            provider: "file_phash".to_owned(),
+            value: "faceb00c".to_owned(),
+        }));
+        assert!(candidate.facts.external_ids.contains(&ProviderExternalId {
             provider: "IAFD".to_owned(),
             value: "https://iafd.example/title".to_owned(),
         }));
@@ -1043,6 +1211,92 @@ mod tests {
         assert_eq!(
             transport.configs()[0].proxy_url.as_deref(),
             Some("http://proxy.example:8080")
+        );
+    }
+
+    #[tokio::test]
+    async fn theporndb_provider_uses_file_hash_for_direct_scene_lookup() {
+        let transport = FakeTransport::default();
+        transport.push_json(json!({
+            "data": {
+                "title": "Hash Scene",
+                "slug": "hash-scene",
+                "description": "Hash outline.",
+                "date": "2024-03-04",
+                "hashes": [{"type": "OSHASH", "hash": "abcdef0123456789"}]
+            }
+        }));
+        let provider = provider_with_transport(transport.clone());
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload_with_external_id_capabilities(
+                &json!({
+                    "title": "Hash fallback title",
+                    "file_oshash": "ABCDEF0123456789",
+                    "av_number": "TPDB-001"
+                }),
+                "en-US",
+                THEPORNDB_EXTERNAL_ID_CAPABILITIES,
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "theporndb:scene:hash-scene");
+        assert!(
+            candidates[0]
+                .facts
+                .external_ids
+                .contains(&ProviderExternalId {
+                    provider: "file_oshash".to_owned(),
+                    value: "abcdef0123456789".to_owned(),
+                })
+        );
+        let requests = transport.requests();
+        assert_eq!(
+            requests[0].url,
+            "https://api.theporndb.test/scenes/hash/abcdef0123456789"
+        );
+        assert_eq!(
+            requests[0].query,
+            vec![("type".to_owned(), "OSHASH".to_owned())]
+        );
+    }
+
+    #[tokio::test]
+    async fn theporndb_provider_uses_phash_type_for_file_phash_lookup() {
+        let transport = FakeTransport::default();
+        transport.push_json(json!({
+            "data": {
+                "title": "Perceptual Hash Scene",
+                "slug": "phash-scene"
+            }
+        }));
+        let provider = provider_with_transport(transport.clone());
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Manual hash lookup".to_owned(),
+                year: None,
+                language: "en-US".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "file_phash".to_owned(),
+                    value: "faceB00c".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "theporndb:scene:phash-scene");
+        let requests = transport.requests();
+        assert_eq!(
+            requests[0].url,
+            "https://api.theporndb.test/scenes/hash/faceb00c"
+        );
+        assert_eq!(
+            requests[0].query,
+            vec![("type".to_owned(), "PHASH".to_owned())]
         );
     }
 
