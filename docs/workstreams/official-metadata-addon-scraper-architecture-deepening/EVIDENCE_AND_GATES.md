@@ -1,0 +1,26 @@
+# Evidence And Gates
+
+Status: Active
+Last updated: 2026-05-26
+
+## Required Gates
+
+| Gate | Command | Required before |
+| --- | --- | --- |
+| Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json` | OMSAD-010 completion and closeout |
+| Workstream hygiene | `git diff --check` | every task completion |
+| Typed scrape outcome | `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast` | OMSAD-020 completion |
+| Render intent | `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test` | OMSAD-030 completion |
+| Rendered AV flow | `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast` | OMSAD-040 completion |
+| Provider quality descriptors | `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast` | OMSAD-050 completion |
+| Resolver/fusion/ranking | `cargo nextest run -p nako-metadata-scraper resolver ranking artwork writeback av --no-fail-fast` | OMSAD-060 completion |
+| Side-effect writeback | `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast` | OMSAD-070 completion |
+| Package validation | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | closeout |
+| Browser-worker validation | `npm --prefix addons/browser-worker test` | closeout when browser-worker changed |
+| Formatting | `cargo fmt -p nako-metadata-scraper -- --check` | every Rust task completion |
+
+## Evidence Log
+
+| Date | Task | Evidence | Result |
+| --- | --- | --- | --- |
+| 2026-05-26 | OMSAD-010 | `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass |
