@@ -4,12 +4,7 @@ Prefix: OMAV3
 
 ## Active
 
-- [ ] OMAV3-070 [owner=codex] [deps=OMAV3-040,OMAV3-050,OMAV3-060] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-provider-wave3]
-  Goal: Run full gates, document provider wave 3 behavior, and close or split remaining provider candidates.
-  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
-  Review: Confirm no provider or protection work remains hidden in handoff notes.
-  Evidence:
-  Handoff:
+- None.
 
 ## Pending
 
@@ -58,6 +53,13 @@ Prefix: OMAV3
   Review: Caribbean, 1Pondo, and 10Musume share a deep official-uncensored implementation with independent site descriptors and synthetic rendered HTML fixtures; each is disabled by default, route-gated to uncensored date-style IDs, exposes ID/URL aliases, emits provider URL and `av_number` external IDs, and participates in field quality descriptors.
   Evidence: PASS on 2026-05-26: 63 caribbean/1pondo/10musume/AV/config/registry/manifest tests; fmt, workstream JSON, and diff hygiene passed.
   Handoff: DONE. OMAV3-070 is active.
+
+- [x] OMAV3-070 [owner=codex] [deps=OMAV3-040,OMAV3-050,OMAV3-060] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-provider-wave3]
+  Goal: Run full gates, document provider wave 3 behavior, and close or split remaining provider candidates.
+  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
+  Review: No provider or protection work remains hidden in handoff notes. ThePornDB, Jav321, region-specific fallbacks, and additional FC2 sources remain explicit follow-up candidates rather than blockers.
+  Evidence: PASS on 2026-05-26: full metadata-scraper package gate passed with 220 tests; browser-worker gate passed with 4 tests; workstream JSON, fmt, and diff hygiene passed.
+  Handoff: DONE. Workstream complete.
 
 ## Follow-Up Candidates
 

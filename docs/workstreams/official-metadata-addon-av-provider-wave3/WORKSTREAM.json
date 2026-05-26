@@ -1,18 +1,20 @@
 {
   "id": "official-metadata-addon-av-provider-wave3",
   "title": "Official Metadata Addon AV Provider Wave 3",
-  "status": "active",
+  "status": "complete",
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMAV3",
-  "current_task": "OMAV3-070",
+  "closed_at": "2026-05-26",
+  "current_task": null,
   "completed_tasks": [
     "OMAV3-010",
     "OMAV3-020",
     "OMAV3-030",
     "OMAV3-040",
     "OMAV3-050",
-    "OMAV3-060"
+    "OMAV3-060",
+    "OMAV3-070"
   ],
   "scope": [
     "crates/nako-metadata-scraper/src/providers",
@@ -36,7 +38,8 @@
     ]
   },
   "compatibility_policy": "Breaking internal provider/config/test harness changes are allowed. Public provider IDs and task output changes must be documented.",
-  "top_recommendation": "Start with a reusable rendered AV provider fixture harness, then add provider waves behind disabled-by-default config, then add explicit real-use protection.",
+  "top_recommendation": "Provider wave 3 is complete. Future AV breadth should start from the shared rendered AV fixture harness, keep new providers disabled by default, and treat live drift checks as manual unless adult payloads can stay out of CI.",
+  "closeout_summary": "Completed shared rendered AV fixture harness, explicit provider execution protection, Prestige, FC2PPVDB, Caribbean, 1Pondo, and 10Musume. Full metadata-scraper, browser-worker, fmt, JSON, and diff hygiene gates passed on 2026-05-26.",
   "references": [
     "repo-ref/mdcx/mdcx/config/models.py",
     "repo-ref/mdcx/mdcx/models/types.py",

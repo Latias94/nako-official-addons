@@ -1,6 +1,6 @@
 # Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Required Gates
@@ -28,3 +28,4 @@ Last updated: 2026-05-26
 | 2026-05-26 | OMAV3-040 | `cargo nextest run -p nako-metadata-scraper prestige --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper proxy routes --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check` | Pass: Prestige official JSON API provider is disabled by default, supports censored AV search/direct lookup, emits declared external IDs, updates field policy/schema/docs, and reports proxy policy without URL leakage |
 | 2026-05-26 | OMAV3-050 | `cargo nextest run -p nako-metadata-scraper fc2ppvdb --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper fc2 av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check` | Pass: FC2PPVDB selected over FC2Hub/FC2Club for deterministic long-tail FC2 article fallback, disabled by default, route-gated to FC2, and emits declared FC2PPVDB/AV external IDs |
 | 2026-05-26 | OMAV3-060 | `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check` | Pass: Caribbean, 1Pondo, and 10Musume official uncensored providers are disabled by default, route-gated to date-style uncensored IDs, use browser-worker rendered HTML, emit declared provider URL and AV external IDs, and participate in default field-quality policy |
+| 2026-05-26 | OMAV3-070 | `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check` | Pass: closeout verified 220 metadata-scraper tests, 4 browser-worker tests, formatting, JSON, and diff hygiene; remaining provider breadth is documented as follow-up scope |

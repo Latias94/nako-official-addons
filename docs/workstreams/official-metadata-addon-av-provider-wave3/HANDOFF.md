@@ -1,6 +1,6 @@
 # Official Metadata Addon AV Provider Wave 3 - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Current State
@@ -25,20 +25,17 @@ scraper architecture lane remains the foundation: typed scrape outcomes,
 render intent, rendered AV flow, provider quality descriptors, resolver/fusion
 split, and shared side-effect writeback.
 
-## Active Task
+## Closeout
 
 - Task ID: OMAV3-070
-- Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`, `docs/workstreams/official-metadata-addon-av-provider-wave3`
-- Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
-- Status: READY
-- Review: Confirm no provider or protection work remains hidden in handoff
-  notes and decide whether remaining provider candidates should be follow-up
-  lanes rather than blockers.
-- Evidence: OMAV3-060 passed 63 caribbean/1pondo/10musume/AV/config/registry/
-  manifest tests and fmt check; the trio covers route gates, direct ID/URL
-  lookup, mapping, artwork/trailer facts, aliases, manifest schema, and field
-  descriptors.
+- Status: DONE
+- Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed
+  with 220 tests; `npm --prefix addons/browser-worker test` passed with 4
+  tests; `cargo fmt -p nako-metadata-scraper -- --check`,
+  `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`,
+  and `git diff --check` passed.
+- Review: No provider or protection work remains hidden in handoff notes. The
+  lane is complete; future provider breadth should be new scope.
 
 ## Decisions
 
@@ -67,8 +64,11 @@ split, and shared side-effect writeback.
 
 - None.
 
-## Next Recommended Action
+## Follow-Ups
 
-- Execute OMAV3-070: run full package validation, browser-worker validation,
-  workstream JSON/diff hygiene, then close or split any remaining provider
-  candidates.
+- ThePornDB, Jav321, region-specific fallbacks, and additional FC2 sources can
+  be opened as new provider-breadth lanes if needed.
+- Nako core refresh/locked-field/local metadata/local artwork priority remains
+  outside this provider lane.
+- User-facing review UI, NFO/rename, and actor-image workflows remain outside
+  this provider lane.

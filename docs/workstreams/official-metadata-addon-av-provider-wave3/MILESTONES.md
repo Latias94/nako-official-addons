@@ -1,6 +1,6 @@
 # Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## M1 - Lane Opened
@@ -47,9 +47,22 @@ Exit criteria:
 
 ## M5 - Verification And Closeout
 
+Status: Complete on 2026-05-26.
+
 Exit criteria:
 
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passes.
 - `npm --prefix addons/browser-worker test` passes if browser-worker changes.
 - Workstream JSON and diff hygiene pass.
 - Remaining provider candidates are explicit follow-ups.
+
+Closeout result:
+
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed with 220
+  tests.
+- `npm --prefix addons/browser-worker test` passed with 4 tests.
+- `cargo fmt -p nako-metadata-scraper -- --check`, workstream JSON validation,
+  and `git diff --check` passed.
+- Remaining provider breadth is not hidden scope; ThePornDB, Jav321,
+  region-specific fallbacks, and additional FC2 sources are follow-up
+  candidates.

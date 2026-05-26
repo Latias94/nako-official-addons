@@ -1,6 +1,6 @@
 # Official Metadata Addon AV Provider Wave 3
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Why This Lane Exists
@@ -123,3 +123,12 @@ This lane can close when:
 - provider protection behavior is explicit and tested;
 - full package, browser-worker, format, JSON, and diff hygiene gates pass;
 - remaining provider breadth is split into follow-up candidates.
+
+## Closeout Result
+
+Complete on 2026-05-26. The lane shipped the shared rendered AV fixture harness,
+explicit provider execution protection, Prestige, FC2PPVDB, Caribbean, 1Pondo,
+and 10Musume. All selected providers are disabled by default, documented in the
+manifest/README surface, covered by synthetic tests, and represented in route
+support plus field-quality descriptors. Remaining provider breadth is deferred
+to follow-up candidates rather than blocking this lane.
