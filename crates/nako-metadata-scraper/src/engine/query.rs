@@ -55,11 +55,6 @@ impl ProviderFieldQualityDescriptor {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(crate) struct ProviderRunPolicy {
-    disabled_provider_ids: Vec<String>,
-}
-
 impl ProviderFieldPolicy {
     #[must_use]
     pub fn from_provider_field_quality_descriptors(
@@ -178,38 +173,6 @@ fn insert_policy_fields(
     }
     for field in fields {
         preferences.insert((*field).to_owned(), providers.to_vec());
-    }
-}
-
-impl ProviderRunPolicy {
-    #[must_use]
-    pub(crate) fn from_payload(payload: &serde_json::Value) -> Self {
-        let disabled_provider_ids = payload
-            .get("disabled_provider_ids")
-            .or_else(|| payload.get("suppressed_provider_ids"))
-            .and_then(serde_json::Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(serde_json::Value::as_str)
-            .filter_map(normalize_policy_provider)
-            .fold(Vec::new(), |mut providers, provider| {
-                if !providers.contains(&provider) {
-                    providers.push(provider);
-                }
-                providers
-            });
-
-        Self {
-            disabled_provider_ids,
-        }
-    }
-
-    #[must_use]
-    pub(crate) fn disables(&self, provider_id: &str) -> bool {
-        let provider_id = provider_id.trim().to_ascii_lowercase();
-        self.disabled_provider_ids
-            .iter()
-            .any(|disabled| disabled == &provider_id)
     }
 }
 

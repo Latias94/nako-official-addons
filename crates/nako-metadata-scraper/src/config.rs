@@ -48,6 +48,23 @@ impl NakoRuntimeConfig {
     }
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ProviderExecutionConfig {
+    pub max_selected_providers: Option<usize>,
+}
+
+impl ProviderExecutionConfig {
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            max_selected_providers: lookup(
+                "NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST",
+            )
+            .and_then(|value| parse_positive_usize(&value)),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderId {
     Fixture,
@@ -332,6 +349,7 @@ pub struct Config {
     pub base_url: String,
     pub preferred_language: String,
     pub providers: Vec<ProviderConfig>,
+    pub provider_execution: ProviderExecutionConfig,
     pub nako_runtime: NakoRuntimeConfig,
 }
 
@@ -351,6 +369,7 @@ impl Config {
             preferred_language: lookup("NAKO_METADATA_SCRAPER_LANGUAGE")
                 .unwrap_or_else(|| "en-US".to_owned()),
             providers: provider_configs_from_catalog(|name| lookup(name)),
+            provider_execution: ProviderExecutionConfig::from_env_lookup(|name| lookup(name)),
             nako_runtime: NakoRuntimeConfig::from_env_lookup(|name| lookup(name)),
         }
     }
@@ -380,6 +399,62 @@ impl Config {
             .find(|entry| entry.id == provider_id)
             .is_some_and(|entry| (entry.proxy_configured)(provider))
     }
+
+    #[must_use]
+    pub fn rendered_page_proxy_policy_configured(&self) -> bool {
+        self.providers
+            .iter()
+            .any(ProviderConfig::rendered_page_proxy_policy_configured)
+    }
+
+    #[must_use]
+    pub fn rendered_page_session_key_configured(&self) -> bool {
+        self.providers
+            .iter()
+            .any(ProviderConfig::rendered_page_session_key_configured)
+    }
+}
+
+impl ProviderConfig {
+    fn rendered_page_proxy_policy_configured(&self) -> bool {
+        match &self.kind {
+            ProviderConfigKind::BrowserWorker(config) => {
+                config.rendered_pages.proxy_policy_configured()
+            }
+            ProviderConfigKind::Douban(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Javdb(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Dmm(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Fc2(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Javbus(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Javlibrary(config) => {
+                config.rendered_pages.proxy_policy_configured()
+            }
+            ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Fixture
+            | ProviderConfigKind::Tmdb(_)
+            | ProviderConfigKind::Bangumi(_) => false,
+        }
+    }
+
+    fn rendered_page_session_key_configured(&self) -> bool {
+        match &self.kind {
+            ProviderConfigKind::BrowserWorker(config) => {
+                config.rendered_pages.session_key_configured()
+            }
+            ProviderConfigKind::Douban(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Javdb(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Dmm(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Fc2(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Javbus(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Javlibrary(config) => {
+                config.rendered_pages.session_key_configured()
+            }
+            ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Fixture
+            | ProviderConfigKind::Tmdb(_)
+            | ProviderConfigKind::Bangumi(_) => false,
+        }
+    }
 }
 
 impl Default for Config {
@@ -389,6 +464,7 @@ impl Default for Config {
             base_url: "http://127.0.0.1:9100".to_owned(),
             preferred_language: "en-US".to_owned(),
             providers: provider_configs_from_catalog(|_| None),
+            provider_execution: ProviderExecutionConfig::default(),
             nako_runtime: NakoRuntimeConfig::disabled(),
         }
     }
@@ -422,6 +498,14 @@ pub(crate) fn parse_bool(value: &str) -> Option<bool> {
 pub(crate) fn non_empty_trimmed(value: String) -> Option<String> {
     let value = value.trim();
     (!value.is_empty()).then(|| value.to_owned())
+}
+
+fn parse_positive_usize(value: &str) -> Option<usize> {
+    value
+        .trim()
+        .parse::<usize>()
+        .ok()
+        .filter(|value| *value > 0)
 }
 
 #[cfg(test)]
@@ -552,6 +636,12 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Mgstage));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
+        assert_eq!(
+            config.provider_execution,
+            ProviderExecutionConfig::default()
+        );
+        assert!(!config.rendered_page_proxy_policy_configured());
+        assert!(!config.rendered_page_session_key_configured());
     }
 
     #[test]
@@ -599,6 +689,8 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH" => Some("/extract".to_owned()),
             "NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS" => Some("7500".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY" => Some("required".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY" => Some(" av-batch ".to_owned()),
             "NAKO_METADATA_SCRAPER_DOUBAN_SEARCH_BASE_URL" => {
                 Some("https://douban.example/subject_search".to_owned())
             }
@@ -619,6 +711,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_TIMEOUT_MS" => Some("9500".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_TIMEOUT_MS" => Some("10500".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST" => Some("2".to_owned()),
             _ => None,
         });
 
@@ -635,6 +728,14 @@ mod tests {
             }
         );
         assert!(config.nako_runtime.can_submit_side_effects());
+        assert_eq!(
+            config.provider_execution,
+            ProviderExecutionConfig {
+                max_selected_providers: Some(2)
+            }
+        );
+        assert!(config.rendered_page_proxy_policy_configured());
+        assert!(config.rendered_page_session_key_configured());
         assert_eq!(
             config.providers[0],
             ProviderConfig::disabled(ProviderId::Fixture)

@@ -49,6 +49,16 @@ impl RenderedPageSupportConfig {
         self.intent_defaults
             .apply(RenderedPageIntent::new(path, url))
     }
+
+    #[must_use]
+    pub(crate) fn proxy_policy_configured(&self) -> bool {
+        self.intent_defaults.proxy_policy.is_some()
+    }
+
+    #[must_use]
+    pub(crate) fn session_key_configured(&self) -> bool {
+        self.intent_defaults.session_key.is_some()
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

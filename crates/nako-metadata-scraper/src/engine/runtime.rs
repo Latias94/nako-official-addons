@@ -21,6 +21,7 @@ where
     external_id_aliases: Arc<Vec<QueryExternalIdAlias>>,
     external_id_capabilities: Arc<Vec<ProviderExternalIdCapability>>,
     default_provider_field_policy: Arc<ProviderFieldPolicy>,
+    default_provider_run_policy: Arc<ProviderRunPolicy>,
     providers: Arc<Vec<Box<dyn MetadataProvider>>>,
     nako_runtime: Option<NakoRuntimeClient<T>>,
 }
@@ -67,6 +68,7 @@ where
             external_id_aliases: Arc::new(external_id_aliases),
             external_id_capabilities: Arc::new(Vec::new()),
             default_provider_field_policy: Arc::new(default_provider_field_policy),
+            default_provider_run_policy: Arc::new(ProviderRunPolicy::default()),
             providers: Arc::new(providers),
             nako_runtime,
         }
@@ -96,11 +98,31 @@ where
         providers: Vec<Box<dyn MetadataProvider>>,
         nako_runtime: Option<NakoRuntimeClient<T>>,
     ) -> Self {
+        Self::with_external_id_capabilities_field_policy_and_run_policy(
+            default_language,
+            external_id_capabilities,
+            default_provider_field_policy,
+            ProviderRunPolicy::default(),
+            providers,
+            nako_runtime,
+        )
+    }
+
+    #[must_use]
+    pub(crate) fn with_external_id_capabilities_field_policy_and_run_policy(
+        default_language: impl Into<String>,
+        external_id_capabilities: Vec<ProviderExternalIdCapability>,
+        default_provider_field_policy: ProviderFieldPolicy,
+        default_provider_run_policy: ProviderRunPolicy,
+        providers: Vec<Box<dyn MetadataProvider>>,
+        nako_runtime: Option<NakoRuntimeClient<T>>,
+    ) -> Self {
         Self {
             default_language: default_language.into(),
             external_id_aliases: Arc::new(Vec::new()),
             external_id_capabilities: Arc::new(external_id_capabilities),
             default_provider_field_policy: Arc::new(default_provider_field_policy),
+            default_provider_run_policy: Arc::new(default_provider_run_policy),
             providers: Arc::new(providers),
             nako_runtime,
         }
@@ -137,7 +159,10 @@ where
             payload,
             self.default_provider_field_policy.as_ref(),
         );
-        let provider_run_policy = ProviderRunPolicy::from_payload(payload);
+        let provider_run_policy = ProviderRunPolicy::from_payload_or_default(
+            payload,
+            self.default_provider_run_policy.as_ref(),
+        );
         let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),
             &query,

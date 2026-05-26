@@ -4,21 +4,14 @@ Prefix: OMAV3
 
 ## Active
 
-- [ ] OMAV3-030 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Add explicit provider execution protection: request/config-visible budgets, bounded cache/cooldown policy, and redaction-safe reporting.
-  Validation: `cargo nextest run -p nako-metadata-scraper provider_guard bulk runtime provider_execution --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm protection state is explicit and does not introduce hidden scheduler memory that Nako cannot reason about.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV3-040 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Add the first wave 3 provider, preferring Prestige if synthetic fixture mapping proves stable.
   Validation: `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm the provider is disabled by default, emits declared external IDs, supports only correct AV routes, and uses independent parser fixtures.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMAV3-050 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Add one FC2 long-tail provider after evaluating FC2PPVDB, FC2Hub, and FC2Club for testable value.
@@ -56,6 +49,13 @@ Prefix: OMAV3
   Review: JavBus, JavLibrary, MGStage, DMM, FC2, and JavDB rendered AV tests now share `RenderedAvFixtureTransport`; provider-local fake transports were removed for those AV providers.
   Evidence: PASS on 2026-05-26: 33 rendered AV/provider-fixture/AV tests; fmt and diff hygiene passed.
   Handoff: DONE. OMAV3-030 is active.
+
+- [x] OMAV3-030 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add explicit provider execution protection: request/config-visible budgets, bounded cache/cooldown policy, and redaction-safe reporting.
+  Validation: `cargo nextest run -p nako-metadata-scraper provider_guard bulk runtime provider_execution --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Provider execution policy is explicit in request/config/output; bulk cache/cooldown state is bounded in task output/resume state; browser render proxy/session diagnostics are boolean-only.
+  Evidence: PASS on 2026-05-26: 44 provider_guard/bulk/runtime/provider_execution tests and 207 full package tests; fmt and diff hygiene passed.
+  Handoff: DONE. OMAV3-040 is active.
 
 ## Follow-Up Candidates
 

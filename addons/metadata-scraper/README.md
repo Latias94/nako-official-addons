@@ -202,7 +202,10 @@ Bulk requests may also include a `provider_policy` object:
 {
   "provider_policy": {
     "suppress_after_failures": 2,
-    "cooldown_items": 3
+    "cooldown_items": 3,
+    "max_selected_providers_per_item": 4,
+    "max_reusable_items": 128,
+    "max_provider_states": 64
   }
 }
 ```
@@ -212,7 +215,10 @@ records the cooldown in `resume_state.provider_states`. Callers that submit a
 later batch should pass that `resume_state` back in; the sidecar does not keep a
 hidden scheduler or background provider memory. Bulk output includes
 `summary.suppressed_items`, `summary.retry_classes`, provider-level suppressed
-and retry-class counts, and per-item `suppressed_provider_ids`. Retry classes
+and retry-class counts, `summary.budget_exhausted_items`, provider-level budget
+counts, the applied top-level `provider_policy`, and per-item
+`suppressed_provider_ids`. `max_reusable_items` bounds the duplicate-AV resume
+cache and `max_provider_states` bounds persisted cooldown state. Retry classes
 are redaction-safe: `timeout`, `rate_limited`, and `provider_error` are
 retryable; `auth_or_forbidden` requires operator action; `not_found` and
 `parse_error` are permanent for accounting.
@@ -297,9 +303,10 @@ facts.
 Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 
-The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB and
-Bangumi proxy policy is configured. They intentionally expose only boolean
-policy state, not proxy URLs or credentials.
+The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB,
+Bangumi, and browser-render proxy/session policy is configured. They
+intentionally expose only boolean policy state, not proxy URLs, credentials, or
+session key values.
 Browser-rendered providers use the companion browser worker for proxying; set
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST` on that
 worker. The Rust sidecar can require, bypass, or default that worker proxy via
@@ -357,11 +364,26 @@ TMDB, Bangumi, and Douban. The resource response envelope does not change.
 
 Each metadata response includes `provider_execution`, which records the
 provider IDs selected, skipped by AV route, suppressed by request policy,
-returned, empty, or failed with a safe failure category. This is the
-single-scrape counterpart to the bulk provider summary. A direct metadata
-request may include `disabled_provider_ids` to suppress providers for that one
-request; bulk scrape uses the same field when applying its explicit resume
-state.
+skipped by provider budget, returned, empty, or failed with a safe failure
+category. This is the single-scrape counterpart to the bulk provider summary.
+A direct metadata request may include `provider_execution_policy` to suppress
+providers or cap selected providers for that one request:
+
+```json
+{
+  "provider_execution_policy": {
+    "disabled_provider_ids": ["javlibrary"],
+    "max_selected_providers": 3
+  }
+}
+```
+
+The response echoes this as `provider_execution.applied_policy` and reports
+budget-skipped providers in `provider_execution.budget_exhausted_provider_ids`.
+Operators may set `NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST` as
+the default sidecar-wide provider budget. Bulk scrape injects the same policy
+shape into each item when applying its explicit batch provider policy and
+resume state.
 
 Requests may optionally include `provider_field_policy` for field-level source
 priority inside an already-merged candidate cluster:

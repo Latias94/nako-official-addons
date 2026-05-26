@@ -26,6 +26,8 @@ Exit criteria:
 
 ## M3 - Real-Use Protection
 
+Status: Complete on 2026-05-26.
+
 Exit criteria:
 
 - Provider execution can apply explicit budget/cache/cooldown policy.

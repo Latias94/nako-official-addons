@@ -16,7 +16,7 @@ use tower_http::trace::TraceLayer;
 use crate::{
     Config,
     engine::{
-        MetadataScrapeRuntime,
+        MetadataScrapeRuntime, ProviderRunPolicy,
         bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH},
     },
     manifest::{ADDON_ID, ADDON_VERSION, addon_manifest},
@@ -43,10 +43,13 @@ pub fn router(config: Config) -> Router {
         .map(NakoRuntimeClient::new);
     let state = AppState {
         metadata_runtime:
-            MetadataScrapeRuntime::with_external_id_capabilities_and_provider_field_policy(
+            MetadataScrapeRuntime::with_external_id_capabilities_field_policy_and_run_policy(
                 config.preferred_language.clone(),
                 external_id_capabilities,
                 default_provider_field_policy,
+                ProviderRunPolicy::from_max_selected_providers(
+                    config.provider_execution.max_selected_providers,
+                ),
                 providers,
                 nako_runtime,
             ),
@@ -81,6 +84,15 @@ async fn health(
     } else {
         AddonHealthStatus::Degraded
     };
+    let mut network_policy = state.provider_diagnostics.network_policy.clone();
+    network_policy.insert(
+        "browser_worker_render_proxy_policy_configured",
+        state.config.rendered_page_proxy_policy_configured(),
+    );
+    network_policy.insert(
+        "browser_worker_render_session_key_configured",
+        state.config.rendered_page_session_key_configured(),
+    );
 
     Json(AddonHealthCheckResponse {
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -97,7 +109,10 @@ async fn health(
             "enabled_providers": state.provider_diagnostics.enabled,
             "disabled_providers": state.provider_diagnostics.disabled,
             "unavailable_providers": state.provider_diagnostics.unavailable,
-            "network_policy": state.provider_diagnostics.network_policy
+            "network_policy": network_policy,
+            "provider_execution_policy": {
+                "max_selected_providers": state.config.provider_execution.max_selected_providers
+            }
         }),
     })
 }
@@ -180,6 +195,15 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         network_policy_label(&state.provider_diagnostics, "tmdb_proxy_configured");
     let bangumi_proxy_configured =
         network_policy_label(&state.provider_diagnostics, "bangumi_proxy_configured");
+    let render_proxy_policy_configured =
+        yes_no_label(state.config.rendered_page_proxy_policy_configured());
+    let render_session_key_configured =
+        yes_no_label(state.config.rendered_page_session_key_configured());
+    let max_selected_providers = state
+        .config
+        .provider_execution
+        .max_selected_providers
+        .map_or_else(|| "(none)".to_owned(), |value| value.to_string());
     Html(format!(
         r#"<!doctype html>
 <html lang="en">
@@ -191,6 +215,9 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Enabled providers: {enabled_providers}</p>
   <p>TMDB proxy configured: {tmdb_proxy_configured}</p>
   <p>Bangumi proxy configured: {bangumi_proxy_configured}</p>
+  <p>Browser render proxy policy configured: {render_proxy_policy_configured}</p>
+  <p>Browser render session key configured: {render_session_key_configured}</p>
+  <p>Provider max selected per request: {max_selected_providers}</p>
   <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
 </body>
 </html>"#,

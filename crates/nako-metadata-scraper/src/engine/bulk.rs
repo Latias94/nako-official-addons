@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::engine::{
     MetadataScrapeRuntime, av,
-    orchestration::{ProviderExecutionReport, ProviderExecutionStatus},
+    provider_execution::{ProviderExecutionReport, ProviderExecutionStatus},
     response,
 };
 
@@ -22,6 +22,8 @@ const DEFAULT_BATCH_SIZE: usize = 4;
 const MAX_BATCH_SIZE: usize = 12;
 const DEFAULT_PROVIDER_SUPPRESS_AFTER_FAILURES: usize = 2;
 const DEFAULT_PROVIDER_COOLDOWN_ITEMS: usize = 3;
+const DEFAULT_REUSABLE_ITEM_LIMIT: usize = 128;
+const DEFAULT_PROVIDER_STATE_LIMIT: usize = 64;
 
 #[derive(Debug, thiserror::Error)]
 #[error("{message}")]
@@ -58,6 +60,7 @@ struct BulkMetadataScrapeTaskOutput {
     source_id: Option<String>,
     cursor: usize,
     batch_size: usize,
+    provider_policy: BulkProviderPolicy,
     total_items: usize,
     processed_items: usize,
     remaining_items: usize,
@@ -75,6 +78,7 @@ struct BulkMetadataScrapeTaskSummary {
     empty_candidate_items: usize,
     failed_items: usize,
     suppressed_items: usize,
+    budget_exhausted_items: usize,
     failure_reasons: BTreeMap<String, usize>,
     retry_classes: BTreeMap<String, usize>,
     provider_execution: Vec<BulkMetadataScrapeProviderSummary>,
@@ -89,6 +93,7 @@ struct BulkMetadataScrapeProviderSummary {
     empty_items: usize,
     failed_items: usize,
     suppressed_items: usize,
+    budget_exhausted_items: usize,
     retryable_failed_items: usize,
     permanent_failed_items: usize,
     operator_action_failed_items: usize,
@@ -149,13 +154,19 @@ struct BulkMetadataScrapeResumeItem {
     payload: Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct BulkProviderPolicy {
     #[serde(default = "default_provider_suppress_after_failures")]
     suppress_after_failures: usize,
     #[serde(default = "default_provider_cooldown_items")]
     cooldown_items: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    max_selected_providers_per_item: Option<usize>,
+    #[serde(default = "default_reusable_item_limit")]
+    max_reusable_items: usize,
+    #[serde(default = "default_provider_state_limit")]
+    max_provider_states: usize,
 }
 
 impl Default for BulkProviderPolicy {
@@ -163,6 +174,9 @@ impl Default for BulkProviderPolicy {
         Self {
             suppress_after_failures: DEFAULT_PROVIDER_SUPPRESS_AFTER_FAILURES,
             cooldown_items: DEFAULT_PROVIDER_COOLDOWN_ITEMS,
+            max_selected_providers_per_item: None,
+            max_reusable_items: DEFAULT_REUSABLE_ITEM_LIMIT,
+            max_provider_states: DEFAULT_PROVIDER_STATE_LIMIT,
         }
     }
 }
@@ -258,9 +272,10 @@ where
             items: input_items,
             cursor,
             batch_size,
-            provider_policy,
+            mut provider_policy,
             resume_state,
         } = input;
+        provider_policy.normalize();
         let plan = BulkMetadataScrapeBatchPlan::new(
             input_items.len(),
             cursor.unwrap_or(0),
@@ -273,8 +288,14 @@ where
             reusable_items,
             provider_states,
         } = resume_state;
-        let mut reuse_cache = BulkMetadataScrapeResumeState::reuse_cache_from_items(reusable_items);
-        let mut provider_states = BulkProviderStateTable::from_resume(provider_states);
+        let mut reuse_cache = BulkMetadataScrapeResumeState::reuse_cache_from_items(
+            reusable_items,
+            provider_policy.max_reusable_items,
+        );
+        let mut provider_states = BulkProviderStateTable::from_resume(
+            provider_states,
+            provider_policy.max_provider_states,
+        );
         for index in &plan.item_indexes {
             let item_request_id = format!("{}:item-{}", request_id, index);
             let payload = input_items[*index].clone();
@@ -307,7 +328,11 @@ where
             }
 
             let disabled_provider_ids = provider_states.disabled_provider_ids();
-            let payload = payload_with_disabled_provider_ids(payload, &disabled_provider_ids);
+            let payload = payload_with_provider_execution_policy(
+                payload,
+                &disabled_provider_ids,
+                &provider_policy,
+            );
             let item_outcome = self.scrape_outcome(&item_request_id, &payload).await;
             let item_payload = response::metadata_payload(&item_outcome);
             let item_av = planned_av.or_else(|| item_outcome.av_value());
@@ -344,7 +369,10 @@ where
                 payload: item_payload,
             });
         }
-        summary.record_provider_states(provider_states.resume_states());
+        summary.record_provider_states(
+            provider_states.resume_states_with_limit(provider_policy.max_provider_states),
+        );
+        let output_provider_policy = provider_policy.clone();
 
         let output = BulkMetadataScrapeTaskOutput {
             schema: BULK_METADATA_SCRAPE_OUTPUT_SCHEMA,
@@ -352,6 +380,7 @@ where
             source_id,
             cursor: plan.cursor,
             batch_size: plan.batch_size,
+            provider_policy,
             total_items: plan.total_items,
             processed_items: items.len(),
             remaining_items: plan.remaining_items(),
@@ -360,6 +389,8 @@ where
             resume_state: BulkMetadataScrapeResumeState::from_caches(
                 &reuse_cache,
                 &provider_states,
+                output_provider_policy.max_reusable_items,
+                output_provider_policy.max_provider_states,
             ),
             items,
         };
@@ -410,6 +441,10 @@ impl BulkMetadataScrapeTaskSummary {
                     provider.skipped_by_route_items += 1;
                 }
                 ProviderExecutionStatus::Suppressed => provider.suppressed_items += 1,
+                ProviderExecutionStatus::BudgetExhausted => {
+                    provider.budget_exhausted_items += 1;
+                    self.budget_exhausted_items += 1;
+                }
                 ProviderExecutionStatus::ReturnedCandidates => {
                     provider.selected_items += 1;
                     provider.returned_items += 1;
@@ -482,8 +517,9 @@ impl BulkMetadataScrapeReuseKey {
 impl BulkMetadataScrapeResumeState {
     fn reuse_cache_from_items(
         reusable_items: Vec<BulkMetadataScrapeResumeItem>,
+        max_reusable_items: usize,
     ) -> HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry> {
-        reusable_items
+        let mut entries = reusable_items
             .into_iter()
             .filter_map(|item| {
                 let key = item.reuse_key()?;
@@ -506,12 +542,21 @@ impl BulkMetadataScrapeResumeState {
                 };
                 Some((key, entry))
             })
-            .collect()
+            .collect::<Vec<_>>();
+        entries.sort_by(|left, right| {
+            left.0
+                .av_number
+                .cmp(&right.0.av_number)
+                .then_with(|| left.0.language_hint.cmp(&right.0.language_hint))
+        });
+        entries.into_iter().take(max_reusable_items).collect()
     }
 
     fn from_caches(
         reuse_cache: &HashMap<BulkMetadataScrapeReuseKey, BulkMetadataScrapeReuseEntry>,
         provider_states: &BulkProviderStateTable,
+        max_reusable_items: usize,
+        max_provider_states: usize,
     ) -> Self {
         let mut reusable_items = reuse_cache
             .iter()
@@ -531,9 +576,10 @@ impl BulkMetadataScrapeResumeState {
                 .then_with(|| left.language_hint.cmp(&right.language_hint))
                 .then_with(|| left.index.cmp(&right.index))
         });
+        reusable_items.truncate(max_reusable_items);
         Self {
             reusable_items,
-            provider_states: provider_states.resume_states(),
+            provider_states: provider_states.resume_states_with_limit(max_provider_states),
         }
     }
 }
@@ -557,10 +603,16 @@ impl BulkProviderPolicy {
     fn enables_suppression(&self) -> bool {
         self.suppress_after_failures > 0 && self.cooldown_items > 0
     }
+
+    fn normalize(&mut self) {
+        self.max_selected_providers_per_item = self
+            .max_selected_providers_per_item
+            .filter(|value| *value > 0);
+    }
 }
 
 impl BulkProviderStateTable {
-    fn from_resume(states: Vec<BulkProviderResumeState>) -> Self {
+    fn from_resume(states: Vec<BulkProviderResumeState>, max_provider_states: usize) -> Self {
         let states = states
             .into_iter()
             .filter_map(|state| {
@@ -581,6 +633,7 @@ impl BulkProviderStateTable {
                     },
                 ))
             })
+            .take(max_provider_states)
             .collect();
 
         Self { states }
@@ -668,7 +721,7 @@ impl BulkProviderStateTable {
         }
     }
 
-    fn resume_states(&self) -> Vec<BulkProviderResumeState> {
+    fn resume_states_with_limit(&self, max_provider_states: usize) -> Vec<BulkProviderResumeState> {
         self.states
             .iter()
             .filter_map(|(provider_id, state)| {
@@ -688,6 +741,7 @@ impl BulkProviderStateTable {
                     retry_class: state.retry_class.clone(),
                 })
             })
+            .take(max_provider_states)
             .collect()
     }
 }
@@ -705,12 +759,27 @@ fn reused_item_payload(payload: &Value, av: Option<&Value>) -> Value {
     payload
 }
 
-fn payload_with_disabled_provider_ids(mut payload: Value, provider_ids: &[String]) -> Value {
-    if provider_ids.is_empty() {
+fn payload_with_provider_execution_policy(
+    mut payload: Value,
+    provider_ids: &[String],
+    provider_policy: &BulkProviderPolicy,
+) -> Value {
+    let max_selected_providers = provider_policy.max_selected_providers_per_item;
+    if provider_ids.is_empty() && max_selected_providers.is_none() {
         return payload;
     }
 
-    let mut disabled_provider_ids = existing_provider_ids(&payload, "disabled_provider_ids");
+    let mut disabled_provider_ids =
+        existing_provider_ids(&payload, "provider_execution_policy.disabled_provider_ids");
+    if disabled_provider_ids.is_empty() {
+        disabled_provider_ids = existing_provider_ids(
+            &payload,
+            "provider_execution_policy.suppressed_provider_ids",
+        );
+    }
+    if disabled_provider_ids.is_empty() {
+        disabled_provider_ids = existing_provider_ids(&payload, "disabled_provider_ids");
+    }
     if disabled_provider_ids.is_empty() {
         disabled_provider_ids = existing_provider_ids(&payload, "suppressed_provider_ids");
     }
@@ -720,18 +789,34 @@ fn payload_with_disabled_provider_ids(mut payload: Value, provider_ids: &[String
         }
     }
 
-    payload["disabled_provider_ids"] = Value::Array(
-        disabled_provider_ids
-            .into_iter()
-            .map(Value::String)
-            .collect::<Vec<_>>(),
-    );
+    let mut execution_policy = payload
+        .get("provider_execution_policy")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    if !disabled_provider_ids.is_empty() {
+        execution_policy.insert(
+            "disabled_provider_ids".to_owned(),
+            Value::Array(
+                disabled_provider_ids
+                    .into_iter()
+                    .map(Value::String)
+                    .collect::<Vec<_>>(),
+            ),
+        );
+    }
+    if let Some(max_selected_providers) = max_selected_providers {
+        execution_policy.insert(
+            "max_selected_providers".to_owned(),
+            Value::Number((max_selected_providers as u64).into()),
+        );
+    }
+    payload["provider_execution_policy"] = Value::Object(execution_policy);
     payload
 }
 
 fn existing_provider_ids(payload: &Value, key: &str) -> Vec<String> {
-    payload
-        .get(key)
+    value_at_path(payload, key)
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
@@ -741,6 +826,11 @@ fn existing_provider_ids(payload: &Value, key: &str) -> Vec<String> {
             push_unique_string(&mut provider_ids, provider_id);
             provider_ids
         })
+}
+
+fn value_at_path<'a>(payload: &'a Value, path: &str) -> Option<&'a Value> {
+    path.split('.')
+        .try_fold(payload, |value, segment| value.get(segment))
 }
 
 fn retry_class_for_failure_reason(reason: &str) -> Option<&'static str> {
@@ -771,6 +861,14 @@ fn default_provider_cooldown_items() -> usize {
     DEFAULT_PROVIDER_COOLDOWN_ITEMS
 }
 
+fn default_reusable_item_limit() -> usize {
+    DEFAULT_REUSABLE_ITEM_LIMIT
+}
+
+fn default_provider_state_limit() -> usize {
+    DEFAULT_PROVIDER_STATE_LIMIT
+}
+
 fn has_side_effect_request(payload: &Value, key: &str) -> bool {
     payload.get(key).is_some_and(|value| !value.is_null())
 }
@@ -795,6 +893,7 @@ mod tests {
     use nako_addon_protocol::{ADDON_PROTOCOL_VERSION, AddonArtworkKind};
 
     use crate::{
+        config::ProviderId,
         nako_runtime::{
             NakoRuntimeClient, NakoRuntimeClientConfig, NakoRuntimeError, NakoRuntimeHttpRequest,
             NakoRuntimeHttpResponse, NakoRuntimeResult, NakoRuntimeTransport,
@@ -1357,6 +1456,87 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bulk_provider_guard_applies_visible_budget_and_bounds_reuse_cache() {
+        let javdb_calls = Arc::new(Mutex::new(0));
+        let dmm_calls = Arc::new(Mutex::new(0));
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![
+                Box::new(BulkCountingCandidateProvider {
+                    provider_id: ProviderId::Javdb,
+                    candidate_provider: "javdb",
+                    calls: javdb_calls.clone(),
+                }),
+                Box::new(BulkCountingCandidateProvider {
+                    provider_id: ProviderId::Dmm,
+                    candidate_provider: "dmm",
+                    calls: dmm_calls.clone(),
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .bulk_scrape(AddonTaskRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                task_id: BULK_METADATA_SCRAPE_TASK_ID.to_owned(),
+                job_id: "job-1".to_owned(),
+                request_id: "request-1".to_owned(),
+                attempt: 1,
+                retry_of_job_id: None,
+                library_id: Some("library-1".to_owned()),
+                source_id: Some("source-1".to_owned()),
+                payload: serde_json::json!({
+                    "batch_size": 2,
+                    "provider_policy": {
+                        "max_selected_providers_per_item": 1,
+                        "max_reusable_items": 1,
+                        "max_provider_states": 1
+                    },
+                    "items": [
+                        {"file_name": "SSNI-00644.mp4"},
+                        {"file_name": "IPX-001.mp4"}
+                    ]
+                }),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(*javdb_calls.lock().unwrap(), 2);
+        assert_eq!(*dmm_calls.lock().unwrap(), 0);
+        assert_eq!(response.output["provider_policy"]["max_reusable_items"], 1);
+        assert_eq!(
+            response.output["provider_policy"]["max_selected_providers_per_item"],
+            1
+        );
+        assert_eq!(response.output["summary"]["budget_exhausted_items"], 2);
+        assert_eq!(
+            response.output["summary"]["provider_execution"][1]["provider_id"],
+            "dmm"
+        );
+        assert_eq!(
+            response.output["summary"]["provider_execution"][1]["budget_exhausted_items"],
+            2
+        );
+        assert_eq!(
+            response.output["items"][0]["payload"]["provider_execution"]["applied_policy"]["max_selected_providers"],
+            1
+        );
+        assert_eq!(
+            response.output["items"][0]["payload"]["provider_execution"]["providers"][1]["status"],
+            "budget_exhausted"
+        );
+        assert_eq!(
+            response.output["resume_state"]["reusable_items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[tokio::test]
     async fn bulk_metadata_scrape_submits_existing_side_effect_paths() {
         let transport = FakeTransport::default();
         transport.push(Ok(NakoRuntimeHttpResponse {
@@ -1538,6 +1718,12 @@ mod tests {
 
     struct BulkCandidateProvider;
 
+    struct BulkCountingCandidateProvider {
+        provider_id: ProviderId,
+        candidate_provider: &'static str,
+        calls: Arc<Mutex<usize>>,
+    }
+
     struct FailingBulkProvider;
 
     struct CountingFailingBulkProvider {
@@ -1592,6 +1778,41 @@ mod tests {
                         height: Some(1500),
                     },
                 }],
+            }])
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for BulkCountingCandidateProvider {
+        fn id(&self) -> ProviderId {
+            self.provider_id
+        }
+
+        async fn suggest(
+            &self,
+            query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            *self.calls.lock().unwrap() += 1;
+            Ok(vec![ProviderMetadataCandidate {
+                provider: self.candidate_provider.to_owned(),
+                provider_id: format!("{}:bulk:{}", self.candidate_provider, query.title),
+                patch: nako_addon_protocol::AddonMetadataPatch {
+                    title: Some(query.title.clone()),
+                    ..nako_addon_protocol::AddonMetadataPatch::default()
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some(query.title.clone()),
+                    alternate_titles: Vec::new(),
+                    release_year: query.year,
+                    language: Some(query.language.clone()),
+                    av: None,
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: Vec::new(),
+                    provider_outcomes: Vec::new(),
+                    provider_note: Some("bulk counting test candidate".to_owned()),
+                },
+                artwork_candidates: Vec::new(),
             }])
         }
     }

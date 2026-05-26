@@ -67,10 +67,25 @@ where a user already knows the authoritative site record.
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
 route, suppressed by request policy, returned candidates, returned no
-candidates, or failed with a safe failure category. Provider errors are logged
-with a safe category and are not echoed as raw error text in the response. A
-request may include `disabled_provider_ids` to suppress providers for that one
-scrape; the response then reports `provider_execution.suppressed_provider_ids`.
+candidates, skipped by provider budget, or failed with a safe failure category.
+Provider errors are logged with a safe category and are not echoed as raw error
+text in the response. A request may include `provider_execution_policy` to
+suppress providers for that scrape or cap the number of selected providers; the
+applied policy is echoed in `provider_execution.applied_policy`, and suppressed
+or budget-skipped providers are reported by provider ID only.
+
+```json
+{
+  "provider_execution_policy": {
+    "disabled_provider_ids": ["javlibrary"],
+    "max_selected_providers": 3
+  }
+}
+```
+
+Operators may also set
+`NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST` as a default provider
+budget for all metadata requests served by the sidecar.
 
 Requests may optionally include `provider_field_policy` to choose field-level
 source priority within a merged candidate cluster. For example, a request can
@@ -109,9 +124,10 @@ providers.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 
-The `/health` diagnostics report whether TMDB and Bangumi proxy policy is
-configured without exposing the proxy URL itself. Browser-rendered AV providers
-use proxy configuration from the companion browser worker, for example
+The `/health` diagnostics report whether TMDB/Bangumi proxy policy and browser
+render proxy/session policy are configured without exposing proxy URLs,
+credentials, or session key values. Browser-rendered AV providers use proxy
+configuration from the companion browser worker, for example
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust
 providers send a typed render intent to the worker; operators can set
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_STATE` (`load`, `domcontentloaded`,
@@ -163,7 +179,10 @@ Bulk requests may also include a `provider_policy`:
 {
   "provider_policy": {
     "suppress_after_failures": 2,
-    "cooldown_items": 3
+    "cooldown_items": 3,
+    "max_selected_providers_per_item": 4,
+    "max_reusable_items": 128,
+    "max_provider_states": 64
   }
 }
 ```
@@ -176,7 +195,10 @@ failure streak and can add cooldown entries to
 accounting. The next bulk request can pass the returned `resume_state` to keep
 cooldown suppression across bounded batches. Output includes
 `summary.suppressed_items`, `summary.retry_classes`, provider-level retry-class
-counts, and per-item `suppressed_provider_ids`.
+counts, `summary.budget_exhausted_items`, provider-level budget counts, the
+applied top-level `provider_policy`, and per-item `suppressed_provider_ids`.
+`max_reusable_items` bounds the duplicate-AV resume cache and
+`max_provider_states` bounds persisted cooldown state.
 
 Rendered AV providers use the companion browser worker through `POST /render`.
 The worker is a Crawlee/Playwright execution boundary: it loads pages and

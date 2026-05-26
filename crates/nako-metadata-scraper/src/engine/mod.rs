@@ -5,6 +5,7 @@ mod fusion;
 mod native_writeback;
 mod orchestration;
 mod outcome;
+mod provider_execution;
 mod query;
 pub mod ranking;
 pub(crate) mod resolver;
@@ -23,7 +24,7 @@ pub use artwork::{
 };
 pub use av::AvMetadataFacts;
 pub use outcome::{ProviderOutcome, render_provider_note};
-pub(crate) use query::ProviderRunPolicy;
+pub(crate) use provider_execution::ProviderRunPolicy;
 pub use query::{
     ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy,
     ProviderFieldQualityDescriptor, QueryExternalId, QueryExternalIdAlias,
@@ -1037,6 +1038,64 @@ mod tests {
         assert_eq!(
             response.payload["provider_execution"]["skipped_provider_ids"],
             serde_json::json!(["fc2"])
+        );
+    }
+
+    #[tokio::test]
+    async fn runtime_provider_guard_applies_request_visible_provider_budget() {
+        let javdb_calls = Arc::new(Mutex::new(0));
+        let dmm_calls = Arc::new(Mutex::new(0));
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Javdb,
+                    candidate_provider: "javdb",
+                    candidate_id: "javdb:movie:budget-first",
+                    calls: javdb_calls.clone(),
+                }),
+                Box::new(CountingProvider {
+                    provider_id: ProviderId::Dmm,
+                    candidate_provider: "dmm",
+                    candidate_id: "dmm:cid:budget-second",
+                    calls: dmm_calls.clone(),
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({
+                    "title": "Budgeted Movie",
+                    "provider_execution_policy": {
+                        "max_selected_providers": 1
+                    }
+                }),
+            })
+            .await;
+
+        assert_eq!(*javdb_calls.lock().unwrap(), 1);
+        assert_eq!(*dmm_calls.lock().unwrap(), 0);
+        assert_eq!(
+            response.payload["provider_execution"]["applied_policy"]["max_selected_providers"],
+            1
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["selected_provider_ids"],
+            serde_json::json!(["javdb"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["budget_exhausted_provider_ids"],
+            serde_json::json!(["dmm"])
+        );
+        assert_eq!(
+            response.payload["provider_execution"]["providers"][1]["status"],
+            "budget_exhausted"
         );
     }
 

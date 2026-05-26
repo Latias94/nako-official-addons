@@ -5,25 +5,27 @@ Last updated: 2026-05-26
 
 ## Current State
 
-The lane has completed its shared rendered AV fixture harness. `DMM`, `FC2`,
-`JavDB`, `JavBus`, `JavLibrary`, and `MGStage` tests now use
-`RenderedAvFixtureTransport` for browser-worker render request/response
-contracts, and their provider-local fake transports were removed. The previous
-scraper architecture lane remains the foundation: typed scrape outcomes, render
-intent, rendered AV flow, provider quality descriptors, resolver/fusion split,
-and shared side-effect writeback.
+The lane has completed its shared rendered AV fixture harness and explicit
+provider execution protection. `DMM`, `FC2`, `JavDB`, `JavBus`, `JavLibrary`,
+and `MGStage` tests now use `RenderedAvFixtureTransport`. Provider execution
+now has a dedicated policy/reporting module, request/config-visible provider
+budgets, bounded bulk reuse/cache and cooldown resume state, and boolean-only
+browser render proxy/session diagnostics. The previous scraper architecture
+lane remains the foundation: typed scrape outcomes, render intent, rendered AV
+flow, provider quality descriptors, resolver/fusion split, and shared
+side-effect writeback.
 
 ## Active Task
 
-- Task ID: OMAV3-030
+- Task ID: OMAV3-040
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/engine`, `crates/nako-metadata-scraper/src/providers`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
-- Validation: `cargo nextest run -p nako-metadata-scraper provider_guard bulk runtime provider_execution --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/providers`, `crates/nako-metadata-scraper/src/config.rs`, `crates/nako-metadata-scraper/src/manifest.rs`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
+- Validation: `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm protection state is explicit and does not introduce hidden
-  scheduler memory that Nako cannot reason about.
-- Evidence: OMAV3-020 passed rendered AV/provider-fixture/AV tests, fmt, and
-  diff hygiene gates.
+- Review: Confirm the provider is disabled by default, emits declared external
+  IDs, supports only correct AV routes, and uses independent parser fixtures.
+- Evidence: OMAV3-030 passed provider_guard/bulk/runtime/provider_execution
+  tests, full package nextest, fmt, and diff hygiene gates.
 
 ## Decisions
 
@@ -35,6 +37,10 @@ and shared side-effect writeback.
   tables, comments, or structure.
 - Treat provider protection as explicit policy/state, not hidden scheduler
   memory.
+- Keep provider budgets and bulk cache/cooldown state visible in request/task
+  payloads and outputs; do not persist hidden sidecar scheduler state.
+- Browser render proxy/session diagnostics are boolean-only and must not expose
+  proxy URLs, credentials, or session key values.
 
 ## Blockers
 
@@ -42,5 +48,5 @@ and shared side-effect writeback.
 
 ## Next Recommended Action
 
-- Execute OMAV3-030: make provider execution protection explicit through
-  visible budgets, bounded cache/cooldown policy, and redaction-safe reporting.
+- Execute OMAV3-040: add the first wave 3 AV provider, starting with Prestige
+  if its synthetic fixture and route behavior are stable.

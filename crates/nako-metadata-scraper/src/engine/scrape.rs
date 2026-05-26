@@ -4,7 +4,7 @@ use super::{
     MetadataCandidate, MetadataQuery, MetadataWritebackResult,
     artwork::ArtworkWritebackResult,
     av::{self, AvQueryFacts},
-    orchestration::{ProviderExecutionStatus, ProviderExecutionSummary},
+    provider_execution::{ProviderExecutionStatus, ProviderExecutionSummary},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,6 +36,14 @@ impl MetadataScrapeOutcome {
             && !self.provider_execution.suppressed_provider_ids.is_empty()
         {
             return Some("provider_suppressed");
+        }
+        if self.provider_execution.selected_provider_ids.is_empty()
+            && !self
+                .provider_execution
+                .budget_exhausted_provider_ids
+                .is_empty()
+        {
+            return Some("provider_budget_exhausted");
         }
         if self.provider_execution.selected_provider_ids.is_empty()
             && !self.provider_execution.skipped_provider_ids.is_empty()

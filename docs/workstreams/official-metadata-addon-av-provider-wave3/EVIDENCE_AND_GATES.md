@@ -24,3 +24,4 @@ Last updated: 2026-05-26
 | --- | --- | --- | --- |
 | 2026-05-26 | OMAV3-010 | `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check` | Pass: workstream opened |
 | 2026-05-26 | OMAV3-020 | `cargo nextest run -p nako-metadata-scraper rendered_av provider_fixture av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `git diff --check` | Pass: shared rendered AV fixture covers DMM, FC2, JavDB, JavBus, JavLibrary, and MGStage tests |
+| 2026-05-26 | OMAV3-030 | `cargo nextest run -p nako-metadata-scraper provider_guard bulk runtime provider_execution --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `git diff --check` | Pass: request/config-visible provider budgets, bounded bulk cache/cooldown state, and redaction-safe proxy/session diagnostics |
