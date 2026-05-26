@@ -217,13 +217,13 @@ mod tests {
 <body>
   <h1 id="title">SSNI-644 DMM Official Title</h1>
   <div class="product-info">
-    <span>品番:</span> SSNI-644
-    <span>発売日:</span> 2024-06-07
-    <span>収録時間:</span> 119分
-    <span>メーカー:</span> Studio Alpha
-    <span>レーベル:</span> Label Beta
-    <span>シリーズ:</span> Series Gamma
-    <span>監督:</span> Director Delta
+    <p><span>品番:</span> SSNI-644</p>
+    <p><span>発売日:</span> 2024-06-07</p>
+    <p><span>収録時間:</span> 119分</p>
+    <p><span>メーカー:</span> Studio Alpha</p>
+    <p><span>レーベル:</span> Label Beta</p>
+    <p><span>シリーズ:</span> Series Gamma</p>
+    <p><span>監督:</span> Director Delta</p>
   </div>
   <div class="story">Official DMM outline.</div>
   <a href="/mono/actress/-/detail/=/id=1/">Actress One</a>
@@ -308,6 +308,14 @@ mod tests {
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().label.as_deref(),
             Some("Label Beta")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().series.as_deref(),
+            Some("Series Gamma")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().directors,
+            vec!["Director Delta".to_owned()]
         );
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().extrafanart_urls,

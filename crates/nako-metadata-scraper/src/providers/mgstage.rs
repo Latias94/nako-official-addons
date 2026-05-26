@@ -409,10 +409,10 @@ fn parse_detail_page(
         rendered_av::element_text(&document, "h1, .product_title, .detail_title").as_deref(),
         rendered_av::attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
     ])?;
-    let number = rendered_av::labeled_value(
+    let number = mgstage_labeled_value(
+        &document,
         &info_text,
         &["品番", "商品番号", "Product ID", "品名"],
-        MGSTAGE_LABELS,
     )
     .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId).map(|facts| facts.number))
     .or_else(|| facts_from_text(detail_url, AvNumberSource::ExternalId).map(|facts| facts.number));
@@ -421,17 +421,17 @@ fn parse_detail_page(
         .and_then(|value| facts_from_text(value, AvNumberSource::ExternalId))
         .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId))
         .or(av)?;
-    let release_date = rendered_av::labeled_value(
+    let release_date = mgstage_labeled_value(
+        &document,
         &info_text,
         &["発売日", "配信開始日", "Release Date"],
-        MGSTAGE_LABELS,
     )
     .or_else(|| rendered_av::first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(rendered_av::first_year);
-    let runtime_minutes = rendered_av::labeled_value(
+    let runtime_minutes = mgstage_labeled_value(
+        &document,
         &info_text,
         &["収録時間", "再生時間", "Duration", "Runtime"],
-        MGSTAGE_LABELS,
     )
     .and_then(|value| rendered_av::parse_minutes(&value));
     let overview = rendered_av::first_non_empty(&[
@@ -439,15 +439,10 @@ fn parse_detail_page(
             .as_deref(),
         rendered_av::attr_value(&document, "meta[name=\"description\"]", "content").as_deref(),
     ]);
-    let maker =
-        rendered_av::labeled_value(&info_text, &["メーカー", "Maker", "Studio"], MGSTAGE_LABELS);
-    let label = rendered_av::labeled_value(
-        &info_text,
-        &["レーベル", "Label", "Publisher"],
-        MGSTAGE_LABELS,
-    );
-    let series = rendered_av::labeled_value(&info_text, &["シリーズ", "Series"], MGSTAGE_LABELS);
-    let director = rendered_av::labeled_value(&info_text, &["監督", "Director"], MGSTAGE_LABELS);
+    let maker = mgstage_labeled_value(&document, &info_text, &["メーカー", "Maker", "Studio"]);
+    let label = mgstage_labeled_value(&document, &info_text, &["レーベル", "Label", "Publisher"]);
+    let series = mgstage_labeled_value(&document, &info_text, &["シリーズ", "Series"]);
+    let director = mgstage_labeled_value(&document, &info_text, &["監督", "Director"]);
     let actors = rendered_av::link_texts(
         &document,
         "a[href*=\"actor\"], a[href*=\"actress\"], a[href*=\"performer\"]",
@@ -458,7 +453,7 @@ fn parse_detail_page(
     );
     let rating_milli =
         rendered_av::element_text(&document, ".review, .score, .rating, [class*=\"review\"]")
-            .or_else(|| rendered_av::labeled_value(&info_text, &["評価", "Rating"], MGSTAGE_LABELS))
+            .or_else(|| mgstage_labeled_value(&document, &info_text, &["評価", "Rating"]))
             .and_then(|value| rendered_av::parse_rating_milli(&value));
     let poster_url = rendered_av::attr_value(&document, "meta[property=\"og:image\"]", "content")
         .or_else(|| {
@@ -532,6 +527,20 @@ const MGSTAGE_LABELS: &[&str] = &[
     "評価",
     "Rating",
 ];
+
+const MGSTAGE_LABEL_ROW_SELECTOR: &str = ".detail p, .detail li, .detail tr, \
+         .product_detail p, .product_detail li, .product_detail tr, \
+         table tr";
+
+fn mgstage_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        MGSTAGE_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        MGSTAGE_LABELS,
+    )
+}
 
 fn mgstage_artwork_candidate(
     product_id: &str,
@@ -658,6 +667,18 @@ mod tests {
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().trailer_url.as_deref(),
             Some("https://movie.example/sample.mp4")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().studio.as_deref(),
+            Some("MGS Maker")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().publisher.as_deref(),
+            Some("MGS Label")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().series.as_deref(),
+            Some("MGS Series")
         );
         assert_eq!(candidate.facts.community_score_milli, Some(820));
         assert!(candidate.facts.external_ids.iter().any(|id| {

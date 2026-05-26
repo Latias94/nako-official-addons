@@ -11,12 +11,12 @@ while older AV providers mostly use repeated full-text label scanners.
 
 ## Active Task
 
-- Task ID: APQ-020
+- Task ID: APQ-030
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers/dmm`, `crates/nako-metadata-scraper/src/providers/mgstage.rs`, `crates/nako-metadata-scraper/src/providers/javbus.rs`
-- Validation: `cargo nextest run -p nako-metadata-scraper dmm mgstage javbus rendered_av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/providers/javlibrary.rs`, `crates/nako-metadata-scraper/src/providers/javdb`, `crates/nako-metadata-scraper/src/providers/fc2`
+- Validation: `cargo nextest run -p nako-metadata-scraper javlibrary javdb fc2 rendered_av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Keep migrations behavior-preserving except for tested field-boundary fixes.
+- Review: Do not force all providers into one shape if their page models differ.
 
 ## Blockers
 
@@ -24,5 +24,5 @@ while older AV providers mostly use repeated full-text label scanners.
 
 ## Next Recommended Action
 
-- Execute APQ-020 with TDD: migrate DMM, MGStage, and JavBus only where
-  row-level label parsing proves cleaner behavior.
+- Execute APQ-030: audit JavLibrary, JavDB, and FC2 for shared parser reuse and
+  migrate only where tests prove cleaner behavior.

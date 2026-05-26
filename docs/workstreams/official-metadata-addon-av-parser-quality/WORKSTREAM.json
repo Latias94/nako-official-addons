@@ -5,9 +5,10 @@
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "APQ",
-  "current_task": "APQ-020",
+  "current_task": "APQ-030",
   "completed_tasks": [
-    "APQ-010"
+    "APQ-010",
+    "APQ-020"
   ],
   "scope": [
     "crates/nako-metadata-scraper/src/providers/rendered_av.rs",

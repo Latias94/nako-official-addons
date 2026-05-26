@@ -1,6 +1,9 @@
 use scraper::{Html, Selector};
 
-use crate::engine::av::{AvNumberSource, AvQueryFacts, facts_from_text};
+use crate::{
+    engine::av::{AvNumberSource, AvQueryFacts, facts_from_text},
+    providers::rendered_av,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct DmmSearchResult {
@@ -81,20 +84,29 @@ pub(super) fn parse_detail_page(
         element_text(&document, "#comment").as_deref(),
         element_text(&document, ".comment").as_deref(),
     ]);
-    let release_date = labeled_value(&info_text, &["発売日", "配信開始日", "Release Date"])
-        .or_else(|| first_iso_date(&body_text));
+    let release_date = dmm_labeled_value(
+        &document,
+        &info_text,
+        &["発売日", "配信開始日", "Release Date"],
+    )
+    .or_else(|| first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(first_year);
-    let runtime_minutes =
-        labeled_value(&info_text, &["収録時間", "再生時間", "Duration", "Runtime"])
-            .and_then(|value| parse_minutes(&value));
-    let maker = labeled_value(&info_text, &["メーカー", "Maker", "Studio"]);
-    let label = labeled_value(&info_text, &["レーベル", "Label", "Publisher"]);
-    let series = labeled_value(&info_text, &["シリーズ", "Series"]);
-    let director = labeled_value(&info_text, &["監督", "Director"]);
-    let product_number = labeled_value(&info_text, &["品番", "商品番号", "Product ID", "Number"])
-        .or_else(|| {
-            facts_from_text(&body_text, AvNumberSource::ExternalId).map(|facts| facts.number)
-        });
+    let runtime_minutes = dmm_labeled_value(
+        &document,
+        &info_text,
+        &["収録時間", "再生時間", "Duration", "Runtime"],
+    )
+    .and_then(|value| parse_minutes(&value));
+    let maker = dmm_labeled_value(&document, &info_text, &["メーカー", "Maker", "Studio"]);
+    let label = dmm_labeled_value(&document, &info_text, &["レーベル", "Label", "Publisher"]);
+    let series = dmm_labeled_value(&document, &info_text, &["シリーズ", "Series"]);
+    let director = dmm_labeled_value(&document, &info_text, &["監督", "Director"]);
+    let product_number = dmm_labeled_value(
+        &document,
+        &info_text,
+        &["品番", "商品番号", "Product ID", "Number"],
+    )
+    .or_else(|| facts_from_text(&body_text, AvNumberSource::ExternalId).map(|facts| facts.number));
     let actors = link_texts(
         &document,
         "a[href*=\"/actress/\"], a[href*=\"article=actress\"], a[href*=\"article=actor\"]",
@@ -212,65 +224,41 @@ fn image_urls(document: &Html, selector: &str) -> Vec<String> {
         })
 }
 
-fn labeled_value(text: &str, labels: &[&str]) -> Option<String> {
-    labels
-        .iter()
-        .find_map(|label| labeled_value_by_label(text, label))
-}
+const DMM_LABELS: &[&str] = &[
+    "品番",
+    "商品番号",
+    "Product ID",
+    "Number",
+    "発売日",
+    "配信開始日",
+    "Release Date",
+    "収録時間",
+    "再生時間",
+    "Duration",
+    "Runtime",
+    "メーカー",
+    "Maker",
+    "Studio",
+    "レーベル",
+    "Label",
+    "Publisher",
+    "シリーズ",
+    "Series",
+    "監督",
+    "Director",
+];
 
-fn labeled_value_by_label(text: &str, label: &str) -> Option<String> {
-    let markers = [format!("{label}:"), format!("{label}：")];
-    for marker in markers {
-        let Some(start) = text.find(&marker).map(|index| index + marker.len()) else {
-            continue;
-        };
-        let rest = text[start..].trim();
-        let end = [
-            "品番:",
-            "品番：",
-            "商品番号:",
-            "商品番号：",
-            "Product ID:",
-            "Number:",
-            "発売日:",
-            "発売日：",
-            "配信開始日:",
-            "配信開始日：",
-            "Release Date:",
-            "収録時間:",
-            "収録時間：",
-            "再生時間:",
-            "再生時間：",
-            "Duration:",
-            "Runtime:",
-            "メーカー:",
-            "メーカー：",
-            "Maker:",
-            "Studio:",
-            "レーベル:",
-            "レーベル：",
-            "Label:",
-            "Publisher:",
-            "シリーズ:",
-            "シリーズ：",
-            "Series:",
-            "監督:",
-            "監督：",
-            "Director:",
-        ]
-        .into_iter()
-        .filter(|next_marker| *next_marker != marker)
-        .filter_map(|next_marker| rest.find(next_marker))
-        .min()
-        .unwrap_or(rest.len());
-        if let Some(value) =
-            Some(normalize_whitespace(&rest[..end])).filter(|value| !value.is_empty())
-        {
-            return Some(value);
-        }
-    }
+const DMM_LABEL_ROW_SELECTOR: &str =
+    ".product-info > p, .product-info > li, .product-info tr, #mu > p, #mu > li, #mu tr, table tr";
 
-    None
+fn dmm_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        DMM_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        DMM_LABELS,
+    )
 }
 
 fn first_non_empty(values: &[Option<&str>]) -> Option<String> {

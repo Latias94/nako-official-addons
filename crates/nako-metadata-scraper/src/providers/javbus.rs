@@ -472,34 +472,51 @@ fn parse_detail_page(
         element_text(&document, "h3, h1").as_deref(),
         attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
     ])?;
-    let number = labeled_value(&info_text, &["識別碼", "识别码", "品番", "番號", "Number"])
-        .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId).map(|facts| facts.number))
-        .or_else(|| {
-            facts_from_text(detail_url, AvNumberSource::ExternalId).map(|facts| facts.number)
-        });
+    let number = javbus_labeled_value(
+        &document,
+        &info_text,
+        &["識別碼", "识别码", "品番", "番號", "Number"],
+    )
+    .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId).map(|facts| facts.number))
+    .or_else(|| facts_from_text(detail_url, AvNumberSource::ExternalId).map(|facts| facts.number));
     let av = number
         .as_deref()
         .and_then(|value| facts_from_text(value, AvNumberSource::ExternalId))
         .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId))
         .or(av)?;
-    let release_date = labeled_value(
+    let release_date = javbus_labeled_value(
+        &document,
         &info_text,
         &["發行日期", "发行日期", "発売日", "Release Date"],
     )
     .or_else(|| first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(first_year);
-    let runtime_minutes = labeled_value(&info_text, &["長度", "长度", "収録時間", "Runtime"])
-        .and_then(|value| parse_minutes(&value));
+    let runtime_minutes = javbus_labeled_value(
+        &document,
+        &info_text,
+        &["長度", "长度", "収録時間", "Runtime"],
+    )
+    .and_then(|value| parse_minutes(&value));
     let actors = link_texts(&document, "a[href*=\"/star/\"], a[href*=\"/actor/\"]");
     let tags = link_texts(&document, "a[href*=\"/genre/\"], a[href*=\"/tag/\"]");
-    let studio = first_link_text(&document, "a[href*=\"/studio/\"]")
-        .or_else(|| labeled_value(&info_text, &["製作商", "制作商", "メーカー", "Studio"]));
-    let publisher = first_link_text(&document, "a[href*=\"/label/\"]")
-        .or_else(|| labeled_value(&info_text, &["發行商", "发行商", "Label", "Publisher"]));
+    let studio = first_link_text(&document, "a[href*=\"/studio/\"]").or_else(|| {
+        javbus_labeled_value(
+            &document,
+            &info_text,
+            &["製作商", "制作商", "メーカー", "Studio"],
+        )
+    });
+    let publisher = first_link_text(&document, "a[href*=\"/label/\"]").or_else(|| {
+        javbus_labeled_value(
+            &document,
+            &info_text,
+            &["發行商", "发行商", "Label", "Publisher"],
+        )
+    });
     let series = first_link_text(&document, "a[href*=\"/series/\"]")
-        .or_else(|| labeled_value(&info_text, &["系列", "Series"]));
+        .or_else(|| javbus_labeled_value(&document, &info_text, &["系列", "Series"]));
     let director = first_link_text(&document, "a[href*=\"/director/\"]")
-        .or_else(|| labeled_value(&info_text, &["導演", "导演", "Director"]));
+        .or_else(|| javbus_labeled_value(&document, &info_text, &["導演", "导演", "Director"]));
     let poster_url = attr_value(&document, "a.bigImage img, .bigImage img", "src")
         .or_else(|| attr_value(&document, "meta[property=\"og:image\"]", "content"))
         .map(normalize_url);
@@ -632,78 +649,47 @@ fn attr_value(document: &Html, selector: &str, attr: &str) -> Option<String> {
         .filter(|value| !value.trim().is_empty())
 }
 
-fn labeled_value(text: &str, labels: &[&str]) -> Option<String> {
-    labels
-        .iter()
-        .find_map(|label| labeled_value_by_label(text, label))
-}
+const JAVBUS_LABELS: &[&str] = &[
+    "識別碼",
+    "识别码",
+    "品番",
+    "番號",
+    "Number",
+    "發行日期",
+    "发行日期",
+    "発売日",
+    "Release Date",
+    "長度",
+    "长度",
+    "収録時間",
+    "Runtime",
+    "製作商",
+    "制作商",
+    "メーカー",
+    "Studio",
+    "發行商",
+    "发行商",
+    "Label",
+    "Publisher",
+    "系列",
+    "Series",
+    "導演",
+    "导演",
+    "Director",
+];
 
-fn labeled_value_by_label(text: &str, label: &str) -> Option<String> {
-    let markers = [format!("{label}:"), format!("{label}：")];
-    for marker in markers {
-        let Some(start) = text.find(&marker).map(|index| index + marker.len()) else {
-            continue;
-        };
-        let rest = text[start..].trim();
-        let end = [
-            "識別碼:",
-            "識別碼：",
-            "识别码:",
-            "识别码：",
-            "品番:",
-            "品番：",
-            "番號:",
-            "番號：",
-            "Number:",
-            "發行日期:",
-            "發行日期：",
-            "发行日期:",
-            "发行日期：",
-            "発売日:",
-            "発売日：",
-            "Release Date:",
-            "長度:",
-            "長度：",
-            "长度:",
-            "长度：",
-            "収録時間:",
-            "収録時間：",
-            "Runtime:",
-            "製作商:",
-            "製作商：",
-            "制作商:",
-            "制作商：",
-            "メーカー:",
-            "メーカー：",
-            "Studio:",
-            "發行商:",
-            "發行商：",
-            "发行商:",
-            "发行商：",
-            "Label:",
-            "Publisher:",
-            "系列:",
-            "系列：",
-            "Series:",
-            "導演:",
-            "導演：",
-            "导演:",
-            "导演：",
-            "Director:",
-        ]
-        .into_iter()
-        .filter(|next_marker| *next_marker != marker)
-        .filter_map(|next_marker| rest.find(next_marker))
-        .min()
-        .unwrap_or(rest.len());
-        if let Some(value) =
-            Some(normalize_whitespace(&rest[..end])).filter(|value| !value.is_empty())
-        {
-            return Some(value);
-        }
-    }
+const JAVBUS_LABEL_ROW_SELECTOR: &str = ".movie p, .movie li, .movie tr, \
+         .info p, .info li, .info tr, \
+         table tr";
 
-    None
+fn javbus_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        JAVBUS_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        JAVBUS_LABELS,
+    )
 }
 
 fn first_non_empty(values: &[Option<&str>]) -> Option<String> {
@@ -909,6 +895,14 @@ mod tests {
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().publisher.as_deref(),
             Some("Publisher Beta")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().series.as_deref(),
+            Some("Series Gamma")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().directors,
+            vec!["Director Delta".to_owned()]
         );
         assert_eq!(
             candidate.facts.av.as_ref().unwrap().extrafanart_urls,
