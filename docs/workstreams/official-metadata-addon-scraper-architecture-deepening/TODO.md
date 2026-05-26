@@ -4,21 +4,14 @@ Prefix: OMSAD
 
 ## Active
 
-- [ ] OMSAD-020 [owner=codex] [deps=OMSAD-010] [scope=crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/engine/response.rs,crates/nako-metadata-scraper/src/engine/bulk.rs,crates/nako-metadata-scraper/src/engine/orchestration.rs]
-  Goal: Introduce a typed scrape outcome Seam so bulk and response rendering consume internal facts without public JSON round-trip.
-  Validation: `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm public response rendering is a projection and bulk no longer parses provider execution from `AddonResourceResponse` JSON.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMSAD-030 [owner=codex] [deps=OMSAD-020] [scope=crates/nako-metadata-scraper/src/providers/rendered_page.rs,addons/browser-worker/src/app.mjs,addons/browser-worker/src/extract.mjs,addons/browser-worker/test]
   Goal: Add Render Intent as the deep Interface for browser-worker calls, including wait/proxy/session fields where supported.
   Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm providers can declare render behavior without duplicating browser-worker payload assembly.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMSAD-040 [owner=codex] [deps=OMSAD-030] [scope=crates/nako-metadata-scraper/src/providers/rendered_av.rs,crates/nako-metadata-scraper/src/providers/javbus.rs,crates/nako-metadata-scraper/src/providers/javlibrary.rs,crates/nako-metadata-scraper/src/providers/mgstage.rs]
   Goal: Deepen rendered AV provider flow so direct lookup, AV route gating, search-to-detail, and empty/failure policy live in one reusable Module.
@@ -62,7 +55,14 @@ Prefix: OMSAD
   Validation: `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check`
   Review: Confirmed all six architecture-review candidates are represented as independently verifiable slices.
   Evidence: PASS on 2026-05-26.
-  Handoff: DONE. OMSAD-020 is active.
+  Handoff: DONE. OMSAD-020 completed.
+
+- [x] OMSAD-020 [owner=codex] [deps=OMSAD-010] [scope=crates/nako-metadata-scraper/src/engine/runtime.rs,crates/nako-metadata-scraper/src/engine/response.rs,crates/nako-metadata-scraper/src/engine/bulk.rs,crates/nako-metadata-scraper/src/engine/orchestration.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Introduce a typed scrape outcome Seam so bulk and response rendering consume internal facts without public JSON round-trip.
+  Validation: `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed public response rendering is a projection from `MetadataScrapeOutcome`; bulk fresh scrape consumes typed provider execution, AV facts, failure reason, and suppression facts without parsing `AddonResourceResponse` JSON.
+  Evidence: PASS on 2026-05-26; 41 focused tests passed, full package gate passed with 193 tests, formatting and diff hygiene passed.
+  Handoff: DONE. OMSAD-030 is active.
 
 ## Follow-Up Candidates
 

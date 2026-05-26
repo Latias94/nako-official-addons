@@ -190,7 +190,9 @@ payload. This lets the sidecar reuse safe duplicate AV-number results across
 bounded batches while Nako keeps ownership of task scheduling, progress, retry,
 and cancellation. Batch output also includes `summary.failed_items`,
 `summary.failure_reasons`, and `summary.provider_execution` for redaction-safe
-failure accounting.
+failure accounting. Reusable resume entries carry their typed
+`safe_failure_reason` and `suppressed_provider_ids`, so later batches do not
+need to infer retry accounting from rendered item payload JSON.
 
 Bulk requests may also include a `provider_policy` object:
 

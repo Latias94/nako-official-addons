@@ -24,3 +24,4 @@ Last updated: 2026-05-26
 | Date | Task | Evidence | Result |
 | --- | --- | --- | --- |
 | 2026-05-26 | OMSAD-010 | `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass |
+| 2026-05-26 | OMSAD-020 | `cargo nextest run -p nako-metadata-scraper runtime_builds_typed_scrape_outcome_before_response_rendering --no-fail-fast` red/green tracer; `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass: typed scrape outcome implemented; focused gate 41 passed; full package gate 193 passed |

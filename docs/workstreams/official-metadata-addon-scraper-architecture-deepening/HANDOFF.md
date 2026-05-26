@@ -5,9 +5,11 @@ Last updated: 2026-05-26
 
 ## Current State
 
-The lane is newly opened. The previous AV native writeback/provider wave 2 lane
-is closed. The metadata scraper package currently passes full tests from the
-previous closeout, and this lane starts from a clean official-addons worktree.
+The lane is active. The previous AV native writeback/provider wave 2 lane is
+closed. OMSAD-020 is complete: runtime now builds a typed
+`MetadataScrapeOutcome`, response rendering projects from it, and bulk fresh
+scrape consumes typed AV facts, provider execution, failure reason, and provider
+suppression facts without parsing public response JSON.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -15,13 +17,13 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-020
+- Task ID: OMSAD-030
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/engine/runtime.rs`, `crates/nako-metadata-scraper/src/engine/response.rs`, `crates/nako-metadata-scraper/src/engine/bulk.rs`, `crates/nako-metadata-scraper/src/engine/orchestration.rs`
-- Validation: `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/providers/rendered_page.rs`, `addons/browser-worker/src/app.mjs`, `addons/browser-worker/src/extract.mjs`, `addons/browser-worker/test`
+- Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm public response rendering is a projection and bulk no longer
-  parses provider execution from `AddonResourceResponse` JSON.
+- Review: Confirm providers can declare render behavior without duplicating
+  browser-worker payload assembly.
 - Evidence:
 
 ## Decisions
@@ -40,5 +42,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-020 with a narrow red/green refactor around `bulk.rs`,
-  `runtime.rs`, and `response.rs`.
+- Execute OMSAD-030 by adding Render Intent around `RenderedPageRuntime`, then
+  thread wait/proxy/session payload coverage through Rust provider tests and
+  browser-worker validation.

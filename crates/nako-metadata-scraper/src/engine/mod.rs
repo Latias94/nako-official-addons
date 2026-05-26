@@ -9,6 +9,7 @@ pub mod ranking;
 pub(crate) mod resolver;
 mod response;
 mod runtime;
+mod scrape;
 pub mod title;
 mod writeback;
 
@@ -30,6 +31,7 @@ pub use ranking::{
     ProviderMetadataCandidate,
 };
 pub use runtime::MetadataScrapeRuntime;
+pub(crate) use scrape::MetadataScrapeOutcome;
 pub use writeback::{MetadataWritebackRequest, MetadataWritebackResult, MetadataWritebackStatus};
 #[cfg(test)]
 mod tests {
@@ -476,6 +478,43 @@ mod tests {
         assert_eq!(
             response.payload["candidates"][0]["artwork_candidates"][0]["artwork"]["kind"],
             "poster"
+        );
+        assert_eq!(response.artifacts[0].payload, response.payload);
+    }
+
+    #[tokio::test]
+    async fn runtime_builds_typed_scrape_outcome_before_response_rendering() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::new(
+            "zh-CN",
+            vec![Box::new(CandidateProvider {
+                provider_id: "fixture:matrix",
+                title: "The Matrix",
+                year: Some(1999),
+            })],
+            None,
+        );
+
+        let request = AddonResourceRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: "addon-1".to_owned(),
+            resource: AddonResource::Metadata,
+            request_id: "request-1".to_owned(),
+            payload: serde_json::json!({"name": "  The   Matrix  ", "year": 1999}),
+        };
+        let outcome = runtime
+            .scrape_outcome(&request.request_id, &request.payload)
+            .await;
+
+        assert_eq!(outcome.query.title, "The Matrix");
+        assert_eq!(outcome.candidates[0].provider_id, "fixture:matrix");
+        assert_eq!(outcome.provider_execution.returned_candidate_count, 1);
+        assert!(outcome.safe_failure_reason().is_none());
+
+        let response = response::metadata_response(request, outcome);
+        assert_eq!(response.payload["query"]["title"], "The Matrix");
+        assert_eq!(
+            response.payload["candidates"][0]["provider_id"],
+            "fixture:matrix"
         );
         assert_eq!(response.artifacts[0].payload, response.payload);
     }

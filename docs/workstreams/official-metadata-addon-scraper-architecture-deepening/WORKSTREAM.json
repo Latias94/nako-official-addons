@@ -5,9 +5,10 @@
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMSAD",
-  "current_task": "OMSAD-020",
+  "current_task": "OMSAD-030",
   "completed_tasks": [
-    "OMSAD-010"
+    "OMSAD-010",
+    "OMSAD-020"
   ],
   "scope": [
     "crates/nako-metadata-scraper/src/engine",

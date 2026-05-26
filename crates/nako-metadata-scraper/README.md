@@ -141,6 +141,9 @@ bounded batches while Nako still owns scheduling and retry. Bulk output also
 includes `summary.failure_reasons`, `summary.failed_items`, and
 `summary.provider_execution` so a batch runner can distinguish empty results,
 provider failures, and route skips without parsing provider-specific payloads.
+Reusable resume entries include typed `safe_failure_reason` and
+`suppressed_provider_ids`, which keeps retry accounting separate from the
+public item payload projection.
 
 Bulk requests may also include a `provider_policy`:
 

@@ -2,41 +2,13 @@ use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonArtifact, AddonResourceRequest, AddonResourceResponse,
 };
 
-use super::{
-    MetadataCandidate, MetadataQuery, MetadataWritebackResult, artwork::ArtworkWritebackResult, av,
-    orchestration::ProviderExecutionSummary,
-};
+use super::MetadataScrapeOutcome;
 
 pub(crate) fn metadata_response(
     request: AddonResourceRequest,
-    query: &MetadataQuery,
-    candidates: Vec<MetadataCandidate>,
-    provider_execution: ProviderExecutionSummary,
-    writeback_result: Option<MetadataWritebackResult>,
-    artwork_writeback_result: Option<ArtworkWritebackResult>,
+    outcome: MetadataScrapeOutcome,
 ) -> AddonResourceResponse {
-    let av_facts = av::facts_from_payload(&request.payload).or_else(|| av::facts_from_query(query));
-    let mut payload = serde_json::json!({
-        "query": {
-            "title": &query.title,
-            "year": query.year,
-            "language": &query.language
-        },
-        "provider_execution": provider_execution,
-        "candidates": candidates
-    });
-    if let Some(writeback_result) = writeback_result {
-        payload["writeback"] = serde_json::to_value(writeback_result)
-            .expect("writeback result is always serializable");
-    }
-    if let Some(av_facts) = av_facts {
-        payload["query"]["av"] =
-            serde_json::to_value(av_facts).expect("AV query facts are always serializable");
-    }
-    if let Some(artwork_writeback_result) = artwork_writeback_result {
-        payload["artwork_writeback"] = serde_json::to_value(artwork_writeback_result)
-            .expect("artwork writeback result is always serializable");
-    }
+    let payload = metadata_payload(&outcome);
 
     AddonResourceResponse {
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -49,4 +21,30 @@ pub(crate) fn metadata_response(
             payload,
         }],
     }
+}
+
+pub(crate) fn metadata_payload(outcome: &MetadataScrapeOutcome) -> serde_json::Value {
+    let mut payload = serde_json::json!({
+        "query": {
+            "title": &outcome.query.title,
+            "year": outcome.query.year,
+            "language": &outcome.query.language
+        },
+        "provider_execution": &outcome.provider_execution,
+        "candidates": &outcome.candidates
+    });
+    if let Some(writeback_result) = &outcome.writeback_result {
+        payload["writeback"] = serde_json::to_value(writeback_result)
+            .expect("writeback result is always serializable");
+    }
+    if let Some(av_facts) = &outcome.av {
+        payload["query"]["av"] =
+            serde_json::to_value(av_facts).expect("AV query facts are always serializable");
+    }
+    if let Some(artwork_writeback_result) = &outcome.artwork_writeback_result {
+        payload["artwork_writeback"] = serde_json::to_value(artwork_writeback_result)
+            .expect("artwork writeback result is always serializable");
+    }
+
+    payload
 }

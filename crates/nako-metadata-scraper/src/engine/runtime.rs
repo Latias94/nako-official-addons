@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy, ProviderRunPolicy,
-    QueryExternalIdAlias, artwork, orchestration, response, writeback,
+    MetadataQuery, MetadataScrapeOutcome, ProviderExternalIdCapability, ProviderFieldPolicy,
+    ProviderRunPolicy, QueryExternalIdAlias, artwork, orchestration, response, scrape, writeback,
 };
 
 #[derive(Clone)]
@@ -70,24 +70,34 @@ where
     }
 
     pub async fn scrape(&self, request: AddonResourceRequest) -> AddonResourceResponse {
+        let outcome = self
+            .scrape_outcome(&request.request_id, &request.payload)
+            .await;
+        response::metadata_response(request, outcome)
+    }
+
+    pub(crate) async fn scrape_outcome(
+        &self,
+        request_id: &str,
+        payload: &serde_json::Value,
+    ) -> MetadataScrapeOutcome {
         let query = if self.external_id_capabilities.is_empty() {
             MetadataQuery::from_payload_with_external_id_aliases(
-                &request.payload,
+                payload,
                 &self.default_language,
                 self.external_id_aliases.as_ref().as_slice(),
             )
         } else {
             MetadataQuery::from_payload_with_external_id_capabilities(
-                &request.payload,
+                payload,
                 &self.default_language,
                 self.external_id_capabilities.as_ref().as_slice(),
             )
         };
-        let writeback_request = writeback::MetadataWritebackInput::from_payload(&request.payload);
-        let artwork_writeback_request =
-            artwork::ArtworkWritebackInput::from_payload(&request.payload);
-        let provider_field_policy = ProviderFieldPolicy::from_payload(&request.payload);
-        let provider_run_policy = ProviderRunPolicy::from_payload(&request.payload);
+        let writeback_request = writeback::MetadataWritebackInput::from_payload(payload);
+        let artwork_writeback_request = artwork::ArtworkWritebackInput::from_payload(payload);
+        let provider_field_policy = ProviderFieldPolicy::from_payload(payload);
+        let provider_run_policy = ProviderRunPolicy::from_payload(payload);
         let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),
             &query,
@@ -99,7 +109,7 @@ where
         let selected_candidate = suggestions.candidates.first().cloned();
         let writeback_result = writeback::maybe_submit_metadata_writeback(
             self.nako_runtime.as_ref(),
-            &request.request_id,
+            request_id,
             &query,
             selected_candidate.as_ref(),
             writeback_request,
@@ -107,20 +117,20 @@ where
         .await;
         let artwork_writeback_result = writeback::maybe_submit_artwork_writeback(
             self.nako_runtime.as_ref(),
-            &request.request_id,
+            request_id,
             &query,
             &suggestions.candidates,
             artwork_writeback_request,
         )
         .await;
 
-        response::metadata_response(
-            request,
-            &query,
-            suggestions.candidates,
-            suggestions.execution,
+        MetadataScrapeOutcome {
+            av: scrape::av_facts_for_outcome(payload, &query),
+            query,
+            candidates: suggestions.candidates,
+            provider_execution: suggestions.execution,
             writeback_result,
             artwork_writeback_result,
-        )
+        }
     }
 }

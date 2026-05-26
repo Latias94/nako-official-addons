@@ -11,7 +11,7 @@ Exit criteria:
 - Task ledger covers all six architecture review candidates.
 - Breaking-change policy is explicit.
 
-## M2 - Typed Scrape Outcome
+## M2 - Typed Scrape Outcome (Complete)
 
 Exit criteria:
 
