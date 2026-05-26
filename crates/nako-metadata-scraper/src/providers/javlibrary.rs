@@ -1,0 +1,912 @@
+use async_trait::async_trait;
+use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
+use scraper::{Html, Selector};
+
+use crate::{
+    Config,
+    config::{ProviderConfig, ProviderId, non_empty_trimmed},
+    engine::{
+        AvMetadataFacts, ExternalIdValueKind, MetadataQuery, ProviderArtworkCandidate,
+        ProviderArtworkCandidateFacts, ProviderCandidateFacts, ProviderExternalId,
+        ProviderExternalIdCapability, ProviderMetadataCandidate, ProviderOutcome,
+        av::{
+            AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute, AvNumberSource, AvQueryFacts,
+            facts_from_query, facts_from_text,
+        },
+    },
+    providers::{
+        MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
+        http_runtime::{
+            ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
+            ReqwestProviderHttpTransport,
+        },
+        registry::ProviderCatalogEntry,
+        rendered_av,
+        rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
+    },
+};
+
+pub const JAVLIBRARY_PROVIDER_ID: &str = "javlibrary";
+const JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER: &str = "javlibrary_url";
+const JAVLIBRARY_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
+    ProviderExternalIdCapability::new(
+        JAVLIBRARY_PROVIDER_ID,
+        ExternalIdValueKind::Opaque,
+        true,
+        true,
+        &["javlibrary_id"],
+        false,
+    ),
+    ProviderExternalIdCapability::new(
+        JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER,
+        ExternalIdValueKind::Url,
+        true,
+        true,
+        &["javlibrary_url"],
+        false,
+    ),
+    ProviderExternalIdCapability::new(
+        AV_NUMBER_EXTERNAL_ID_PROVIDER,
+        ExternalIdValueKind::Opaque,
+        true,
+        true,
+        &[],
+        false,
+    ),
+];
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct JavlibraryProviderConfig {
+    pub(crate) base_url: String,
+    pub(crate) language_path: String,
+    pub(crate) rendered_pages: RenderedPageSupportConfig,
+    pub(crate) render_path: String,
+}
+
+impl JavlibraryProviderConfig {
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub(crate) fn new(
+        base_url: String,
+        language_path: String,
+        browser_worker_base_url: String,
+        render_path: String,
+        timeout_ms: u64,
+    ) -> Self {
+        Self {
+            base_url,
+            language_path,
+            rendered_pages: RenderedPageSupportConfig::new(browser_worker_base_url, timeout_ms),
+            render_path,
+        }
+    }
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self::new(
+            lookup("NAKO_METADATA_SCRAPER_JAVLIBRARY_BASE_URL")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "https://www.javlibrary.com".to_owned()),
+            lookup("NAKO_METADATA_SCRAPER_JAVLIBRARY_LANGUAGE")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "cn".to_owned()),
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
+            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| "/render".to_owned()),
+            lookup("NAKO_METADATA_SCRAPER_JAVLIBRARY_TIMEOUT_MS")
+                .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+        )
+    }
+}
+
+#[must_use]
+pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
+    ProviderCatalogEntry {
+        id: ProviderId::Javlibrary,
+        default_enabled: false,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED",
+        capabilities: &[
+            "metadata_suggestion",
+            "av_number_search",
+            "javlibrary_direct_lookup",
+            "javlibrary_movie_search",
+            "browser_worker_rendered_html",
+        ],
+        secret_reference: None,
+        external_id_capabilities: JAVLIBRARY_EXTERNAL_ID_CAPABILITIES,
+        load_config: load_config,
+        proxy_configured: |_| false,
+        network_policy_key: None,
+        build: build_provider,
+    }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    let lookup = input.lookup;
+    ProviderConfig::javlibrary(
+        input.enabled,
+        JavlibraryProviderConfig::from_env_lookup(|name| lookup(name)),
+    )
+}
+
+fn build_provider(config: &Config) -> ProviderBuildStatus {
+    let Some(provider_config) = config
+        .provider_config(ProviderId::Javlibrary)
+        .and_then(|provider| provider.javlibrary_config().cloned())
+    else {
+        return ProviderBuildStatus::Unavailable;
+    };
+    match JavlibraryMetadataProvider::new(provider_config) {
+        Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
+        Err(_) => ProviderBuildStatus::Unavailable,
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct JavlibraryMetadataProvider<T = ReqwestProviderHttpTransport>
+where
+    T: ProviderHttpTransport,
+{
+    config: JavlibraryProviderConfig,
+    rendered_pages: RenderedPageRuntime<T>,
+}
+
+impl JavlibraryMetadataProvider<ReqwestProviderHttpTransport> {
+    pub fn new(config: JavlibraryProviderConfig) -> ProviderHttpResult<Self> {
+        let rendered_pages = RenderedPageRuntime::new(config.rendered_pages.clone())?;
+        Ok(Self {
+            config,
+            rendered_pages,
+        })
+    }
+}
+
+impl<T> JavlibraryMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    #[must_use]
+    pub fn with_runtime(config: JavlibraryProviderConfig, runtime: ProviderHttpRuntime<T>) -> Self {
+        let rendered_pages =
+            RenderedPageRuntime::with_runtime(config.rendered_pages.clone(), runtime);
+        Self {
+            config,
+            rendered_pages,
+        }
+    }
+
+    async fn render(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
+        self.rendered_pages
+            .render_html(
+                JAVLIBRARY_PROVIDER_ID,
+                "render page",
+                &self.config.render_path,
+                url,
+            )
+            .await
+    }
+
+    async fn suggest_candidates(
+        &self,
+        query: &MetadataQuery,
+    ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        if let Some(url) = direct_external_id(query, JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER) {
+            let detail_url = self.absolute_url(&url);
+            let detail = self.render(detail_url.clone()).await?;
+            return Ok(
+                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
+                    .into_iter()
+                    .map(|facts| facts.into_candidate(query))
+                    .collect(),
+            );
+        }
+
+        if let Some(id) = direct_external_id(query, JAVLIBRARY_PROVIDER_ID) {
+            let detail_url = self.detail_url(&id);
+            let detail = self.render(detail_url.clone()).await?;
+            return Ok(
+                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
+                    .into_iter()
+                    .map(|facts| facts.into_candidate(query))
+                    .collect(),
+            );
+        }
+
+        let Some(av) = facts_from_query(query) else {
+            return Ok(Vec::new());
+        };
+        if !self.supports_av_route(av.route) {
+            return Ok(Vec::new());
+        }
+
+        let search = self.render(self.search_url(&av.number)).await?;
+        let Some(result) = parse_search_results(&search.html, &av, &self.localized_base_url())
+            .into_iter()
+            .next()
+        else {
+            return Ok(Vec::new());
+        };
+        let detail = self.render(result.url.clone()).await?;
+
+        Ok(parse_detail_page(&detail.html, &result.url, Some(av))
+            .into_iter()
+            .map(|facts| facts.into_candidate(query))
+            .collect())
+    }
+
+    fn search_url(&self, av_number: &str) -> String {
+        format!(
+            "{}/vl_searchbyid.php?keyword={}",
+            self.localized_base_url(),
+            rendered_av::percent_encode(av_number)
+        )
+    }
+
+    fn detail_url(&self, id: &str) -> String {
+        if id.starts_with("http://") || id.starts_with("https://") {
+            return id.to_owned();
+        }
+        let id = javlibrary_id_from_url(id).unwrap_or_else(|| id.trim().to_owned());
+        format!(
+            "{}/?v={}",
+            self.localized_base_url(),
+            rendered_av::percent_encode(&id)
+        )
+    }
+
+    fn absolute_url(&self, value: &str) -> String {
+        rendered_av::absolute_url(&self.localized_base_url(), value)
+    }
+
+    fn localized_base_url(&self) -> String {
+        format!(
+            "{}/{}",
+            self.config.base_url.trim_end_matches('/'),
+            self.config
+                .language_path
+                .trim()
+                .trim_matches('/')
+                .trim_start_matches('.')
+        )
+    }
+}
+
+#[async_trait]
+impl<T> MetadataProvider for JavlibraryMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    fn id(&self) -> ProviderId {
+        ProviderId::Javlibrary
+    }
+
+    fn supports_av_route(&self, route: AvNumberRoute) -> bool {
+        matches!(
+            route,
+            AvNumberRoute::Censored | AvNumberRoute::Uncensored | AvNumberRoute::Amateur
+        )
+    }
+
+    async fn suggest(
+        &self,
+        query: &MetadataQuery,
+    ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+        self.suggest_candidates(query).await
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct JavlibrarySearchResult {
+    url: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct JavlibraryDetailFacts {
+    id: String,
+    url: String,
+    av: AvQueryFacts,
+    title: String,
+    release_date: Option<String>,
+    release_year: Option<i32>,
+    runtime_minutes: Option<u32>,
+    actors: Vec<String>,
+    tags: Vec<String>,
+    studio: Option<String>,
+    publisher: Option<String>,
+    series: Option<String>,
+    director: Option<String>,
+    rating_milli: Option<u16>,
+    wanted_count: Option<u32>,
+    poster_url: Option<String>,
+}
+
+impl JavlibraryDetailFacts {
+    fn into_candidate(self, query: &MetadataQuery) -> ProviderMetadataCandidate {
+        let mut tags = vec![
+            JAVLIBRARY_PROVIDER_ID.to_owned(),
+            format!("av_number:{}", self.av.number),
+            format!("av_route:{:?}", self.av.route).to_ascii_lowercase(),
+        ];
+        tags.extend(self.actors.iter().map(|actor| format!("actor:{actor}")));
+        if let Some(studio) = &self.studio {
+            tags.push(format!("studio:{studio}"));
+        }
+        if let Some(publisher) = &self.publisher {
+            tags.push(format!("publisher:{publisher}"));
+        }
+        if let Some(series) = &self.series {
+            tags.push(format!("series:{series}"));
+        }
+        if let Some(director) = &self.director {
+            tags.push(format!("director:{director}"));
+        }
+        if let Some(wanted) = self.wanted_count {
+            tags.push(format!("wanted:{wanted}"));
+        }
+
+        let artwork_candidates = self
+            .poster_url
+            .clone()
+            .into_iter()
+            .map(|poster_url| javlibrary_artwork_candidate(&self.id, poster_url))
+            .collect();
+
+        ProviderMetadataCandidate {
+            provider: JAVLIBRARY_PROVIDER_ID.to_owned(),
+            provider_id: format!("javlibrary:movie:{}", self.id),
+            patch: AddonMetadataPatch {
+                title: Some(self.title.clone()),
+                original_title: None,
+                sort_title: Some(self.title.clone()),
+                overview: None,
+                release_date: self.release_date.clone(),
+                runtime_minutes: self.runtime_minutes,
+                tagline: Some("JavLibrary AV community record".to_owned()),
+                genres: Some(self.tags.clone()).filter(|genres| !genres.is_empty()),
+                tags: Some(tags).filter(|tags| !tags.is_empty()),
+                ..AddonMetadataPatch::default()
+            },
+            facts: ProviderCandidateFacts {
+                title: Some(self.title),
+                alternate_titles: vec![self.av.number.clone()],
+                release_year: self.release_year,
+                language: Some(query.language.clone()),
+                av: AvMetadataFacts {
+                    actors: self.actors.clone(),
+                    all_actors: self.actors.clone(),
+                    directors: self.director.clone().into_iter().collect(),
+                    series: self.series.clone(),
+                    studio: self.studio.clone(),
+                    publisher: self.publisher.clone(),
+                    maker: self.studio.clone(),
+                    label: self.publisher.clone(),
+                    wanted_count: self.wanted_count,
+                    thumb_url: self.poster_url.clone(),
+                    trailer_url: None,
+                    extrafanart_urls: Vec::new(),
+                }
+                .non_empty(),
+                community_score_milli: self.rating_milli,
+                community_vote_count: self.wanted_count,
+                external_ids: vec![
+                    ProviderExternalId {
+                        provider: JAVLIBRARY_PROVIDER_ID.to_owned(),
+                        value: self.id,
+                    },
+                    ProviderExternalId {
+                        provider: JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER.to_owned(),
+                        value: self.url,
+                    },
+                    ProviderExternalId {
+                        provider: AV_NUMBER_EXTERNAL_ID_PROVIDER.to_owned(),
+                        value: self.av.number,
+                    },
+                ],
+                provider_outcomes: vec![ProviderOutcome::JavlibraryRenderedHtmlParsed],
+                provider_note: None,
+            },
+            artwork_candidates,
+        }
+    }
+}
+
+fn parse_search_results(
+    html: &str,
+    av: &AvQueryFacts,
+    localized_base_url: &str,
+) -> Vec<JavlibrarySearchResult> {
+    let document = Html::parse_document(html);
+    let Ok(selector) = Selector::parse("a[href*=\"?v=\"], .video a[href], .videothumblist a[href]")
+    else {
+        return Vec::new();
+    };
+
+    document
+        .select(&selector)
+        .filter_map(|link| {
+            let href = link.value().attr("href")?;
+            let text =
+                rendered_av::normalize_whitespace(&link.text().collect::<Vec<_>>().join(" "));
+            if !rendered_av::text_or_url_matches_av(&text, href, av) {
+                return None;
+            }
+            Some(JavlibrarySearchResult {
+                url: rendered_av::absolute_url(localized_base_url, href),
+            })
+        })
+        .fold(Vec::new(), |mut results, result| {
+            if !results.iter().any(|existing| existing.url == result.url) {
+                results.push(result);
+            }
+            results
+        })
+}
+
+fn parse_detail_page(
+    html: &str,
+    detail_url: &str,
+    av: Option<AvQueryFacts>,
+) -> Option<JavlibraryDetailFacts> {
+    let document = Html::parse_document(html);
+    let body_text = rendered_av::element_text(&document, "body").unwrap_or_default();
+    let info_text = rendered_av::element_text(&document, "#video_info, .video_info, #video, body")
+        .unwrap_or_else(|| body_text.clone());
+    let title = rendered_av::first_non_empty(&[
+        rendered_av::element_text(&document, "#video_title h3, h3, h1").as_deref(),
+        rendered_av::attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
+    ])?;
+    let number = rendered_av::labeled_value(
+        &info_text,
+        &["品番", "識別碼", "识别码", "Number"],
+        JAVLIBRARY_LABELS,
+    )
+    .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId).map(|facts| facts.number))
+    .or_else(|| facts_from_text(detail_url, AvNumberSource::ExternalId).map(|facts| facts.number));
+    let av = number
+        .as_deref()
+        .and_then(|value| facts_from_text(value, AvNumberSource::ExternalId))
+        .or_else(|| facts_from_text(&title, AvNumberSource::ExternalId))
+        .or(av)?;
+    let release_date = rendered_av::labeled_value(
+        &info_text,
+        &["発売日", "發行日期", "发行日期", "Release Date"],
+        JAVLIBRARY_LABELS,
+    )
+    .or_else(|| rendered_av::first_iso_date(&body_text));
+    let release_year = release_date.as_deref().and_then(rendered_av::first_year);
+    let runtime_minutes = rendered_av::labeled_value(
+        &info_text,
+        &["収録時間", "長度", "长度", "Runtime"],
+        JAVLIBRARY_LABELS,
+    )
+    .and_then(|value| rendered_av::parse_minutes(&value));
+    let studio =
+        first_link_text(&document, "a[href*=\"maker\"], a[href*=\"studio\"]").or_else(|| {
+            rendered_av::labeled_value(
+                &info_text,
+                &["メーカー", "片商", "Studio"],
+                JAVLIBRARY_LABELS,
+            )
+        });
+    let publisher = first_link_text(&document, "a[href*=\"label\"], a[href*=\"publisher\"]")
+        .or_else(|| {
+            rendered_av::labeled_value(
+                &info_text,
+                &["レーベル", "發行商", "发行商", "Label", "Publisher"],
+                JAVLIBRARY_LABELS,
+            )
+        });
+    let series = first_link_text(&document, "a[href*=\"series\"]")
+        .or_else(|| rendered_av::labeled_value(&info_text, &["系列", "Series"], JAVLIBRARY_LABELS));
+    let director = first_link_text(&document, "a[href*=\"director\"]").or_else(|| {
+        rendered_av::labeled_value(
+            &info_text,
+            &["監督", "導演", "导演", "Director"],
+            JAVLIBRARY_LABELS,
+        )
+    });
+    let actors = rendered_av::link_texts(
+        &document,
+        "a[href*=\"star.php\"], a[href*=\"/star/\"], a[href*=\"star=\"]",
+    );
+    let tags = rendered_av::link_texts(
+        &document,
+        "a[href*=\"genre\"], a[href*=\"category\"], a[href*=\"tag\"]",
+    );
+    let rating_milli = rendered_av::element_text(
+        &document,
+        "#video_review .score, .score, .rating, [class*=\"score\"]",
+    )
+    .or_else(|| {
+        rendered_av::labeled_value(&info_text, &["评分", "評分", "Rating"], JAVLIBRARY_LABELS)
+    })
+    .and_then(|value| rendered_av::parse_rating_milli(&value));
+    let wanted_count = rendered_av::element_text(
+        &document,
+        ".wanted, .userswanted, #video_favorite_edit, [class*=\"wanted\"]",
+    )
+    .or_else(|| rendered_av::labeled_value(&info_text, &["想看", "Wanted"], JAVLIBRARY_LABELS))
+    .and_then(|value| rendered_av::first_u32(&value));
+    let poster_url =
+        rendered_av::attr_value(&document, "#video_jacket_img, .video_jacket_img", "src")
+            .or_else(|| {
+                rendered_av::attr_value(&document, "meta[property=\"og:image\"]", "content")
+            })
+            .map(rendered_av::normalize_url);
+
+    Some(JavlibraryDetailFacts {
+        id: javlibrary_id_from_url(detail_url).unwrap_or_else(|| av.number.clone()),
+        url: detail_url.to_owned(),
+        av,
+        title,
+        release_date,
+        release_year,
+        runtime_minutes,
+        actors,
+        tags,
+        studio,
+        publisher,
+        series,
+        director,
+        rating_milli,
+        wanted_count,
+        poster_url,
+    })
+}
+
+const JAVLIBRARY_LABELS: &[&str] = &[
+    "品番",
+    "識別碼",
+    "识别码",
+    "Number",
+    "発売日",
+    "發行日期",
+    "发行日期",
+    "Release Date",
+    "収録時間",
+    "長度",
+    "长度",
+    "Runtime",
+    "メーカー",
+    "片商",
+    "Studio",
+    "レーベル",
+    "發行商",
+    "发行商",
+    "Label",
+    "Publisher",
+    "系列",
+    "Series",
+    "監督",
+    "導演",
+    "导演",
+    "Director",
+    "评分",
+    "評分",
+    "Rating",
+    "想看",
+    "Wanted",
+];
+
+fn first_link_text(document: &Html, selector: &str) -> Option<String> {
+    rendered_av::link_texts(document, selector)
+        .into_iter()
+        .next()
+}
+
+fn javlibrary_artwork_candidate(movie_id: &str, source_url: String) -> ProviderArtworkCandidate {
+    ProviderArtworkCandidate {
+        provider: JAVLIBRARY_PROVIDER_ID.to_owned(),
+        provider_id: format!("javlibrary:movie:{movie_id}:artwork:0"),
+        facts: ProviderArtworkCandidateFacts {
+            kind: AddonArtworkKind::Poster,
+            source_url,
+            language: None,
+            width: None,
+            height: None,
+        },
+    }
+}
+
+fn direct_external_id(query: &MetadataQuery, provider: &str) -> Option<String> {
+    query
+        .external_ids
+        .iter()
+        .find(|external_id| external_id.provider.eq_ignore_ascii_case(provider))
+        .map(|external_id| external_id.value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
+fn javlibrary_id_from_url(url: &str) -> Option<String> {
+    rendered_av::id_query_value(url, "v")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        collections::VecDeque,
+        sync::{Arc, Mutex},
+    };
+
+    use async_trait::async_trait;
+
+    use crate::{
+        engine::{MetadataQuery, QueryExternalId},
+        providers::http_runtime::{
+            ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse, ProviderHttpResult,
+            ProviderHttpRuntimeConfig, ProviderHttpTransport,
+        },
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn javlibrary_provider_uses_browser_worker_render_contract_for_av_search_and_detail() {
+        let transport = FakeTransport::default();
+        transport.push_rendered_html(
+            "https://javlibrary.example/cn/vl_searchbyid.php?keyword=SSNI-644",
+            "JavLibrary Search",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <div class="video"><a href="?v=javli123"><span>SSNI-644 JavLibrary Title</span></a></div>
+  <div class="video"><a href="?v=other999"><span>ABP-001 Other Title</span></a></div>
+</body>
+</html>"#,
+        );
+        transport.push_rendered_html(
+            "https://javlibrary.example/cn/?v=javli123",
+            "SSNI-644 JavLibrary Title",
+            r#"
+<!doctype html>
+<html>
+<head>
+  <meta property="og:image" content="https://img.example/javlibrary-cover.jpg">
+</head>
+<body>
+  <h3 id="video_title">SSNI-644 JavLibrary Title</h3>
+  <div id="video_info">
+    <p>品番: SSNI-644</p>
+    <p>發行日期: 2024-05-03</p>
+    <p>長度: 120分鐘</p>
+    <p>片商: Studio Alpha</p>
+    <p>發行商: Publisher Beta</p>
+    <p>系列: Series Gamma</p>
+    <p>導演: Director Delta</p>
+    <p>想看: 234 users wanted</p>
+  </div>
+  <a href="star.php?star=one">Actor One</a>
+  <a href="star.php?star=two">Actor Two</a>
+  <a href="vl_genre.php?g=drama">剧情</a>
+  <a href="vl_genre.php?g=uniform">制服</a>
+  <span class="score">4.3</span>
+  <img id="video_jacket_img" src="https://img.example/jacket.jpg">
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavlibraryMetadataProvider::with_runtime(
+            JavlibraryProviderConfig::new(
+                "https://javlibrary.example".to_owned(),
+                "cn".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        let candidate = &candidates[0];
+        assert_eq!(candidate.provider, "javlibrary");
+        assert_eq!(candidate.provider_id, "javlibrary:movie:javli123");
+        assert_eq!(
+            candidate.patch.title.as_deref(),
+            Some("SSNI-644 JavLibrary Title")
+        );
+        assert_eq!(candidate.patch.release_date.as_deref(), Some("2024-05-03"));
+        assert_eq!(candidate.patch.runtime_minutes, Some(120));
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().actors,
+            vec!["Actor One".to_owned(), "Actor Two".to_owned()]
+        );
+        assert_eq!(candidate.facts.av.as_ref().unwrap().wanted_count, Some(234));
+        assert_eq!(candidate.facts.community_score_milli, Some(860));
+        assert!(candidate.facts.external_ids.iter().any(|id| {
+            id.provider == JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER
+                && id.value == "https://javlibrary.example/cn/?v=javli123"
+        }));
+        assert_eq!(candidate.artwork_candidates.len(), 1);
+        assert_eq!(
+            candidate.artwork_candidates[0].facts.kind,
+            AddonArtworkKind::Poster
+        );
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 2);
+        let search_body: serde_json::Value =
+            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(
+            search_body["url"],
+            "https://javlibrary.example/cn/vl_searchbyid.php?keyword=SSNI-644"
+        );
+        let detail_body: serde_json::Value =
+            serde_json::from_slice(requests[1].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(
+            detail_body["url"],
+            "https://javlibrary.example/cn/?v=javli123"
+        );
+    }
+
+    #[tokio::test]
+    async fn javlibrary_provider_uses_explicit_id_for_direct_detail_lookup() {
+        let transport = FakeTransport::default();
+        transport.push_rendered_html(
+            "https://javlibrary.example/cn/?v=javli123",
+            "SSNI-644 Direct JavLibrary Title",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <h3 id="video_title">SSNI-644 Direct JavLibrary Title</h3>
+  <div id="video_info">
+    <p>品番: SSNI-644</p>
+    <p>發行日期: 2024-05-03</p>
+  </div>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavlibraryMetadataProvider::with_runtime(
+            JavlibraryProviderConfig::new(
+                "https://javlibrary.example".to_owned(),
+                "cn".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Untrusted Raw Title".to_owned(),
+                year: None,
+                language: "zh-CN".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "javlibrary".to_owned(),
+                    value: "javli123".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "javlibrary:movie:javli123");
+        assert_eq!(
+            candidates[0].patch.title.as_deref(),
+            Some("SSNI-644 Direct JavLibrary Title")
+        );
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 1);
+        let body: serde_json::Value =
+            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        assert_eq!(body["url"], "https://javlibrary.example/cn/?v=javli123");
+    }
+
+    #[tokio::test]
+    async fn javlibrary_provider_skips_fc2_numbers() {
+        let transport = FakeTransport::default();
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavlibraryMetadataProvider::with_runtime(
+            JavlibraryProviderConfig::new(
+                "https://javlibrary.example".to_owned(),
+                "cn".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "FC2PPV-1723984.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert!(candidates.is_empty());
+        assert!(transport.requests().is_empty());
+    }
+
+    #[derive(Clone, Default)]
+    struct FakeTransport {
+        responses: Arc<Mutex<VecDeque<ProviderHttpResult<ProviderHttpResponse>>>>,
+        requests: Arc<Mutex<Vec<ProviderHttpRequest>>>,
+    }
+
+    impl FakeTransport {
+        fn push_rendered_html(&self, url: &str, title: &str, html: &str) {
+            self.responses
+                .lock()
+                .unwrap()
+                .push_back(Ok(ProviderHttpResponse {
+                    status: 200,
+                    body: serde_json::json!({
+                        "status": "ok",
+                        "url": url,
+                        "title": title,
+                        "html": html,
+                        "text": html,
+                        "excerpt": html.chars().take(240).collect::<String>()
+                    })
+                    .to_string()
+                    .into_bytes(),
+                }));
+        }
+
+        fn requests(&self) -> Vec<ProviderHttpRequest> {
+            self.requests.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait]
+    impl ProviderHttpTransport for FakeTransport {
+        async fn send(
+            &self,
+            request: ProviderHttpRequest,
+            _config: ProviderHttpRuntimeConfig,
+        ) -> ProviderHttpResult<ProviderHttpResponse> {
+            self.requests.lock().unwrap().push(request);
+            self.responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .unwrap_or_else(|| {
+                    Err(ProviderHttpError::Transport {
+                        provider_id: JAVLIBRARY_PROVIDER_ID,
+                        operation: "fake",
+                        message: "fake transport response queue was empty".to_owned(),
+                        attempts: 0,
+                    })
+                })
+        }
+    }
+}

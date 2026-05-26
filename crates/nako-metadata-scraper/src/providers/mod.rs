@@ -12,7 +12,10 @@ pub mod fixture;
 pub mod http_runtime;
 pub mod javbus;
 pub mod javdb;
+pub mod javlibrary;
+pub mod mgstage;
 mod registry;
+mod rendered_av;
 mod rendered_page;
 mod search_policy;
 pub mod tmdb;
@@ -35,6 +38,8 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         dmm::catalog_entry(),
         fc2::catalog_entry(),
         javbus::catalog_entry(),
+        javlibrary::catalog_entry(),
+        mgstage::catalog_entry(),
     ]
 }
 

@@ -262,7 +262,9 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
-                "javbus"
+                "javbus",
+                "javlibrary",
+                "mgstage"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -382,6 +384,38 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[9],
+            ProviderDescriptor {
+                id: "javlibrary",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "javlibrary_direct_lookup",
+                    "javlibrary_movie_search",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[10],
+            ProviderDescriptor {
+                id: "mgstage",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_direct_lookup",
+                    "mgstage_direct_lookup",
+                    "mgstage_amateur_route",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -469,6 +503,34 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"javbus_url")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "javlibrary"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"javlibrary_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "javlibrary_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"javlibrary_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "mgstage"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"mgstage_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "mgstage_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"mgstage_url")
+        }));
     }
 
     #[test]
@@ -497,6 +559,22 @@ mod tests {
             "javbus_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "javlibrary_id",
+            "javlibrary",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "javlibrary_url",
+            "javlibrary_url",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("mgstage_id", "mgstage", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "mgstage_url",
+            "mgstage_url",
+            false
+        )));
     }
 
     #[test]
@@ -520,7 +598,9 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
-                "javbus"
+                "javbus",
+                "javlibrary",
+                "mgstage"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -571,7 +651,9 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
-                "javbus"
+                "javbus",
+                "javlibrary",
+                "mgstage"
             ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);

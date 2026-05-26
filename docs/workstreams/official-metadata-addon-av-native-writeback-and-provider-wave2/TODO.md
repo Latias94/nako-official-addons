@@ -4,21 +4,14 @@ Prefix: OMAV2
 
 ## Active
 
-- [ ] OMAV2-050 [owner=codex] [deps=OMAV2-030,OMAV2-040] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper]
-  Goal: Add provider wave 2 behind disabled-by-default config, starting with JavLibrary plus one high-value route-specific provider.
-  Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast`
-  Review: Confirm selectors/parsers are independently implemented from reference-only MDCx code.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV2-060 [owner=codex] [deps=OMAV2-050] [scope=docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Run closeout gates, document shipped behavior and remaining provider parity, then close or split follow-ups.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; Nako focused gates from OMAV2-020; JSON validation; `git diff --check`
   Review: Confirm both repos contain only intended changes and follow-ups are explicit.
   Evidence:
   Handoff:
+
+## Pending
 
 ## Completed
 
@@ -49,6 +42,13 @@ Prefix: OMAV2
   Review: Confirmed suppression state is explicit in task input/output and Nako still owns scheduling, progress, retry, and cancellation.
   Evidence: PASS on 2026-05-26; 11 bulk tests passed.
   Handoff: DONE. OMAV2-050 is active.
+
+- [x] OMAV2-050 [owner=codex] [deps=OMAV2-030,OMAV2-040] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper]
+  Goal: Add provider wave 2 behind disabled-by-default config, starting with JavLibrary plus one high-value route-specific provider.
+  Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed JavLibrary and MGStage use independently implemented rendered-HTML parsers and stay disabled by default.
+  Evidence: PASS on 2026-05-26; 54 filtered tests passed.
+  Handoff: DONE. OMAV2-060 is active.
 
 ## Follow-Up Candidates
 

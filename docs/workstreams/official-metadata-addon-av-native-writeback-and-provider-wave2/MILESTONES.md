@@ -36,7 +36,7 @@ Exit criteria:
 - Provider suppression/cooldown state is resume-safe.
 - Tests prove duplicate reuse and provider summaries still work.
 
-## M5 - Provider Wave 2
+## M5 - Provider Wave 2 (Complete)
 
 Exit criteria:
 

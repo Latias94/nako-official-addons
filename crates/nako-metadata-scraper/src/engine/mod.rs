@@ -756,7 +756,10 @@ mod tests {
         assert_eq!(candidate["patch"]["title"], "DMM Official Title");
         assert_eq!(candidate["patch"]["overview"], "DMM overview");
         assert_eq!(candidate["patch"]["tags"], serde_json::json!(["dmm-tag"]));
-        assert_eq!(candidate["av"]["actors"], serde_json::json!(["DMM Actor"]));
+        assert_eq!(
+            candidate["av"]["actors"],
+            serde_json::json!(["JavDB Actor"])
+        );
         assert_eq!(candidate["av"]["studio"], "DMM Studio");
         assert_eq!(candidate["av"]["wanted_count"], 77);
         assert!(
@@ -771,7 +774,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|source| source["field"] == "actors" && source["provider"] == "dmm")
+                .any(|source| source["field"] == "actors" && source["provider"] == "javdb")
         );
         assert!(
             candidate["evidence"]["field_sources"]

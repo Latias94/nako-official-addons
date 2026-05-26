@@ -13,17 +13,20 @@ native metadata patch graph fields.
 OMAV2-040 is complete in official addons: bulk scrape now reports retry
 classes, explicit provider suppression/cooldown state, and per-item suppressed
 providers without adding hidden scheduler state to Nako.
+OMAV2-050 is complete in official addons: JavLibrary and MGStage were added as
+disabled-by-default rendered AV providers with config, registry, manifest,
+aliases, parser tests, and docs.
 `../nako` still has unrelated identity/access workstream changes that must not
 be reverted or staged.
 
 ## Active Task
 
-- Task ID: OMAV2-050
+- Task ID: OMAV2-060
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers`, `crates/nako-metadata-scraper/src/config.rs`, `crates/nako-metadata-scraper/src/manifest.rs`, `addons/metadata-scraper`
-- Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast`
+- Files: `docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
+- Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; Nako focused gates from OMAV2-020; JSON validation; `git diff --check`
 - Status: READY
-- Review: Confirm selectors/parsers are independently implemented from reference-only MDCx code.
+- Review: Confirm both repos contain only intended changes and follow-ups are explicit.
 - Evidence:
 
 ## Decisions Since Last Update
@@ -36,8 +39,8 @@ be reverted or staged.
 - Keep browser-worker as the browser/proxy/session/wait owner.
 - Keep bulk provider suppression as explicit task input/output state; Nako owns
   task scheduling, retry, progress, and cancellation.
-- Add provider wave 2 only after native writeback and bulk maturity are in
-  place.
+- Add provider wave 2 behind disabled-by-default config; browser-worker remains
+  the page rendering/proxy/session boundary.
 
 ## Blockers
 
@@ -45,5 +48,5 @@ be reverted or staged.
 
 ## Next Recommended Action
 
-- Add provider wave 2 behind disabled-by-default config, starting with
-  JavLibrary plus one high-value route-specific provider.
+- Run closeout gates, update closeout evidence, commit OMAV2-050, then close or
+  split remaining AV parity follow-ups.

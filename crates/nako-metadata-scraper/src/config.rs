@@ -2,7 +2,8 @@ use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
     dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, tmdb::TmdbProviderConfig,
+    javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
+    mgstage::MgstageProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -58,6 +59,8 @@ pub enum ProviderId {
     Dmm,
     Fc2,
     Javbus,
+    Javlibrary,
+    Mgstage,
 }
 
 impl ProviderId {
@@ -73,6 +76,8 @@ impl ProviderId {
             Self::Dmm => "dmm",
             Self::Fc2 => "fc2",
             Self::Javbus => "javbus",
+            Self::Javlibrary => "javlibrary",
+            Self::Mgstage => "mgstage",
         }
     }
 }
@@ -177,6 +182,24 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn javlibrary(enabled: bool, config: JavlibraryProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Javlibrary,
+            enabled,
+            kind: ProviderConfigKind::Javlibrary(config),
+        }
+    }
+
+    #[must_use]
+    pub fn mgstage(enabled: bool, config: MgstageProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Mgstage,
+            enabled,
+            kind: ProviderConfigKind::Mgstage(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -240,6 +263,22 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn javlibrary_config(&self) -> Option<&JavlibraryProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Javlibrary(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn mgstage_config(&self) -> Option<&MgstageProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Mgstage(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -262,6 +301,12 @@ impl ProviderConfig {
             ProviderId::Javbus => {
                 Self::javbus(enabled, JavbusProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Javlibrary => {
+                Self::javlibrary(enabled, JavlibraryProviderConfig::from_env_lookup(|_| None))
+            }
+            ProviderId::Mgstage => {
+                Self::mgstage(enabled, MgstageProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -277,6 +322,8 @@ pub enum ProviderConfigKind {
     Dmm(DmmProviderConfig),
     Fc2(Fc2ProviderConfig),
     Javbus(JavbusProviderConfig),
+    Javlibrary(JavlibraryProviderConfig),
+    Mgstage(MgstageProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -471,6 +518,27 @@ mod tests {
         );
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[9].id, ProviderId::Javlibrary);
+        assert!(!config.providers[9].enabled);
+        let javlibrary = config.providers[9].javlibrary_config().unwrap();
+        assert_eq!(javlibrary.base_url, "https://www.javlibrary.com");
+        assert_eq!(javlibrary.language_path, "cn");
+        assert_eq!(
+            javlibrary.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(javlibrary.render_path, "/render");
+        assert_eq!(javlibrary.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[10].id, ProviderId::Mgstage);
+        assert!(!config.providers[10].enabled);
+        let mgstage = config.providers[10].mgstage_config().unwrap();
+        assert_eq!(mgstage.base_url, "https://www.mgstage.com");
+        assert_eq!(
+            mgstage.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(mgstage.render_path, "/render");
+        assert_eq!(mgstage.rendered_pages.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -480,6 +548,8 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Dmm));
         assert!(!config.provider_enabled(ProviderId::Fc2));
         assert!(!config.provider_enabled(ProviderId::Javbus));
+        assert!(!config.provider_enabled(ProviderId::Javlibrary));
+        assert!(!config.provider_enabled(ProviderId::Mgstage));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
     }
@@ -503,6 +573,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -540,6 +612,13 @@ mod tests {
             "NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS" => Some("4500".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL" => Some("https://javbus.example".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS" => Some("8500".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVLIBRARY_BASE_URL" => {
+                Some("https://javlibrary.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_JAVLIBRARY_LANGUAGE" => Some("ja".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVLIBRARY_TIMEOUT_MS" => Some("9500".to_owned()),
+            "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_MGSTAGE_TIMEOUT_MS" => Some("10500".to_owned()),
             _ => None,
         });
 
@@ -637,6 +716,25 @@ mod tests {
         );
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 8500);
+        assert!(config.provider_enabled(ProviderId::Javlibrary));
+        let javlibrary = config.providers[9].javlibrary_config().unwrap();
+        assert_eq!(javlibrary.base_url, "https://javlibrary.example");
+        assert_eq!(javlibrary.language_path, "ja");
+        assert_eq!(
+            javlibrary.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(javlibrary.render_path, "/render");
+        assert_eq!(javlibrary.rendered_pages.timeout_ms, 9500);
+        assert!(config.provider_enabled(ProviderId::Mgstage));
+        let mgstage = config.providers[10].mgstage_config().unwrap();
+        assert_eq!(mgstage.base_url, "https://mgstage.example");
+        assert_eq!(
+            mgstage.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(mgstage.render_path, "/render");
+        assert_eq!(mgstage.rendered_pages.timeout_ms, 10500);
     }
 
     #[test]

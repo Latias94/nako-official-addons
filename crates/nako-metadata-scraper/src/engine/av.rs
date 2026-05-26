@@ -390,10 +390,11 @@ fn parse_western_date(value: &str) -> Option<ParsedAvNumber> {
 }
 
 fn parse_amateur(value: &str) -> Option<ParsedAvNumber> {
+    const AMATEUR_PREFIXES: &[&str] = &["SIRO", "LUXU", "ARA", "GANA", "MAAN", "MIUM"];
     let tokens = tokens(value);
     for index in 0..tokens.len() {
         let token = tokens[index];
-        if matches!(token, "SIRO" | "LUXU" | "ARA" | "GANA" | "MAAN")
+        if AMATEUR_PREFIXES.contains(&token)
             && let Some(number) = tokens.get(index + 1)
             && number.chars().all(|character| character.is_ascii_digit())
             && number.len() >= 3
@@ -403,7 +404,9 @@ fn parse_amateur(value: &str) -> Option<ParsedAvNumber> {
                 route: AvNumberRoute::Amateur,
             });
         }
-        if token.ends_with("LUXU")
+        if AMATEUR_PREFIXES
+            .iter()
+            .any(|prefix| token.ends_with(prefix))
             && token.chars().any(|character| character.is_ascii_digit())
             && let Some(number) = tokens.get(index + 1)
             && number.chars().all(|character| character.is_ascii_digit())
@@ -630,5 +633,17 @@ mod tests {
         assert_eq!(facts.number, "ABP-001");
         assert_eq!(facts.route, AvNumberRoute::Censored);
         assert_eq!(facts.source, AvNumberSource::ExternalId);
+    }
+
+    #[test]
+    fn av_number_classifies_mgstage_numeric_prefix_amateur_number() {
+        let facts = facts_from_payload(&serde_json::json!({
+            "file_name": "300MIUM-382.mp4"
+        }))
+        .unwrap();
+
+        assert_eq!(facts.number, "300MIUM-382");
+        assert_eq!(facts.route, AvNumberRoute::Amateur);
+        assert_eq!(facts.source, AvNumberSource::FileName);
     }
 }

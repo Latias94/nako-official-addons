@@ -512,7 +512,9 @@ mod tests {
                 "javdb",
                 "dmm",
                 "fc2",
-                "javbus"
+                "javbus",
+                "javlibrary",
+                "mgstage"
             ])
         );
         assert_eq!(

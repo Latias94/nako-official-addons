@@ -33,31 +33,38 @@ pub(crate) struct ProviderRunPolicy {
 impl ProviderFieldPolicy {
     #[must_use]
     pub fn default_av() -> Self {
+        const OFFICIAL_FIRST: &[&str] = &["dmm", "mgstage", "javdb", "fc2", "javbus", "javlibrary"];
+        const COMMUNITY_FIRST: &[&str] =
+            &["javlibrary", "javdb", "dmm", "mgstage", "javbus", "fc2"];
+        const ARTWORK_FIRST: &[&str] = &["dmm", "mgstage", "javdb", "fc2", "javbus"];
         let preferences = [
-            ("title", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("original_title", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("sort_title", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("overview", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("release_date", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("runtime_minutes", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("tagline", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("genres", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("tags", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("actors", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("all_actors", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("directors", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("series", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("studio", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("publisher", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("maker", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("label", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("wanted_count", &["javdb", "dmm", "fc2", "javbus"][..]),
-            ("thumb_url", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("trailer_url", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("extrafanart_urls", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("poster", &["dmm", "javdb", "fc2", "javbus"][..]),
-            ("backdrop", &["dmm", "javdb", "javbus"][..]),
-            ("artwork", &["dmm", "javdb", "fc2", "javbus"][..]),
+            ("title", OFFICIAL_FIRST),
+            ("original_title", OFFICIAL_FIRST),
+            ("sort_title", OFFICIAL_FIRST),
+            ("overview", OFFICIAL_FIRST),
+            ("release_date", OFFICIAL_FIRST),
+            ("runtime_minutes", OFFICIAL_FIRST),
+            ("tagline", OFFICIAL_FIRST),
+            ("genres", OFFICIAL_FIRST),
+            ("tags", OFFICIAL_FIRST),
+            ("actors", COMMUNITY_FIRST),
+            ("all_actors", COMMUNITY_FIRST),
+            ("directors", OFFICIAL_FIRST),
+            ("series", OFFICIAL_FIRST),
+            ("studio", OFFICIAL_FIRST),
+            ("publisher", OFFICIAL_FIRST),
+            ("maker", OFFICIAL_FIRST),
+            ("label", OFFICIAL_FIRST),
+            ("wanted_count", COMMUNITY_FIRST),
+            ("thumb_url", ARTWORK_FIRST),
+            (
+                "trailer_url",
+                &["mgstage", "dmm", "javdb", "fc2", "javbus"][..],
+            ),
+            ("extrafanart_urls", ARTWORK_FIRST),
+            ("poster", ARTWORK_FIRST),
+            ("backdrop", ARTWORK_FIRST),
+            ("artwork", ARTWORK_FIRST),
         ]
         .into_iter()
         .map(|(field, providers)| {

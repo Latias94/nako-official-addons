@@ -14,6 +14,8 @@ pub enum ProviderOutcome {
     DmmRenderedHtmlParsed,
     Fc2RenderedHtmlParsed,
     JavbusRenderedHtmlParsed,
+    JavlibraryRenderedHtmlParsed,
+    MgstageRenderedHtmlParsed,
 }
 
 #[must_use]
@@ -77,6 +79,12 @@ impl ProviderOutcome {
             }
             Self::JavbusRenderedHtmlParsed => {
                 "JavBus AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::JavlibraryRenderedHtmlParsed => {
+                "JavLibrary AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::MgstageRenderedHtmlParsed => {
+                "MGStage AV candidate parsed from browser-worker rendered HTML."
             }
         }
     }

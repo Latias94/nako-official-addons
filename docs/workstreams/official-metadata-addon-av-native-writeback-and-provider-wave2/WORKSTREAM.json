@@ -5,12 +5,13 @@
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMAV2",
-  "current_task": "OMAV2-050",
+  "current_task": "OMAV2-060",
   "completed_tasks": [
     "OMAV2-010",
     "OMAV2-020",
     "OMAV2-030",
-    "OMAV2-040"
+    "OMAV2-040",
+    "OMAV2-050"
   ],
   "cross_repo_scope": [
     "F:/SourceCodes/Rust/nako-official-addons",
@@ -40,7 +41,8 @@
     "repo-ref/mdcx/mdcx/models/types.py",
     "repo-ref/mdcx/mdcx/crawlers/__init__.py",
     "repo-ref/mdcx/mdcx/crawlers/javlibrary.py",
-    "repo-ref/mdcx/mdcx/crawlers/javbus.py"
+    "repo-ref/mdcx/mdcx/crawlers/javbus.py",
+    "repo-ref/mdcx/mdcx/crawlers/mgstage.py"
   ],
   "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, regex tables, or structure."
 }
