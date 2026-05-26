@@ -1,6 +1,6 @@
 # Milestones
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## M1 - Lane Opened
@@ -44,7 +44,7 @@ Exit criteria:
 - Config, registry, manifest, docs, and synthetic fixtures cover the providers.
 - Provider parsing remains independently implemented.
 
-## M6 - Verification And Closeout
+## M6 - Verification And Closeout (Complete)
 
 Exit criteria:
 

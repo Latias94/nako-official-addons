@@ -1,11 +1,11 @@
 # Official Metadata Addon AV Native Writeback And Provider Wave 2 - Handoff
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## Current State
 
-The lane is active. The previous AV MDCx parity foundation is complete and
+The lane is closed. The previous AV MDCx parity foundation is complete and
 committed at `3c23732`. OMAV2-020 is complete in `../nako` at commit
 `a0ad9a8`, adding native graph metadata writeback and full catalog projection.
 OMAV2-030 is complete in official addons: selected AV facts now materialize into
@@ -16,18 +16,20 @@ providers without adding hidden scheduler state to Nako.
 OMAV2-050 is complete in official addons: JavLibrary and MGStage were added as
 disabled-by-default rendered AV providers with config, registry, manifest,
 aliases, parser tests, and docs.
-`../nako` still has unrelated identity/access workstream changes that must not
-be reverted or staged.
+OMAV2-060 is complete: closeout gates passed and the workstream has been
+closed. Remaining AV work is follow-up scope, not unfinished work in this lane.
+`../nako` still has unrelated workstream/admin-web changes that must not be
+reverted or staged.
 
-## Active Task
+## Closed Task
 
 - Task ID: OMAV2-060
 - Owner: codex
 - Files: `docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
 - Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; Nako focused gates from OMAV2-020; JSON validation; `git diff --check`
-- Status: READY
+- Status: DONE
 - Review: Confirm both repos contain only intended changes and follow-ups are explicit.
-- Evidence:
+- Evidence: All closeout gates passed on 2026-05-26.
 
 ## Decisions Since Last Update
 
@@ -44,9 +46,13 @@ be reverted or staged.
 
 ## Blockers
 
-- None. The dirty `../nako` files are unrelated, but staging must be precise.
+- None for this lane. The dirty `../nako` files are unrelated, but any future
+  staging there must remain precise.
 
 ## Next Recommended Action
 
-- Run closeout gates, update closeout evidence, commit OMAV2-050, then close or
-  split remaining AV parity follow-ups.
+- Open a new provider-wave workstream if continuing AV parity. Best next
+  providers are FC2 long-tail sources (FC2PPVDB/FC2Hub/FC2Club), Prestige,
+  ThePornDB, Jav321, Caribbeancom, 1Pondo, and 10Musume. Keep browser-worker as
+  the render/proxy/session boundary and use independently authored parsers with
+  synthetic rendered-HTML tests.

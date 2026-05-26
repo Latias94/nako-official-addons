@@ -4,12 +4,7 @@ Prefix: OMAV2
 
 ## Active
 
-- [ ] OMAV2-060 [owner=codex] [deps=OMAV2-050] [scope=docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Run closeout gates, document shipped behavior and remaining provider parity, then close or split follow-ups.
-  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; Nako focused gates from OMAV2-020; JSON validation; `git diff --check`
-  Review: Confirm both repos contain only intended changes and follow-ups are explicit.
-  Evidence:
-  Handoff:
+None. This workstream is closed.
 
 ## Pending
 
@@ -48,12 +43,20 @@ Prefix: OMAV2
   Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirmed JavLibrary and MGStage use independently implemented rendered-HTML parsers and stay disabled by default.
   Evidence: PASS on 2026-05-26; 54 filtered tests passed.
-  Handoff: DONE. OMAV2-060 is active.
+  Handoff: DONE. OMAV2-060 completed the closeout.
+
+- [x] OMAV2-060 [owner=codex] [deps=OMAV2-050] [scope=docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Run closeout gates, document shipped behavior and remaining provider parity, then close or split follow-ups.
+  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; Nako focused gates from OMAV2-020; JSON validation; `git diff --check`
+  Review: Confirmed official addon repo contains only closeout docs after implementation commits; `../nako` still has unrelated workstream docs and was not staged or reverted.
+  Evidence: PASS on 2026-05-26; 192 metadata-scraper tests, 4 browser-worker tests, 30 Nako protocol/client/reference tests, 4 Nako server writeback tests, focused format checks, JSON validation, and `git diff --check` passed.
+  Handoff: DONE. Workstream closed.
 
 ## Follow-Up Candidates
 
-- Additional provider wave: FC2PPVDB/FC2Hub/FC2Club, MGStage, Prestige,
-  ThePornDB, Jav321, Caribbeancom, 1Pondo, 10Musume, and region-specific
-  fallbacks.
+- Additional provider waves: FC2PPVDB/FC2Hub/FC2Club, Prestige, ThePornDB,
+  Jav321, Caribbeancom, 1Pondo, 10Musume, and region-specific fallbacks.
 - UI review tools for graph AV writeback review before apply.
 - NFO/rename/actor-image lanes after native writeback is stable.
+- Real-site fixture refresh tooling that records selector drift without storing
+  adult-site payloads in CI fixtures.

@@ -1,6 +1,6 @@
 # Official Metadata Addon AV Native Writeback And Provider Wave 2
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## Why This Lane Exists
@@ -119,3 +119,17 @@ This lane can close when:
 - docs describe the new broken contract,
 - each affected repo has only intended changes staged/committed,
 - and remaining AV parity work is explicit follow-up scope.
+
+## Closeout Summary
+
+Closed on 2026-05-26.
+
+This lane shipped the breaking native metadata writeback contract in Nako,
+materialized selected AV facts into canonical graph writeback fields in the
+official metadata scraper, added explicit provider retry/suppression accounting
+for bulk scrape, and added disabled-by-default JavLibrary and MGStage rendered
+providers. The browser-worker remains the single browser/proxy/session/wait
+boundary; provider parsers are independently implemented from MDCx references.
+
+Remaining AV work is follow-up scope, mainly more provider waves, review UI,
+NFO/rename, and actor-image workflows.
