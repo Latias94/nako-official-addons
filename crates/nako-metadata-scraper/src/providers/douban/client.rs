@@ -42,13 +42,12 @@ where
     }
 
     pub(super) async fn render(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
+        let intent = self
+            .config
+            .rendered_pages
+            .intent(&self.config.render_path, url);
         self.rendered_pages
-            .render_html(
-                DOUBAN_PROVIDER_ID,
-                "render page",
-                &self.config.render_path,
-                url,
-            )
+            .render_html(DOUBAN_PROVIDER_ID, "render page", intent)
             .await
     }
 }

@@ -4,21 +4,14 @@ Prefix: OMSAD
 
 ## Active
 
-- [ ] OMSAD-030 [owner=codex] [deps=OMSAD-020] [scope=crates/nako-metadata-scraper/src/providers/rendered_page.rs,addons/browser-worker/src/app.mjs,addons/browser-worker/src/extract.mjs,addons/browser-worker/test]
-  Goal: Add Render Intent as the deep Interface for browser-worker calls, including wait/proxy/session fields where supported.
-  Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm providers can declare render behavior without duplicating browser-worker payload assembly.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMSAD-040 [owner=codex] [deps=OMSAD-030] [scope=crates/nako-metadata-scraper/src/providers/rendered_av.rs,crates/nako-metadata-scraper/src/providers/javbus.rs,crates/nako-metadata-scraper/src/providers/javlibrary.rs,crates/nako-metadata-scraper/src/providers/mgstage.rs]
   Goal: Deepen rendered AV provider flow so direct lookup, AV route gating, search-to-detail, and empty/failure policy live in one reusable Module.
   Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm provider adapters retain URL/parser/mapper quirks while shared flow owns ordering and repeated control behavior.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMSAD-050 [owner=codex] [deps=OMSAD-040] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers/mod.rs,crates/nako-metadata-scraper/src/providers/*,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/resolver.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Move AV provider field-quality/default policy facts toward provider descriptors and stop hard-coding default provider identity lists in engine query code.
@@ -62,7 +55,14 @@ Prefix: OMSAD
   Validation: `cargo nextest run -p nako-metadata-scraper bulk runtime metadata_endpoint --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirmed public response rendering is a projection from `MetadataScrapeOutcome`; bulk fresh scrape consumes typed provider execution, AV facts, failure reason, and suppression facts without parsing `AddonResourceResponse` JSON.
   Evidence: PASS on 2026-05-26; 41 focused tests passed, full package gate passed with 193 tests, formatting and diff hygiene passed.
-  Handoff: DONE. OMSAD-030 is active.
+  Handoff: DONE. OMSAD-030 completed.
+
+- [x] OMSAD-030 [owner=codex] [deps=OMSAD-020] [scope=crates/nako-metadata-scraper/src/providers/rendered_page.rs,crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/douban.rs,crates/nako-metadata-scraper/src/providers/douban/client.rs,crates/nako-metadata-scraper/src/providers/javdb.rs,crates/nako-metadata-scraper/src/providers/javdb/client.rs,crates/nako-metadata-scraper/src/providers/dmm.rs,crates/nako-metadata-scraper/src/providers/dmm/client.rs,crates/nako-metadata-scraper/src/providers/fc2.rs,crates/nako-metadata-scraper/src/providers/fc2/client.rs,crates/nako-metadata-scraper/src/providers/javbus.rs,crates/nako-metadata-scraper/src/providers/javlibrary.rs,crates/nako-metadata-scraper/src/providers/mgstage.rs,addons/browser-worker/test,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add Render Intent as the deep Interface for browser-worker calls, including wait/proxy/session fields where supported.
+  Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed providers declare browser-worker calls through `RenderedPageIntent` and `RenderedPageSupportConfig::intent`; wait/proxy/session fields serialize through one shared request projection without provider-local payload assembly.
+  Evidence: PASS on 2026-05-26; render intent red/green tracer passed, 19 focused Rust tests passed, 4 browser-worker tests passed.
+  Handoff: DONE. OMSAD-040 is active.
 
 ## Follow-Up Candidates
 

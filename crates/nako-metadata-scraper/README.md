@@ -111,7 +111,14 @@ field-source metadata when shared external IDs merge multiple provider facts.
 The `/health` diagnostics report whether TMDB and Bangumi proxy policy is
 configured without exposing the proxy URL itself. Browser-rendered AV providers
 use proxy configuration from the companion browser worker, for example
-`NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`.
+`NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust
+providers send a typed render intent to the worker; operators can set
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_STATE` (`load`, `domcontentloaded`,
+or `networkidle`), `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_TIMEOUT_MS`,
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY` (`default`, `direct`, or
+`required`), and `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` to shape all
+rendered-page requests without changing provider code.
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side
@@ -169,7 +176,7 @@ counts, and per-item `suppressed_provider_ids`.
 Rendered AV providers use the companion browser worker through `POST /render`.
 The worker is a Crawlee/Playwright execution boundary: it loads pages and
 returns rendered HTML/text/excerpts, while Rust providers own site-specific
-search, detail parsing, mapping, and source policy.
+search, detail parsing, mapping, source policy, and render intent declaration.
 
 Optional live drift smoke checks are available for manual use only:
 

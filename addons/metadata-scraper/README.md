@@ -298,6 +298,15 @@ operator-managed proxy.
 The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB and
 Bangumi proxy policy is configured. They intentionally expose only boolean
 policy state, not proxy URLs or credentials.
+Browser-rendered providers use the companion browser worker for proxying; set
+`NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST` on that
+worker. The Rust sidecar can require, bypass, or default that worker proxy via
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY`, and can also pass
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_STATE`,
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_TIMEOUT_MS`, and
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` as typed render intent
+defaults.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
@@ -382,4 +391,5 @@ the request.
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the
 Playwright/Crawlee path for rendered-page extraction, while provider-specific
-metadata interpretation remains in `nako-metadata-scraper`.
+metadata interpretation and render intent declaration remain in
+`nako-metadata-scraper`.

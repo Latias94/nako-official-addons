@@ -50,17 +50,19 @@ impl BrowserWorkerProviderConfig {
 
     #[must_use]
     pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
-        Self::new(
-            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
-                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| "/extract".to_owned()),
-            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
-                .and_then(|value| value.trim().parse::<u64>().ok())
-                .filter(|value| *value > 0)
-                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
-        )
+        let base_url = lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+            .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned());
+        let extract_path = lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_EXTRACT_PATH")
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "/extract".to_owned());
+        let timeout_ms = lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS")
+            .and_then(|value| value.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(Self::DEFAULT_TIMEOUT_MS);
+
+        let mut config = Self::new(base_url, extract_path, timeout_ms);
+        config.rendered_pages = config.rendered_pages.with_env_defaults(|name| lookup(name));
+        config
     }
 }
 
@@ -163,14 +165,13 @@ where
             .collect::<Vec<_>>();
 
         for source_url in source_urls {
+            let intent = self
+                .config
+                .rendered_pages
+                .intent(&self.config.extract_path, source_url.clone());
             let extracted = self
                 .rendered_pages
-                .extract_text(
-                    BROWSER_WORKER_PROVIDER_ID,
-                    "extract rendered page",
-                    &self.config.extract_path,
-                    &source_url,
-                )
+                .extract_text(BROWSER_WORKER_PROVIDER_ID, "extract rendered page", intent)
                 .await?;
             candidates.push(rendered_text_candidate(extracted, query, &source_url));
         }

@@ -74,22 +74,24 @@ impl Fc2ProviderConfig {
 
     #[must_use]
     pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
-        Self::new(
-            lookup("NAKO_METADATA_SCRAPER_FC2_BASE_URL")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "https://adult.contents.fc2.com".to_owned()),
-            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned()),
-            lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
-                .and_then(non_empty_trimmed)
-                .unwrap_or_else(|| "/render".to_owned()),
-            lookup("NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS")
-                .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
-                .and_then(|value| value.trim().parse::<u64>().ok())
-                .filter(|value| *value > 0)
-                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
-        )
+        let base_url = lookup("NAKO_METADATA_SCRAPER_FC2_BASE_URL")
+            .and_then(non_empty_trimmed)
+            .unwrap_or_else(|| "https://adult.contents.fc2.com".to_owned());
+        let browser_worker_base_url = lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL")
+            .and_then(non_empty_trimmed)
+            .unwrap_or_else(|| "http://nako-browser-worker:3000".to_owned());
+        let render_path = lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_RENDER_PATH")
+            .and_then(non_empty_trimmed)
+            .unwrap_or_else(|| "/render".to_owned());
+        let timeout_ms = lookup("NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS")
+            .or_else(|| lookup("NAKO_METADATA_SCRAPER_BROWSER_WORKER_TIMEOUT_MS"))
+            .and_then(|value| value.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(Self::DEFAULT_TIMEOUT_MS);
+
+        let mut config = Self::new(base_url, browser_worker_base_url, render_path, timeout_ms);
+        config.rendered_pages = config.rendered_pages.with_env_defaults(|name| lookup(name));
+        config
     }
 }
 

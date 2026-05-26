@@ -10,6 +10,10 @@ closed. OMSAD-020 is complete: runtime now builds a typed
 `MetadataScrapeOutcome`, response rendering projects from it, and bulk fresh
 scrape consumes typed AV facts, provider execution, failure reason, and provider
 suppression facts without parsing public response JSON.
+OMSAD-030 is complete: rendered providers now declare a typed
+`RenderedPageIntent`, shared runtime projection serializes browser-worker
+`wait_for`, `proxy_policy`, and `session_key`, and environment defaults can
+shape all rendered-page requests without provider-local JSON assembly.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -17,13 +21,13 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-030
+- Task ID: OMSAD-040
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers/rendered_page.rs`, `addons/browser-worker/src/app.mjs`, `addons/browser-worker/src/extract.mjs`, `addons/browser-worker/test`
-- Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/providers/rendered_av.rs`, `crates/nako-metadata-scraper/src/providers/javbus.rs`, `crates/nako-metadata-scraper/src/providers/javlibrary.rs`, `crates/nako-metadata-scraper/src/providers/mgstage.rs`
+- Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm providers can declare render behavior without duplicating
-  browser-worker payload assembly.
+- Review: Confirm provider adapters retain URL/parser/mapper quirks while
+  shared flow owns ordering and repeated control behavior.
 - Evidence:
 
 ## Decisions
@@ -42,6 +46,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-030 by adding Render Intent around `RenderedPageRuntime`, then
-  thread wait/proxy/session payload coverage through Rust provider tests and
-  browser-worker validation.
+- Execute OMSAD-040 by extracting the repeated rendered AV lookup/search/detail
+  flow from JavBus, JavLibrary, and MGStage into `rendered_av`, leaving
+  provider adapters focused on URL construction and parser/mapper quirks.
