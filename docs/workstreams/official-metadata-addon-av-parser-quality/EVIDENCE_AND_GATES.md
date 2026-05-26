@@ -1,0 +1,22 @@
+# Evidence And Gates
+
+Status: Active
+Last updated: 2026-05-26
+
+## Required Gates
+
+| Gate | Command | Required before |
+| --- | --- | --- |
+| Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json` | APQ-010 and closeout |
+| Workstream hygiene | `git diff --check` | every task completion |
+| Structured labels | `cargo nextest run -p nako-metadata-scraper rendered_av official_uncensored fc2ppvdb --no-fail-fast` | APQ-010 |
+| Provider migration | `cargo nextest run -p nako-metadata-scraper dmm mgstage javbus javlibrary javdb fc2 rendered_av --no-fail-fast` | APQ-020/APQ-030 |
+| Package validation | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | closeout |
+| Formatting | `cargo fmt -p nako-metadata-scraper -- --check` | every Rust task completion |
+
+## Evidence Log
+
+| Date | Task | Evidence | Result |
+| --- | --- | --- | --- |
+| 2026-05-26 | APQ-000 | `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json`; `git diff --check` | Pass: workstream opened from user-approved parser-quality goal |
+| 2026-05-26 | APQ-010 | `cargo nextest run -p nako-metadata-scraper rendered_av official_uncensored fc2ppvdb --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json`; `git diff --check` | Pass: shared structured label helper prevents row-boundary bleed and is used by official uncensored plus FC2PPVDB with provider-local row selectors |

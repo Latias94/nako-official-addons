@@ -201,6 +201,31 @@ pub(crate) fn labeled_value(text: &str, labels: &[&str], known_labels: &[&str]) 
         .find_map(|label| labeled_value_by_label(text, label, known_labels))
 }
 
+pub(crate) fn structured_labeled_value(
+    document: &Html,
+    row_selector: &str,
+    labels: &[&str],
+) -> Option<String> {
+    let selector = Selector::parse(row_selector).ok()?;
+    document.select(&selector).find_map(|element| {
+        let text = normalize_whitespace(&element.text().collect::<Vec<_>>().join(" "));
+        labels
+            .iter()
+            .find_map(|label| value_after_label_marker(&text, label))
+    })
+}
+
+pub(crate) fn structured_or_labeled_value(
+    document: &Html,
+    row_selector: &str,
+    text: &str,
+    labels: &[&str],
+    known_labels: &[&str],
+) -> Option<String> {
+    structured_labeled_value(document, row_selector, labels)
+        .or_else(|| labeled_value(text, labels, known_labels))
+}
+
 pub(crate) fn first_iso_date(text: &str) -> Option<String> {
     for token in text.split_whitespace() {
         if token.len() >= 10 && token.as_bytes().get(4) == Some(&b'-') {
@@ -337,6 +362,16 @@ fn labeled_value_by_label(text: &str, label: &str, known_labels: &[&str]) -> Opt
     None
 }
 
+fn value_after_label_marker(text: &str, label: &str) -> Option<String> {
+    [format!("{label}:"), format!("{label}：")]
+        .into_iter()
+        .find_map(|marker| {
+            let start = text.find(&marker)? + marker.len();
+            Some(normalize_whitespace(&text[start..]))
+        })
+        .filter(|value| !value.is_empty())
+}
+
 fn compact(value: &str) -> String {
     value
         .chars()
@@ -382,6 +417,56 @@ mod tests {
                 "https://site.test/search/SSNI-644".to_owned(),
                 "https://site.test/detail/SSNI-644".to_owned()
             ]
+        );
+    }
+
+    #[test]
+    fn structured_labeled_value_stops_at_row_boundary() {
+        let document = Html::parse_document(
+            r#"
+<main>
+  <div class="movie-info">
+    <p>監督：<span>Director One</span></p>
+  </div>
+  <section class="description">Outline text.</section>
+  <a href="https://video.example/trailer.mp4">Trailer</a>
+</main>
+"#,
+        );
+
+        assert_eq!(
+            structured_or_labeled_value(
+                &document,
+                ".movie-info p, main p",
+                &element_text(&document, "main").unwrap(),
+                &["監督", "Director"],
+                &["監督", "Director"],
+            )
+            .as_deref(),
+            Some("Director One")
+        );
+    }
+
+    #[test]
+    fn structured_labeled_value_falls_back_to_full_text_labels() {
+        let document = Html::parse_document(
+            r#"
+<main>
+  <div class="details">販売者：Seller One 販売日：2024-07-01</div>
+</main>
+"#,
+        );
+
+        assert_eq!(
+            structured_or_labeled_value(
+                &document,
+                ".movie-info p",
+                &element_text(&document, "main").unwrap(),
+                &["販売者", "Seller"],
+                &["販売者", "Seller", "販売日"],
+            )
+            .as_deref(),
+            Some("Seller One")
         );
     }
 

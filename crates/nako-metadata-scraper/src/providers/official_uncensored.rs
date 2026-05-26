@@ -580,36 +580,19 @@ const OFFICIAL_UNCENSORED_LABELS: &[&str] = &[
 ];
 
 fn official_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
-    structured_labeled_value(document, labels)
-        .or_else(|| rendered_av::labeled_value(info_text, labels, OFFICIAL_UNCENSORED_LABELS))
+    rendered_av::structured_or_labeled_value(
+        document,
+        OFFICIAL_UNCENSORED_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        OFFICIAL_UNCENSORED_LABELS,
+    )
 }
 
-fn structured_labeled_value(document: &Html, labels: &[&str]) -> Option<String> {
-    let selector = Selector::parse(
-        ".movie-info p, .movie-info li, .movie-info tr, \
+const OFFICIAL_UNCENSORED_LABEL_ROW_SELECTOR: &str = ".movie-info p, .movie-info li, .movie-info tr, \
          .detail p, .detail li, .detail tr, \
          .info p, .info li, .info tr, \
-         article p, article li, article tr, main p, main li, main tr",
-    )
-    .ok()?;
-
-    document.select(&selector).find_map(|element| {
-        let text = rendered_av::normalize_whitespace(&element.text().collect::<Vec<_>>().join(" "));
-        labels
-            .iter()
-            .find_map(|label| value_after_label_marker(&text, label))
-    })
-}
-
-fn value_after_label_marker(text: &str, label: &str) -> Option<String> {
-    [format!("{label}:"), format!("{label}：")]
-        .into_iter()
-        .find_map(|marker| {
-            let start = text.find(&marker)? + marker.len();
-            Some(rendered_av::normalize_whitespace(&text[start..]))
-        })
-        .filter(|value| !value.is_empty())
-}
+         article p, article li, article tr, main p, main li, main tr";
 
 fn normalize_official_uncensored_number(value: &str) -> Option<String> {
     facts_from_text(value, AvNumberSource::ExternalId)

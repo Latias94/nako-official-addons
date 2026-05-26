@@ -394,23 +394,20 @@ fn parse_detail_page(html: &str, detail_url: &str) -> Option<Fc2ppvdbDetailFacts
     let info_text =
         rendered_av::element_text(&document, "article, main, .article, .container, body")
             .unwrap_or_else(|| body_text.clone());
-    let release_date = rendered_av::labeled_value(
+    let release_date = fc2ppvdb_labeled_value(
+        &document,
         &info_text,
         &["販売日", "配信開始日", "Release Date"],
-        FC2PPVDB_LABELS,
     )
     .or_else(|| rendered_av::first_iso_date(&body_text));
     let release_year = release_date.as_deref().and_then(rendered_av::first_year);
-    let runtime_minutes = rendered_av::labeled_value(
-        &info_text,
-        &["収録時間", "再生時間", "Runtime"],
-        FC2PPVDB_LABELS,
-    )
-    .and_then(|value| rendered_av::parse_minutes(&value));
-    let seller = rendered_av::labeled_value(
+    let runtime_minutes =
+        fc2ppvdb_labeled_value(&document, &info_text, &["収録時間", "再生時間", "Runtime"])
+            .and_then(|value| rendered_av::parse_minutes(&value));
+    let seller = fc2ppvdb_labeled_value(
+        &document,
         &info_text,
         &["販売者", "Seller", "メーカー", "Maker"],
-        FC2PPVDB_LABELS,
     )
     .or_else(|| {
         rendered_av::link_texts(
@@ -421,7 +418,7 @@ fn parse_detail_page(html: &str, detail_url: &str) -> Option<Fc2ppvdbDetailFacts
         .next()
     });
     let actors = non_empty_or_links(
-        rendered_av::labeled_value(&info_text, &["女優", "Actress", "Actor"], FC2PPVDB_LABELS),
+        fc2ppvdb_labeled_value(&document, &info_text, &["女優", "Actress", "Actor"]),
         rendered_av::link_texts(
             &document,
             "a[href*=\"actress\"], a[href*=\"actor\"], a[href*=\"star\"]",
@@ -431,10 +428,10 @@ fn parse_detail_page(html: &str, detail_url: &str) -> Option<Fc2ppvdbDetailFacts
         &document,
         "a[href*=\"tag\"], a[href*=\"genre\"], a[href*=\"category\"]",
     );
-    for tag in split_label_values(rendered_av::labeled_value(
+    for tag in split_label_values(fc2ppvdb_labeled_value(
+        &document,
         &info_text,
         &["タグ", "Tag", "Genre"],
-        FC2PPVDB_LABELS,
     )) {
         push_unique(&mut tags, tag);
     }
@@ -447,11 +444,7 @@ fn parse_detail_page(html: &str, detail_url: &str) -> Option<Fc2ppvdbDetailFacts
         .as_deref(),
         rendered_av::attr_value(&document, "meta[name=\"description\"]", "content").as_deref(),
     ]);
-    let mosaic = rendered_av::labeled_value(
-        &info_text,
-        &["モザイク", "Mosaic", "资源参数"],
-        FC2PPVDB_LABELS,
-    );
+    let mosaic = fc2ppvdb_labeled_value(&document, &info_text, &["モザイク", "Mosaic", "资源参数"]);
     let poster_url = rendered_av::attr_value(&document, "meta[property=\"og:image\"]", "content")
         .or_else(|| {
             rendered_av::attr_value(
@@ -512,6 +505,18 @@ const FC2PPVDB_LABELS: &[&str] = &[
     "再生時間",
     "Runtime",
 ];
+
+const FC2PPVDB_LABEL_ROW_SELECTOR: &str = ".details > div, .details > li, .details > tr, .article li, .article tr, article li, article tr, main li, main tr";
+
+fn fc2ppvdb_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
+    rendered_av::structured_or_labeled_value(
+        document,
+        FC2PPVDB_LABEL_ROW_SELECTOR,
+        info_text,
+        labels,
+        FC2PPVDB_LABELS,
+    )
+}
 
 fn normalize_fc2_article_id(value: &str) -> Option<String> {
     article_id_from_url(value)
