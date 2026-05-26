@@ -91,11 +91,17 @@ where
     }
 
     let detail_url = if let Some(search_url) = flow.search_url(&av) {
-        let search = flow.render_html_page(search_url).await?;
-        let Some(result) = flow.search_results(&search.html, &av).into_iter().next() else {
+        let search = flow.render_html_page(search_url.clone()).await?;
+        if let Some(result) = flow.search_results(&search.html, &av).into_iter().next() {
+            result.url
+        } else {
+            let candidates =
+                flow.detail_candidates(&search.html, &search_url, Some(av.clone()), query);
+            if !candidates.is_empty() {
+                return Ok(candidates);
+            }
             return Ok(Vec::new());
-        };
-        result.url
+        }
     } else {
         flow.detail_url(&av.number)
     };

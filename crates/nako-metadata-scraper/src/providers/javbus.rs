@@ -471,6 +471,7 @@ fn parse_detail_page(
     let title = first_non_empty(&[
         element_text(&document, "h3, h1").as_deref(),
         attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
+        element_text(&document, "title").as_deref(),
     ])?;
     let number = javbus_labeled_value(
         &document,
@@ -934,6 +935,68 @@ mod tests {
         assert_eq!(search_body["url"], "https://javbus.example/search/SSNI-644");
         let detail_body = request_json_body(&requests[1]);
         assert_eq!(detail_body["url"], "https://javbus.example/SSNI-644");
+    }
+
+    #[tokio::test]
+    async fn javbus_provider_parses_search_page_when_it_is_already_detail_page() {
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://javbus.example/search/SSNI-644",
+            "SSNI-644 Detail Title",
+            r#"
+<!doctype html>
+<html>
+<head>
+  <title>SSNI-644 Detail Title</title>
+</head>
+<body>
+  <div class="container">
+    <label>識別碼:</label><span>SSNI-644</span>
+    <label>發行日期:</label><span>2024-05-02</span>
+    <label>長度:</label><span>121分鐘</span>
+  </div>
+  <a href="/star/actor-one">Actor One</a>
+  <a href="/genre/drama">剧情</a>
+  <a href="/studio/studio-alpha">Studio Alpha</a>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavbusMetadataProvider::with_runtime(
+            JavbusProviderConfig::new(
+                "https://javbus.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0].patch.title.as_deref(),
+            Some("SSNI-644 Detail Title")
+        );
+        assert_eq!(
+            candidates[0].patch.release_date.as_deref(),
+            Some("2024-05-02")
+        );
+        assert_eq!(candidates[0].patch.runtime_minutes, Some(121));
+        assert_eq!(transport.requests().len(), 1);
     }
 
     #[tokio::test]
