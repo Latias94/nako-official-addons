@@ -70,7 +70,7 @@ mod tests {
         AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig,
     };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
-    use crate::providers::theporndb::ThePornDbProviderConfig;
+    use crate::providers::{javbus::JavbusProviderConfig, theporndb::ThePornDbProviderConfig};
 
     #[test]
     fn addon_manifest_is_valid() {
@@ -260,7 +260,7 @@ mod tests {
             schema["properties"]["providers"]["properties"]["theporndb"]["default"],
             true
         );
-        assert_eq!(manifest.secret_reference_fields.len(), 3);
+        assert_eq!(manifest.secret_reference_fields.len(), 4);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
             TmdbProviderConfig::secret_field_id()
@@ -273,9 +273,14 @@ mod tests {
         assert!(!manifest.secret_reference_fields[1].required);
         assert_eq!(
             manifest.secret_reference_fields[2].id,
+            JavbusProviderConfig::secret_field_id()
+        );
+        assert!(!manifest.secret_reference_fields[2].required);
+        assert_eq!(
+            manifest.secret_reference_fields[3].id,
             ThePornDbProviderConfig::secret_field_id()
         );
-        assert!(manifest.secret_reference_fields[2].required);
+        assert!(manifest.secret_reference_fields[3].required);
     }
 
     #[test]

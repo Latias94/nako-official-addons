@@ -52,8 +52,10 @@ Current alpha provider defaults:
   lookup and emits `10musume`, `10musume_url`, and `av_number` external IDs.
 - `javbus`: disabled by default; calls the companion browser worker for
   rendered HTML and acts as a broad AV fallback for normalized censored and
-  uncensored numbers. It emits `javbus`, `javbus_url`, and `av_number`
-  external IDs.
+  uncensored numbers. It tries a direct detail URL before search, rejects
+  age-verification pages as non-candidates, accepts
+  `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` when operator cookie access is needed,
+  and emits `javbus`, `javbus_url`, and `av_number` external IDs.
 - `javlibrary`: disabled by default; calls the companion browser worker for
   rendered HTML and contributes community AV facts such as actors, score, and
   wanted count. It emits `javlibrary`, `javlibrary_url`, and `av_number`
@@ -181,6 +183,12 @@ or `networkidle`), `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY` (`default`, `direct`, or
 `required`), and `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` to shape all
 rendered-page requests without changing provider code.
+
+JavBus may require an age or region cookie depending on network location. Set
+`NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` to the raw Cookie header value; it is sent
+only to the browser worker as a page request header and is not emitted in
+diagnostics. Without a valid cookie, age-verification pages are treated as
+access gates and do not produce metadata candidates.
 
 ThePornDB API access is configured directly on the Rust sidecar:
 

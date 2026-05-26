@@ -10,6 +10,8 @@ const { PlaywrightCrawler, ProxyConfiguration, RequestList } = await import('cra
 const DEFAULT_WAIT_STATE = 'networkidle';
 const ALLOWED_WAIT_STATES = new Set(['load', 'domcontentloaded', 'networkidle']);
 const ALLOWED_PROXY_POLICIES = new Set(['default', 'direct', 'required']);
+const ALLOWED_ACTION_TYPES = new Set(['check', 'click']);
+const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -67,12 +69,86 @@ function normalizeProxyPolicy(value) {
   return ALLOWED_PROXY_POLICIES.has(policy) ? policy : null;
 }
 
+function normalizeAction(value) {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const type = nonEmpty(value.type)?.toLowerCase();
+  const selector = nonEmpty(value.selector);
+  if (!type || !ALLOWED_ACTION_TYPES.has(type) || !selector) {
+    return null;
+  }
+
+  const waitForInput = value.wait_for ?? value.waitFor;
+  const waitFor = waitForInput === undefined ? undefined : normalizeWaitFor(waitForInput);
+  if (waitForInput !== undefined && !waitFor) {
+    return null;
+  }
+
+  return {
+    type,
+    selector,
+    ...(value.optional === true ? { optional: true } : {}),
+    ...(waitFor ? { waitFor } : {}),
+  };
+}
+
+function normalizeActions(value) {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value) || value.length > 8) {
+    return null;
+  }
+
+  const actions = [];
+  for (const action of value) {
+    const normalized = normalizeAction(action);
+    if (!normalized) {
+      return null;
+    }
+    actions.push(normalized);
+  }
+  return actions;
+}
+
+function normalizeHeaders(value) {
+  if (value === undefined) {
+    return {};
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const entries = Object.entries(value);
+  if (entries.length > 16) {
+    return null;
+  }
+
+  const headers = {};
+  for (const [rawName, rawValue] of entries) {
+    const name = nonEmpty(rawName)?.toLowerCase();
+    if (!name || !HEADER_NAME_PATTERN.test(name) || typeof rawValue !== 'string') {
+      return null;
+    }
+    const headerValue = nonEmpty(rawValue);
+    if (!headerValue) {
+      continue;
+    }
+    headers[name] = headerValue;
+  }
+  return headers;
+}
+
 export function normalizeRenderOptions(input = {}) {
   const waitFor = normalizeWaitFor(input.wait_for ?? input.waitFor);
   const proxyPolicy = normalizeProxyPolicy(input.proxy_policy ?? input.proxyPolicy);
   const sessionKey = nonEmpty(input.session_key ?? input.sessionKey);
+  const actions = normalizeActions(input.actions);
+  const headers = normalizeHeaders(input.headers);
 
-  if (!waitFor || !proxyPolicy) {
+  if (!waitFor || !proxyPolicy || !actions || !headers) {
     return null;
   }
 
@@ -80,6 +156,8 @@ export function normalizeRenderOptions(input = {}) {
     waitFor,
     proxyPolicy,
     ...(sessionKey ? { sessionKey } : {}),
+    ...(Object.keys(headers).length ? { headers } : {}),
+    ...(actions.length ? { actions } : {}),
   };
 }
 
@@ -120,6 +198,70 @@ async function waitForPage(page, waitFor) {
   }
 }
 
+async function runPageActions(page, actions = []) {
+  for (const action of actions) {
+    const locator = page.locator(action.selector).first();
+    if (action.optional && (await locator.count()) === 0) {
+      continue;
+    }
+
+    const timeout = action.waitFor?.timeoutMs ?? 5000;
+    if (!action.optional) {
+      await locator.waitFor({ timeout });
+    }
+
+    if (action.type === 'check') {
+      await locator.check({ timeout });
+    } else if (action.type === 'click') {
+      await locator.click({ timeout });
+    }
+
+    if (action.waitFor) {
+      await waitForPage(page, action.waitFor);
+    }
+  }
+}
+
+function cookiesFromHeader(cookieHeader, url) {
+  return cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf('=');
+      if (separator <= 0) {
+        return null;
+      }
+      return {
+        name: part.slice(0, separator).trim(),
+        value: part.slice(separator + 1).trim(),
+        url,
+      };
+    })
+    .filter((cookie) => cookie && cookie.name);
+}
+
+async function applyRequestHeaders(page, request) {
+  if (!request.userData.headers) {
+    return;
+  }
+
+  const headers = { ...request.userData.headers };
+  const cookieHeader = headers.cookie;
+  delete headers.cookie;
+
+  if (cookieHeader) {
+    const cookies = cookiesFromHeader(cookieHeader, request.url);
+    if (cookies.length) {
+      await page.context().addCookies(cookies);
+    }
+  }
+
+  if (Object.keys(headers).length) {
+    await page.setExtraHTTPHeaders(headers);
+  }
+}
+
 export async function extractRenderedPage(url, rawOptions = {}, env = process.env) {
   const options = normalizeRenderOptions(rawOptions);
   if (!options) {
@@ -131,6 +273,7 @@ export async function extractRenderedPage(url, rawOptions = {}, env = process.en
       url,
       userData: {
         ...(options.sessionKey ? { sessionKey: options.sessionKey } : {}),
+        ...(options.headers ? { headers: options.headers } : {}),
       },
     },
   ]);
@@ -143,8 +286,14 @@ export async function extractRenderedPage(url, rawOptions = {}, env = process.en
     maxRequestsPerCrawl: 1,
     ...(proxyConfiguration ? { proxyConfiguration } : {}),
     ...(useSessionPool ? { useSessionPool: true, persistCookiesPerSession: true } : {}),
+    preNavigationHooks: [
+      async ({ page, request }) => {
+        await applyRequestHeaders(page, request);
+      },
+    ],
     async requestHandler({ page, request }) {
       await waitForPage(page, options.waitFor);
+      await runPageActions(page, options.actions);
       const title = normalizeWhitespace(await page.title());
       const renderedText = normalizeWhitespace(
         await page.locator('body').innerText({ timeout: 5000 }),

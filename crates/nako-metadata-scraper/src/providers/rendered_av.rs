@@ -39,6 +39,10 @@ pub(crate) trait RenderedAvFlow: Sync {
         facts_from_query(query)
     }
 
+    fn prefer_direct_detail_for_av(&self) -> bool {
+        false
+    }
+
     fn search_url(&self, _av: &AvQueryFacts) -> Option<String> {
         None
     }
@@ -88,6 +92,15 @@ where
     };
     if !flow.supports_route(av.route) {
         return Ok(Vec::new());
+    }
+
+    if flow.prefer_direct_detail_for_av() {
+        let candidates =
+            render_detail_candidates(flow, flow.detail_url(&av.number), Some(av.clone()), query)
+                .await?;
+        if !candidates.is_empty() {
+            return Ok(candidates);
+        }
     }
 
     let detail_url = if let Some(search_url) = flow.search_url(&av) {

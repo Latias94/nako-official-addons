@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
+use nako_addon_protocol::{
+    AddonArtworkKind, AddonMetadataPatch, AddonSecretReferenceFieldDeclaration,
+};
 use scraper::{Html, Selector};
 
 use crate::{
@@ -19,7 +21,10 @@ use crate::{
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
         rendered_av,
-        rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
+        rendered_page::{
+            RenderedPageAction, RenderedPageLoadState, RenderedPageRuntime,
+            RenderedPageSupportConfig, RenderedPageWaitFor,
+        },
     },
 };
 
@@ -57,6 +62,7 @@ pub struct JavbusProviderConfig {
     pub(crate) base_url: String,
     pub(crate) rendered_pages: RenderedPageSupportConfig,
     pub(crate) render_path: String,
+    pub(crate) cookie: Option<String>,
 }
 
 impl JavbusProviderConfig {
@@ -73,6 +79,7 @@ impl JavbusProviderConfig {
             base_url,
             rendered_pages: RenderedPageSupportConfig::new(browser_worker_base_url, timeout_ms),
             render_path,
+            cookie: None,
         }
     }
 
@@ -95,7 +102,13 @@ impl JavbusProviderConfig {
 
         let mut config = Self::new(base_url, browser_worker_base_url, render_path, timeout_ms);
         config.rendered_pages = config.rendered_pages.with_env_defaults(|name| lookup(name));
+        config.cookie = lookup("NAKO_METADATA_SCRAPER_JAVBUS_COOKIE").and_then(non_empty_trimmed);
         config
+    }
+
+    #[must_use]
+    pub const fn secret_field_id() -> &'static str {
+        "javbus_cookie"
     }
 }
 
@@ -113,7 +126,15 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(400, 400, 400, 200),
-        secret_reference: None,
+        secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
+            JavbusProviderConfig::secret_field_id(),
+            "JavBus Cookie",
+            Some(
+                "Optional Secret Reference for JavBus age verification or region access. The value is sent only to the browser worker as a Cookie header and is never emitted in diagnostics."
+                    .to_owned(),
+            ),
+            false,
+        )),
         external_id_capabilities: JAVBUS_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: |_| false,
@@ -185,10 +206,24 @@ where
         &self,
         url: String,
     ) -> anyhow::Result<crate::providers::rendered_page::RenderedHtmlPage> {
-        let intent = self
+        let mut intent = self
             .config
             .rendered_pages
-            .intent(&self.config.render_path, url);
+            .intent(&self.config.render_path, url)
+            .with_action(
+                RenderedPageAction::check("#ageVerify input[type=\"checkbox\"]").optional(),
+            )
+            .with_action(
+                RenderedPageAction::click("#ageVerify #submit")
+                    .optional()
+                    .with_wait_for(
+                        RenderedPageWaitFor::new(RenderedPageLoadState::DomContentLoaded)
+                            .with_timeout_ms(self.config.rendered_pages.timeout_ms),
+                    ),
+            );
+        if let Some(cookie) = self.config.cookie.as_ref() {
+            intent = intent.with_header("cookie", cookie);
+        }
         self.rendered_pages
             .render_html(JAVBUS_PROVIDER_ID, "render page", intent)
             .await
@@ -252,6 +287,10 @@ where
 
     fn direct_lookup_av(&self, _query: &MetadataQuery) -> Option<AvQueryFacts> {
         None
+    }
+
+    fn prefer_direct_detail_for_av(&self) -> bool {
+        true
     }
 
     fn search_url(&self, av: &AvQueryFacts) -> Option<String> {
@@ -468,11 +507,15 @@ fn parse_detail_page(
     let body_text = element_text(&document, "body").unwrap_or_default();
     let info_text = element_text(&document, ".movie, .info, .container, body")
         .unwrap_or_else(|| body_text.clone());
+    let base_url = site_base_url(detail_url).unwrap_or_else(|| detail_url.to_owned());
     let title = first_non_empty(&[
         element_text(&document, "h3, h1").as_deref(),
         attr_value(&document, "meta[property=\"og:title\"]", "content").as_deref(),
         element_text(&document, "title").as_deref(),
     ])?;
+    if is_age_verification_page(&document, &title, &body_text) {
+        return None;
+    }
     let number = javbus_labeled_value(
         &document,
         &info_text,
@@ -498,7 +541,7 @@ fn parse_detail_page(
         &["長度", "长度", "収録時間", "Runtime"],
     )
     .and_then(|value| parse_minutes(&value));
-    let actors = link_texts(&document, "a[href*=\"/star/\"], a[href*=\"/actor/\"]");
+    let actors = actor_names(&document);
     let tags = link_texts(&document, "a[href*=\"/genre/\"], a[href*=\"/tag/\"]");
     let studio = first_link_text(&document, "a[href*=\"/studio/\"]").or_else(|| {
         javbus_labeled_value(
@@ -518,13 +561,20 @@ fn parse_detail_page(
         .or_else(|| javbus_labeled_value(&document, &info_text, &["系列", "Series"]));
     let director = first_link_text(&document, "a[href*=\"/director/\"]")
         .or_else(|| javbus_labeled_value(&document, &info_text, &["導演", "导演", "Director"]));
-    let poster_url = attr_value(&document, "a.bigImage img, .bigImage img", "src")
-        .or_else(|| attr_value(&document, "meta[property=\"og:image\"]", "content"))
-        .map(normalize_url);
+    let poster_url = first_attr_url(
+        &document,
+        &base_url,
+        &[
+            ("a.bigImage", "href"),
+            (".bigImage", "href"),
+            ("a.bigImage img, .bigImage img", "src"),
+            ("meta[property=\"og:image\"]", "content"),
+        ],
+    );
     let extrafanart_urls = image_urls(
         &document,
         "#sample-waterfall a, .sample-box, a.sample-box, .samples a, .sample img",
-        detail_url,
+        &base_url,
     );
 
     Some(JavbusDetailFacts {
@@ -596,6 +646,23 @@ fn first_link_text(document: &Html, selector: &str) -> Option<String> {
     link_texts(document, selector).into_iter().next()
 }
 
+fn actor_names(document: &Html) -> Vec<String> {
+    let mut values = link_texts(document, "a[href*=\"/star/\"], a[href*=\"/actor/\"]");
+    push_attr_values(
+        document,
+        ".star-name img, a[href*=\"/star/\"] img, a[href*=\"/actor/\"] img",
+        "title",
+        &mut values,
+    );
+    push_attr_values(
+        document,
+        ".star-name img, a[href*=\"/star/\"] img, a[href*=\"/actor/\"] img",
+        "alt",
+        &mut values,
+    );
+    values
+}
+
 fn link_texts(document: &Html, selector: &str) -> Vec<String> {
     let Ok(selector) = Selector::parse(selector) else {
         return Vec::new();
@@ -610,6 +677,22 @@ fn link_texts(document: &Html, selector: &str) -> Vec<String> {
             }
             values
         })
+}
+
+fn push_attr_values(document: &Html, selector: &str, attr: &str, values: &mut Vec<String>) {
+    let Ok(selector) = Selector::parse(selector) else {
+        return;
+    };
+    for value in document
+        .select(&selector)
+        .filter_map(|element| element.value().attr(attr))
+        .map(normalize_whitespace)
+        .filter(|value| !value.is_empty())
+    {
+        if !values.contains(&value) {
+            values.push(value);
+        }
+    }
 }
 
 fn image_urls(document: &Html, selector: &str, base_url: &str) -> Vec<String> {
@@ -650,6 +733,28 @@ fn attr_value(document: &Html, selector: &str, attr: &str) -> Option<String> {
         .filter(|value| !value.trim().is_empty())
 }
 
+fn is_age_verification_page(document: &Html, title: &str, body_text: &str) -> bool {
+    selector_exists(document, "#ageVerify")
+        || title
+            .to_ascii_lowercase()
+            .contains("age verification javbus")
+        || body_text.contains("你是否已經成年")
+        || body_text.contains("所在地區年齡檢測")
+}
+
+fn selector_exists(document: &Html, selector: &str) -> bool {
+    Selector::parse(selector)
+        .ok()
+        .is_some_and(|selector| document.select(&selector).next().is_some())
+}
+
+fn first_attr_url(document: &Html, base_url: &str, selectors: &[(&str, &str)]) -> Option<String> {
+    selectors
+        .iter()
+        .find_map(|(selector, attr)| attr_value(document, selector, attr))
+        .map(|value| normalize_url(absolute_url(base_url, &value)))
+}
+
 const JAVBUS_LABELS: &[&str] = &[
     "識別碼",
     "识别码",
@@ -681,6 +786,7 @@ const JAVBUS_LABELS: &[&str] = &[
 
 const JAVBUS_LABEL_ROW_SELECTOR: &str = ".movie p, .movie li, .movie tr, \
          .info p, .info li, .info tr, \
+         .container p, .container li, .container tr, \
          table tr";
 
 fn javbus_labeled_value(document: &Html, info_text: &str, labels: &[&str]) -> Option<String> {
@@ -741,6 +847,13 @@ fn movie_id_from_url(url: &str) -> Option<String> {
     (!value.is_empty()).then(|| value.to_owned())
 }
 
+fn site_base_url(url: &str) -> Option<String> {
+    let scheme_end = url.find("://")? + 3;
+    let rest = &url[scheme_end..];
+    let host_end = rest.find('/').unwrap_or(rest.len());
+    (host_end > 0).then(|| url[..scheme_end + host_end].to_owned())
+}
+
 fn absolute_url(base_url: &str, value: &str) -> String {
     let value = value.trim();
     if value.starts_with("http://") || value.starts_with("https://") {
@@ -797,9 +910,74 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn javbus_config_trims_cookie_secret() {
+        let config = JavbusProviderConfig::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_JAVBUS_COOKIE" => Some(" age=verified ".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.cookie.as_deref(), Some("age=verified"));
+        assert_eq!(JavbusProviderConfig::secret_field_id(), "javbus_cookie");
+    }
+
+    #[tokio::test]
+    async fn javbus_provider_sends_cookie_to_browser_worker_render_request() {
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://javbus.example/SSNI-644",
+            "SSNI-644 Cookie Title",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <h3>SSNI-644 Cookie Title</h3>
+  <div class="movie"><p>識別碼: SSNI-644</p></div>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let mut config = JavbusProviderConfig::new(
+            "https://javbus.example".to_owned(),
+            "http://browser-worker.example".to_owned(),
+            "/render".to_owned(),
+            10_000,
+        );
+        config.cookie = Some("age=verified".to_owned());
+        let provider = JavbusMetadataProvider::with_runtime(config, runtime);
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        let requests = transport.requests();
+        let body = request_json_body(&requests[0]);
+        assert_eq!(body["headers"]["cookie"], "age=verified");
+    }
+
     #[tokio::test]
     async fn javbus_provider_uses_browser_worker_render_contract_for_av_search_and_detail() {
         let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://javbus.example/SSNI-644",
+            "No direct detail",
+            r#"
+<!doctype html>
+<html>
+<body>not found</body>
+</html>"#,
+        );
         transport.push_rendered_html(
             "https://javbus.example/search/SSNI-644",
             "JavBus Search",
@@ -928,13 +1106,175 @@ mod tests {
         );
 
         let requests = transport.requests();
-        assert_eq!(requests.len(), 2);
+        assert_eq!(requests.len(), 3);
         assert_eq!(requests[0].url, "http://browser-worker.example/render");
         assert_eq!(requests[1].url, "http://browser-worker.example/render");
-        let search_body = request_json_body(&requests[0]);
+        assert_eq!(requests[2].url, "http://browser-worker.example/render");
+        let direct_body = request_json_body(&requests[0]);
+        assert_eq!(direct_body["url"], "https://javbus.example/SSNI-644");
+        assert_eq!(direct_body["actions"][0]["type"], "check");
+        assert_eq!(
+            direct_body["actions"][0]["selector"],
+            "#ageVerify input[type=\"checkbox\"]"
+        );
+        assert_eq!(direct_body["actions"][0]["optional"], true);
+        assert_eq!(direct_body["actions"][1]["type"], "click");
+        assert_eq!(direct_body["actions"][1]["selector"], "#ageVerify #submit");
+        assert_eq!(
+            direct_body["actions"][1]["wait_for"]["state"],
+            "domcontentloaded"
+        );
+        let search_body = request_json_body(&requests[1]);
         assert_eq!(search_body["url"], "https://javbus.example/search/SSNI-644");
-        let detail_body = request_json_body(&requests[1]);
+        let detail_body = request_json_body(&requests[2]);
         assert_eq!(detail_body["url"], "https://javbus.example/SSNI-644");
+    }
+
+    #[tokio::test]
+    async fn javbus_provider_prefers_direct_detail_for_inferred_av_number() {
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://javbus.example/SSNI-644",
+            "SSNI-644 Direct Field-Rich Title",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <h3>SSNI-644 Direct Field-Rich Title</h3>
+  <div class="container">
+    <p><span class="header">識別碼:</span> SSNI-644</p>
+    <p><span class="header">發行日期:</span> 2024-05-02</p>
+    <p><span class="header">長度:</span> 121分鐘</p>
+  </div>
+  <div class="star-name"><a href="/star/actor-one">Actor One</a></div>
+  <a href="/genre/drama"><label>剧情</label></a>
+  <a href="/studio/studio-alpha">Studio Alpha</a>
+  <a href="/label/publisher-beta">Publisher Beta</a>
+  <a href="/series/series-gamma">Series Gamma</a>
+  <a href="/director/director-delta">Director Delta</a>
+  <a class="bigImage" href="/pics/cover/ssni644_b.jpg">
+    <img src="/pics/thumb/ssni644.jpg">
+  </a>
+  <div id="sample-waterfall">
+    <a href="/pics/sample/sample1.jpg"><img src="/pics/sample/sample1-thumb.jpg"></a>
+  </div>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = JavbusMetadataProvider::with_runtime(
+            JavbusProviderConfig::new(
+                "https://javbus.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        let candidate = &candidates[0];
+        let av = candidate.facts.av.as_ref().unwrap();
+        assert_eq!(
+            candidate.patch.title.as_deref(),
+            Some("SSNI-644 Direct Field-Rich Title")
+        );
+        assert_eq!(candidate.patch.release_date.as_deref(), Some("2024-05-02"));
+        assert_eq!(candidate.patch.runtime_minutes, Some(121));
+        assert_eq!(av.actors, vec!["Actor One".to_owned()]);
+        assert_eq!(av.studio.as_deref(), Some("Studio Alpha"));
+        assert_eq!(av.publisher.as_deref(), Some("Publisher Beta"));
+        assert_eq!(av.series.as_deref(), Some("Series Gamma"));
+        assert_eq!(av.directors, vec!["Director Delta".to_owned()]);
+        assert_eq!(
+            av.thumb_url.as_deref(),
+            Some("https://javbus.example/pics/cover/ssni644_b.jpg")
+        );
+        assert_eq!(
+            av.extrafanart_urls,
+            vec!["https://javbus.example/pics/sample/sample1.jpg".to_owned()]
+        );
+        assert_eq!(candidate.artwork_candidates.len(), 2);
+        assert_eq!(
+            candidate.artwork_candidates[0].facts.source_url,
+            "https://javbus.example/pics/cover/ssni644_b.jpg"
+        );
+        assert_eq!(
+            transport.rendered_request_urls(),
+            vec!["https://javbus.example/SSNI-644".to_owned()]
+        );
+    }
+
+    #[tokio::test]
+    async fn javbus_provider_rejects_age_verification_pages_as_non_candidates() {
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://javbus.example/SSNI-644",
+            "Age Verification JavBus - JavBus",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <title>Age Verification JavBus - JavBus</title>
+  <div id="ageVerify">
+    <h4>你是否已經成年?</h4>
+    <form id="form1"><input type="checkbox"><input id="submit" type="submit"></form>
+  </div>
+</body>
+</html>"#,
+        );
+        transport.push_rendered_html(
+            "https://javbus.example/search/SSNI-644",
+            "Age Verification JavBus - JavBus",
+            r#"
+<!doctype html>
+<html>
+<body>
+  <title>Age Verification JavBus - JavBus</title>
+  <div id="ageVerify"><h4>所在地區年齡檢測</h4></div>
+</body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport,
+        );
+        let provider = JavbusMetadataProvider::with_runtime(
+            JavbusProviderConfig::new(
+                "https://javbus.example".to_owned(),
+                "http://browser-worker.example".to_owned(),
+                "/render".to_owned(),
+                10_000,
+            ),
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery::from_payload(
+                &serde_json::json!({"file_name": "SSNI-00644.mp4"}),
+                "zh-CN",
+            ))
+            .await
+            .unwrap();
+
+        assert!(candidates.is_empty());
     }
 
     #[tokio::test]

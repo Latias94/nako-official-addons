@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::http_runtime::{
@@ -125,6 +127,8 @@ pub(crate) struct RenderedPageIntent {
     wait_for: Option<RenderedPageWaitFor>,
     proxy_policy: Option<RenderedPageProxyPolicy>,
     session_key: Option<String>,
+    headers: Vec<(String, String)>,
+    actions: Vec<RenderedPageAction>,
 }
 
 impl RenderedPageIntent {
@@ -136,6 +140,8 @@ impl RenderedPageIntent {
             wait_for: None,
             proxy_policy: None,
             session_key: None,
+            headers: Vec::new(),
+            actions: Vec::new(),
         }
     }
 
@@ -157,6 +163,23 @@ impl RenderedPageIntent {
         if !session_key.trim().is_empty() {
             self.session_key = Some(session_key);
         }
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        let name = name.into();
+        let value = value.into();
+        if !name.trim().is_empty() && !value.trim().is_empty() {
+            self.headers
+                .push((name.trim().to_ascii_lowercase(), value.trim().to_owned()));
+        }
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_action(mut self, action: RenderedPageAction) -> Self {
+        self.actions.push(action);
         self
     }
 }
@@ -238,6 +261,58 @@ impl RenderedPageProxyPolicy {
             _ => None,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct RenderedPageAction {
+    #[serde(rename = "type")]
+    action_type: RenderedPageActionType,
+    selector: String,
+    #[serde(skip_serializing_if = "is_false")]
+    optional: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wait_for: Option<RenderedPageWaitFor>,
+}
+
+impl RenderedPageAction {
+    #[must_use]
+    pub(crate) fn check(selector: impl Into<String>) -> Self {
+        Self::new(RenderedPageActionType::Check, selector)
+    }
+
+    #[must_use]
+    pub(crate) fn click(selector: impl Into<String>) -> Self {
+        Self::new(RenderedPageActionType::Click, selector)
+    }
+
+    #[must_use]
+    fn new(action_type: RenderedPageActionType, selector: impl Into<String>) -> Self {
+        Self {
+            action_type,
+            selector: selector.into(),
+            optional: false,
+            wait_for: None,
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn optional(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_wait_for(mut self, wait_for: RenderedPageWaitFor) -> Self {
+        self.wait_for = Some(wait_for);
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum RenderedPageActionType {
+    Check,
+    Click,
 }
 
 fn non_empty_trimmed(value: String) -> Option<String> {
@@ -348,6 +423,10 @@ struct RenderedPageRequest {
     proxy_policy: Option<RenderedPageProxyPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
     session_key: Option<String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    headers: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    actions: Vec<RenderedPageAction>,
 }
 
 impl From<RenderedPageIntent> for RenderedPageRequest {
@@ -357,6 +436,8 @@ impl From<RenderedPageIntent> for RenderedPageRequest {
             wait_for: intent.wait_for,
             proxy_policy: intent.proxy_policy,
             session_key: intent.session_key,
+            headers: intent.headers.into_iter().collect(),
+            actions: intent.actions,
         }
     }
 }
@@ -429,6 +510,10 @@ fn ensure_ok_status(status: Option<String>, label: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -475,7 +560,19 @@ mod tests {
                     .with_timeout_ms(1500),
             )
             .with_proxy_policy(RenderedPageProxyPolicy::Required)
-            .with_session_key("javbus:ssni-644");
+            .with_session_key("javbus:ssni-644")
+            .with_header("cookie", "age=verified")
+            .with_action(
+                RenderedPageAction::check("#ageVerify input[type=\"checkbox\"]").optional(),
+            )
+            .with_action(
+                RenderedPageAction::click("#ageVerify #submit")
+                    .optional()
+                    .with_wait_for(
+                        RenderedPageWaitFor::new(RenderedPageLoadState::DomContentLoaded)
+                            .with_timeout_ms(1500),
+                    ),
+            );
 
         let page = rendered_pages
             .render_html("javbus", "render page", intent)
@@ -498,7 +595,26 @@ mod tests {
                     "timeout_ms": 1500
                 },
                 "proxy_policy": "required",
-                "session_key": "javbus:ssni-644"
+                "session_key": "javbus:ssni-644",
+                "headers": {
+                    "cookie": "age=verified"
+                },
+                "actions": [
+                    {
+                        "type": "check",
+                        "selector": "#ageVerify input[type=\"checkbox\"]",
+                        "optional": true
+                    },
+                    {
+                        "type": "click",
+                        "selector": "#ageVerify #submit",
+                        "optional": true,
+                        "wait_for": {
+                            "state": "domcontentloaded",
+                            "timeout_ms": 1500
+                        }
+                    }
+                ]
             })
         );
     }

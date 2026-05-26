@@ -63,6 +63,18 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
     wait_for: { state: 'domcontentloaded', selector: '#status', timeout_ms: 1000 },
     session_key: 'javdb:ssni-644',
     proxy_policy: 'required',
+    headers: {
+      cookie: 'age=verified',
+    },
+    actions: [
+      { type: 'check', selector: '#ageVerify input[type="checkbox"]', optional: true },
+      {
+        type: 'click',
+        selector: '#ageVerify #submit',
+        optional: true,
+        wait_for: { state: 'domcontentloaded', timeout_ms: 2000 },
+      },
+    ],
   });
 
   assert.deepEqual(options, {
@@ -73,5 +85,20 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
     },
     proxyPolicy: 'required',
     sessionKey: 'javdb:ssni-644',
+    headers: {
+      cookie: 'age=verified',
+    },
+    actions: [
+      { type: 'check', selector: '#ageVerify input[type="checkbox"]', optional: true },
+      {
+        type: 'click',
+        selector: '#ageVerify #submit',
+        optional: true,
+        waitFor: {
+          state: 'domcontentloaded',
+          timeoutMs: 2000,
+        },
+      },
+    ],
   });
 });

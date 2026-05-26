@@ -315,7 +315,9 @@ worker. The Rust sidecar can require, bypass, or default that worker proxy via
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_TIMEOUT_MS`, and
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` as typed render intent
-defaults.
+defaults. Browser-worker render intents can also carry provider-owned headers
+and bounded page actions; these are used for site-specific operational gates
+without moving metadata parsing into the worker.
 
 AV provider presets can enable coherent provider groups without setting every
 provider toggle individually. Set `NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET` to
@@ -396,7 +398,11 @@ support `caribbean_id`/`caribbean_url`, `1pondo_id`/`1pondo_url`, and
 `10musume_id`/`10musume_url` direct lookup. JavBus is a broad
 disabled-by-default AV fallback for normalized censored and uncensored numbers
 and supports explicit `javbus_id` or
-`javbus_url` direct lookup. JavLibrary contributes community facts such as
+`javbus_url` direct lookup. JavBus first attempts a direct detail URL, then
+falls back to search, and rejects age-verification pages instead of returning
+them as metadata candidates. Set `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` when
+JavBus requires an operator-provided age/region cookie. JavLibrary contributes
+community facts such as
 actors, score, and wanted count, and supports `javlibrary_id` or
 `javlibrary_url` direct lookup. MGStage is a route-specific official source for
 amateur/MGS numbers such as `300MIUM-382`, and supports `mgstage_id` or
@@ -422,6 +428,13 @@ ThePornDB environment knobs:
 - `NAKO_METADATA_SCRAPER_THEPORNDB_PUBLIC_BASE_URL=https://theporndb.net`
 - `NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS=10000`
 - `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL=http://127.0.0.1:10809`
+
+JavBus environment knobs:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL=https://www.javbus.com`
+- `NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE=<cookie header value>`
 
 AV candidates also expose a response-side `av` object for MDCx-style evidence:
 actors, all actors, directors, series, studio, publisher, maker, label, wanted
