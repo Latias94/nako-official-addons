@@ -1,6 +1,7 @@
 pub mod artwork;
 pub mod av;
 pub mod bulk;
+mod native_writeback;
 mod orchestration;
 mod outcome;
 mod query;
@@ -130,6 +131,7 @@ mod tests {
                     tagline: None,
                     genres: None,
                     tags: Some(vec![query.language.clone()]),
+                    ..AddonMetadataPatch::default()
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(self.title.to_owned()),
@@ -270,6 +272,7 @@ mod tests {
                     tagline: None,
                     genres: None,
                     tags: None,
+                    ..AddonMetadataPatch::default()
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(self.title.to_owned()),
@@ -328,6 +331,7 @@ mod tests {
                     tagline: None,
                     genres: None,
                     tags: None,
+                    ..AddonMetadataPatch::default()
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(query.title.clone()),
@@ -373,6 +377,7 @@ mod tests {
                     genres: None,
                     tags: (!self.tags.is_empty())
                         .then(|| self.tags.iter().map(|tag| (*tag).to_owned()).collect()),
+                    ..AddonMetadataPatch::default()
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(self.title.to_owned()),

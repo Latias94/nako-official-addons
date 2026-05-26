@@ -104,7 +104,10 @@ use proxy configuration from the companion browser worker, for example
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side
-effect config is enabled. Ordinary metadata calls remain suggestion-only.
+effect config is enabled. Ordinary metadata calls remain suggestion-only. When
+writeback is requested, selected AV facts are materialized into the native
+metadata patch as credits, studios, collections, external IDs, and image
+references instead of staying response-only.
 
 Typed artwork candidates are returned with ranked metadata candidates. Explicit
 `artwork_write` submission is available only when the request payload contains

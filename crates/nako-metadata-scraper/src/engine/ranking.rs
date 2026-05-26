@@ -7,6 +7,7 @@ use super::{
     MetadataQuery, QueryExternalId,
     artwork::{ArtworkCandidate, ProviderArtworkCandidate},
     av::AvMetadataFacts,
+    native_writeback,
     outcome::{ProviderOutcome, render_provider_note},
     title::normalize_title,
 };
@@ -197,11 +198,16 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         candidate.facts.provider_note.as_deref(),
     );
     let av = candidate.facts.av.clone();
-    let mut field_sources = field_sources_for_patch(
-        &candidate.patch,
+    let mut patch = candidate.patch;
+    native_writeback::materialize_native_metadata_patch(
+        &mut patch,
         &candidate.provider,
-        &candidate.provider_id,
+        av.as_ref(),
+        &candidate.facts.external_ids,
+        &candidate.artwork_candidates,
     );
+    let mut field_sources =
+        field_sources_for_patch(&patch, &candidate.provider, &candidate.provider_id);
     field_sources.extend(field_sources_for_av(
         av.as_ref(),
         &candidate.provider,
@@ -213,7 +219,7 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         provider: candidate.provider,
         provider_id: candidate.provider_id,
         confidence_milli: score.clamp(0, 1000) as u16,
-        patch: candidate.patch,
+        patch,
         av,
         artwork_candidates: candidate
             .artwork_candidates
@@ -301,6 +307,48 @@ fn field_sources_for_patch(
         &mut sources,
         "tags",
         patch.tags.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "ratings",
+        patch.ratings.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "images",
+        patch.images.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "credits",
+        patch.credits.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "collections",
+        patch.collections.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "studios",
+        patch.studios.as_ref(),
+        provider,
+        provider_id,
+    );
+    push_graph_vec_field_source(
+        &mut sources,
+        "external_ids",
+        patch.external_ids.as_ref(),
         provider,
         provider_id,
     );
@@ -412,6 +460,18 @@ fn push_vec_field_source(
     sources: &mut Vec<CandidateFieldSource>,
     field: &'static str,
     value: Option<&Vec<String>>,
+    provider: &str,
+    provider_id: &str,
+) {
+    if value.is_some_and(|value| !value.is_empty()) {
+        sources.push(field_source(field, provider, provider_id));
+    }
+}
+
+fn push_graph_vec_field_source<T>(
+    sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    value: Option<&Vec<T>>,
     provider: &str,
     provider_id: &str,
 ) {

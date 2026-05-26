@@ -1129,6 +1129,7 @@ mod tests {
                     tagline: None,
                     genres: None,
                     tags: Some(vec![query.language.clone()]),
+                    ..nako_addon_protocol::AddonMetadataPatch::default()
                 },
                 facts: ProviderCandidateFacts {
                     title: Some(query.title.clone()),

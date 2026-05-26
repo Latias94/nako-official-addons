@@ -5,9 +5,11 @@
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMAV2",
-  "current_task": "OMAV2-020",
+  "current_task": "OMAV2-040",
   "completed_tasks": [
-    "OMAV2-010"
+    "OMAV2-010",
+    "OMAV2-020",
+    "OMAV2-030"
   ],
   "cross_repo_scope": [
     "F:/SourceCodes/Rust/nako-official-addons",
@@ -15,7 +17,7 @@
   ],
   "validation": {
     "nako": [
-      "cargo nextest run -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon addon metadata_write --no-fail-fast",
+      "cargo nextest run -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon --no-fail-fast",
       "cargo nextest run -p nako-server addon_side_effect_metadata_write --no-fail-fast"
     ],
     "official_addons": [

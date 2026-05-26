@@ -47,6 +47,7 @@ impl Fc2DetailFacts {
                 tagline: Some("FC2 AV article".to_owned()),
                 genres: Some(self.tags.clone()).filter(|genres| !genres.is_empty()),
                 tags: Some(tags),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: Some(self.title),

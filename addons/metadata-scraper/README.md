@@ -102,9 +102,12 @@ The sidecar submits writes only when all runtime gates are configured:
 - a Nako Addon Grant allows `metadata_write` for the target library
 
 The sidecar first calls `/addon/v1/access-check`, then submits
-`/addon/v1/side-effects` with a typed `AddonMetadataPatch` payload. Missing
-runtime config, missing grants, empty candidates, and transport failures return
-a redaction-safe `payload.writeback` summary instead of mutating the library.
+`/addon/v1/side-effects` with a typed `AddonMetadataPatch` payload. The patch is
+the native metadata graph shape: beyond scalar title fields, it can carry
+ratings, image references, credits, collections, studios, and external IDs.
+Missing runtime config, missing grants, empty candidates, and transport failures
+return a redaction-safe `payload.writeback` summary instead of mutating the
+library.
 
 Use the direct smoke to exercise the explicit request shape:
 
@@ -298,17 +301,19 @@ censored and uncensored numbers and supports explicit `javbus_id` or
 `javbus_url` direct lookup. These AV providers emit `av_number` external IDs so
 the resolver can merge compatible AV facts across sources.
 
-AV candidates also expose a response-side `av` object for MDCx-style fields
-that are not yet part of the portable `AddonMetadataPatch`, including actors,
-all actors, directors, series, studio, publisher, maker, label, wanted count,
-thumbnail URL, trailer URL, and extra fanart URLs. Until the Nako writeback
-protocol grows those fields, metadata side effects still persist only the
-portable patch fields plus artwork writebacks.
+AV candidates also expose a response-side `av` object for MDCx-style evidence:
+actors, all actors, directors, series, studio, publisher, maker, label, wanted
+count, thumbnail URL, trailer URL, and extra fanart URLs. For writeback, the
+selected AV facts are materialized into the native metadata patch: actors and
+directors become credits, series becomes a collection, studio/maker/publisher
+and label become studios, provider IDs become external IDs, and artwork/AV image
+URLs become image references. The `av` object remains useful for diagnostics and
+provider field-source evidence.
 
 The runtime then resolves exact duplicate candidates and candidates that share
 declared provider-emitted external IDs, caps the final list, and applies a
 small generic bonus from the shared community score/vote-count facts exposed by
-TMDB, Bangumi, and Douban. The protocol envelope does not change.
+TMDB, Bangumi, and Douban. The resource response envelope does not change.
 
 Each metadata response includes `provider_execution`, which records the
 provider IDs selected, skipped by AV route, returned, empty, or failed with a

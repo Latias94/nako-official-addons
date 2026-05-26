@@ -5,24 +5,31 @@ Last updated: 2026-05-26
 
 ## Current State
 
-The lane is open. The previous AV MDCx parity foundation is complete and
-committed at `3c23732`. Official addons are clean and `../nako` has unrelated
-identity/access workstream changes that must not be reverted or staged.
+The lane is active. The previous AV MDCx parity foundation is complete and
+committed at `3c23732`. OMAV2-020 is complete in `../nako` at commit
+`a0ad9a8`, adding native graph metadata writeback and full catalog projection.
+OMAV2-030 is complete in official addons: selected AV facts now materialize into
+native metadata patch graph fields.
+`../nako` still has unrelated identity/access workstream changes that must not
+be reverted or staged.
 
 ## Active Task
 
-- Task ID: OMAV2-020
+- Task ID: OMAV2-040
 - Owner: codex
-- Files: `../nako/crates/nako-addon-protocol`, `../nako/crates/nako-addon-client`, `../nako/crates/nako-reference-addon`, `../nako/crates/nako-server/src/app/addons/metadata_write.rs`, `../nako/docs/adr`
-- Validation: `cargo nextest run -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon addon metadata_write --no-fail-fast`; `cargo nextest run -p nako-server addon_side_effect_metadata_write --no-fail-fast`; `cargo fmt -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon -p nako-server -- --check`
+- Files: `crates/nako-metadata-scraper/src/engine/bulk.rs`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
+- Validation: `cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast`
 - Status: IN_PROGRESS
-- Review: Confirm no compatibility shim remains and graph fields are validated before apply.
+- Review: Confirm bulk remains stateless from Nako's perspective and does not add a hidden scheduler.
 - Evidence:
 
 ## Decisions Since Last Update
 
 - Break compatibility for the metadata writeback payload.
 - Prefer full catalog projection after addon metadata write apply.
+- Add Nako ADR `0035-addon-native-metadata-writeback`.
+- Materialize selected AV facts into native `AddonMetadataPatch` graph fields:
+  credits, studios, collections, external IDs, and image references.
 - Keep browser-worker as the browser/proxy/session/wait owner.
 - Add provider wave 2 only after native writeback and bulk maturity are in
   place.
@@ -33,5 +40,5 @@ identity/access workstream changes that must not be reverted or staged.
 
 ## Next Recommended Action
 
-- Implement the breaking Nako metadata writeback payload and focused tests in
-  `../nako`, while avoiding unrelated identity/access workstream changes.
+- Add bulk retry classes, provider suppression/cooldown hints, and resume-safe
+  provider state.

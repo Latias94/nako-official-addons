@@ -210,6 +210,7 @@ fn rendered_text_candidate(
                 BROWSER_WORKER_PROVIDER_ID.to_owned(),
                 BROWSER_WORKER_RENDERED_PAGE_CAPABILITY.to_owned(),
             ]),
+            ..AddonMetadataPatch::default()
         },
         facts: ProviderCandidateFacts {
             title: Some(title),

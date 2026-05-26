@@ -195,6 +195,7 @@ impl BangumiSubjectCandidate {
                 tagline: platform,
                 genres,
                 tags: Some(tags).filter(|tags| !tags.is_empty()),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: title.or(original_title).or(localized_title),

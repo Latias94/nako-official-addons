@@ -117,6 +117,7 @@ impl TmdbMovieSearchResult {
                 tagline: None,
                 genres,
                 tags: Some(tags),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: Some(title),
@@ -228,6 +229,7 @@ impl TmdbMovieCandidate {
                 tagline: non_empty(self.detail.tagline),
                 genres,
                 tags: Some(tags).filter(|tags| !tags.is_empty()),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: Some(title),

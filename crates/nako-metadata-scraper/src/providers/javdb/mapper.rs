@@ -66,6 +66,7 @@ impl JavdbDetailFacts {
                 tagline: Some("JavDB AV title".to_owned()),
                 genres: Some(self.tags.clone()).filter(|genres| !genres.is_empty()),
                 tags: Some(tags).filter(|tags| !tags.is_empty()),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: Some(self.title),

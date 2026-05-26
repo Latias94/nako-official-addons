@@ -68,6 +68,7 @@ impl MetadataProvider for FixtureProvider {
                     "nako-metadata-scraper".to_owned(),
                     "fixture".to_owned(),
                 ]),
+                ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
                 title: Some(query.title.clone()),
