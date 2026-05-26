@@ -14,6 +14,8 @@ Exit criteria:
 
 ## M2 - Provider Harness
 
+Status: Complete on 2026-05-26.
+
 Exit criteria:
 
 - Rendered AV provider tests can reuse one fixture contract.

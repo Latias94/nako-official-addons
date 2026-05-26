@@ -803,23 +803,16 @@ fn url_path_segment(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::VecDeque,
-        sync::{Arc, Mutex},
-    };
-
-    use async_trait::async_trait;
-
-    use crate::providers::http_runtime::{
-        ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse, ProviderHttpResult,
-        ProviderHttpRuntime, ProviderHttpRuntimeConfig, ProviderHttpTransport,
+    use crate::providers::{
+        http_runtime::{ProviderHttpRuntime, ProviderHttpRuntimeConfig},
+        rendered_av_fixture::{RenderedAvFixtureTransport, request_json_body},
     };
 
     use super::*;
 
     #[tokio::test]
     async fn javbus_provider_uses_browser_worker_render_contract_for_av_search_and_detail() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
         transport.push_rendered_html(
             "https://javbus.example/search/SSNI-644",
             "JavBus Search",
@@ -943,17 +936,15 @@ mod tests {
         assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].url, "http://browser-worker.example/render");
         assert_eq!(requests[1].url, "http://browser-worker.example/render");
-        let search_body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let search_body = request_json_body(&requests[0]);
         assert_eq!(search_body["url"], "https://javbus.example/search/SSNI-644");
-        let detail_body: serde_json::Value =
-            serde_json::from_slice(requests[1].json_body.as_ref().unwrap()).unwrap();
+        let detail_body = request_json_body(&requests[1]);
         assert_eq!(detail_body["url"], "https://javbus.example/SSNI-644");
     }
 
     #[tokio::test]
     async fn javbus_provider_uses_explicit_javbus_id_for_direct_detail_lookup() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
         transport.push_rendered_html(
             "https://javbus.example/SSNI-644",
             "SSNI-644 Direct JavBus Title",
@@ -1008,14 +999,13 @@ mod tests {
 
         let requests = transport.requests();
         assert_eq!(requests.len(), 1);
-        let body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let body = request_json_body(&requests[0]);
         assert_eq!(body["url"], "https://javbus.example/SSNI-644");
     }
 
     #[tokio::test]
     async fn javbus_provider_skips_fc2_numbers() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(JAVBUS_PROVIDER_ID);
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
                 retry_backoff_ms: 0,
@@ -1043,59 +1033,5 @@ mod tests {
 
         assert!(candidates.is_empty());
         assert!(transport.requests().is_empty());
-    }
-
-    #[derive(Clone, Default)]
-    struct FakeTransport {
-        responses: Arc<Mutex<VecDeque<ProviderHttpResult<ProviderHttpResponse>>>>,
-        requests: Arc<Mutex<Vec<ProviderHttpRequest>>>,
-    }
-
-    impl FakeTransport {
-        fn push_rendered_html(&self, url: &str, title: &str, html: &str) {
-            self.responses
-                .lock()
-                .unwrap()
-                .push_back(Ok(ProviderHttpResponse {
-                    status: 200,
-                    body: serde_json::json!({
-                        "status": "ok",
-                        "url": url,
-                        "title": title,
-                        "html": html,
-                        "text": html,
-                        "excerpt": html.chars().take(240).collect::<String>()
-                    })
-                    .to_string()
-                    .into_bytes(),
-                }));
-        }
-
-        fn requests(&self) -> Vec<ProviderHttpRequest> {
-            self.requests.lock().unwrap().clone()
-        }
-    }
-
-    #[async_trait]
-    impl ProviderHttpTransport for FakeTransport {
-        async fn send(
-            &self,
-            request: ProviderHttpRequest,
-            _config: ProviderHttpRuntimeConfig,
-        ) -> ProviderHttpResult<ProviderHttpResponse> {
-            self.requests.lock().unwrap().push(request);
-            self.responses
-                .lock()
-                .unwrap()
-                .pop_front()
-                .unwrap_or_else(|| {
-                    Err(ProviderHttpError::Transport {
-                        provider_id: JAVBUS_PROVIDER_ID,
-                        operation: "fake",
-                        message: "fake transport response queue was empty".to_owned(),
-                        attempts: 0,
-                    })
-                })
-        }
     }
 }

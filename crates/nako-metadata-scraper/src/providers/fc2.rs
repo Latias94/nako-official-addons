@@ -2,8 +2,6 @@ mod client;
 mod enrichment;
 mod mapper;
 mod parser;
-#[cfg(test)]
-mod test_support;
 
 use async_trait::async_trait;
 
@@ -24,9 +22,9 @@ use crate::{
 };
 
 #[cfg(test)]
-use nako_addon_protocol::AddonArtworkKind;
+use crate::providers::rendered_av_fixture::{RenderedAvFixtureTransport, request_json_body};
 #[cfg(test)]
-use test_support::FakeTransport;
+use nako_addon_protocol::AddonArtworkKind;
 
 pub const FC2_PROVIDER_ID: &str = "fc2";
 const FC2_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
@@ -180,7 +178,7 @@ mod tests {
 
     #[tokio::test]
     async fn fc2_provider_uses_browser_worker_render_contract_for_direct_lookup() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(FC2_PROVIDER_ID);
         transport.push_rendered_html(
             "https://fc2.example/article/1723984/",
             "FC2-1723984 Synthetic Title",
@@ -268,14 +266,13 @@ mod tests {
         let requests = transport.requests();
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].url, "http://browser-worker.example/render");
-        let body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let body = request_json_body(&requests[0]);
         assert_eq!(body["url"], "https://fc2.example/article/1723984/");
     }
 
     #[tokio::test]
     async fn fc2_provider_skips_non_fc2_numbers() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(FC2_PROVIDER_ID);
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
                 retry_backoff_ms: 0,
@@ -307,7 +304,7 @@ mod tests {
 
     #[tokio::test]
     async fn fc2_provider_uses_explicit_fc2_id_for_direct_detail_lookup() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(FC2_PROVIDER_ID);
         transport.push_rendered_html(
             "https://fc2.example/article/1723984/",
             "FC2-1723984 Direct Lookup Title",
@@ -371,8 +368,7 @@ mod tests {
 
         let requests = transport.requests();
         assert_eq!(requests.len(), 1);
-        let body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let body = request_json_body(&requests[0]);
         assert_eq!(body["url"], "https://fc2.example/article/1723984/");
     }
 }

@@ -571,18 +571,11 @@ fn product_id_from_url(url: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::VecDeque,
-        sync::{Arc, Mutex},
-    };
-
-    use async_trait::async_trait;
-
     use crate::{
         engine::{MetadataQuery, QueryExternalId},
-        providers::http_runtime::{
-            ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse, ProviderHttpResult,
-            ProviderHttpRuntimeConfig, ProviderHttpTransport,
+        providers::{
+            http_runtime::ProviderHttpRuntimeConfig,
+            rendered_av_fixture::{RenderedAvFixtureTransport, request_json_body},
         },
     };
 
@@ -590,7 +583,7 @@ mod tests {
 
     #[tokio::test]
     async fn mgstage_provider_uses_browser_worker_render_contract_for_amateur_av_detail() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(MGSTAGE_PROVIDER_ID);
         transport.push_rendered_html(
             "https://mgstage.example/product/product_detail/300MIUM-382/",
             "300MIUM-382 MGStage Title",
@@ -682,8 +675,7 @@ mod tests {
 
         let requests = transport.requests();
         assert_eq!(requests.len(), 1);
-        let body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let body = request_json_body(&requests[0]);
         assert_eq!(
             body["url"],
             "https://mgstage.example/product/product_detail/300MIUM-382/"
@@ -692,7 +684,7 @@ mod tests {
 
     #[tokio::test]
     async fn mgstage_provider_uses_explicit_id_for_direct_detail_lookup() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(MGSTAGE_PROVIDER_ID);
         transport.push_rendered_html(
             "https://mgstage.example/product/product_detail/300MIUM-382/",
             "300MIUM-382 Direct MGStage Title",
@@ -748,7 +740,7 @@ mod tests {
 
     #[tokio::test]
     async fn mgstage_provider_skips_fc2_numbers() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(MGSTAGE_PROVIDER_ID);
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
                 retry_backoff_ms: 0,
@@ -776,59 +768,5 @@ mod tests {
 
         assert!(candidates.is_empty());
         assert!(transport.requests().is_empty());
-    }
-
-    #[derive(Clone, Default)]
-    struct FakeTransport {
-        responses: Arc<Mutex<VecDeque<ProviderHttpResult<ProviderHttpResponse>>>>,
-        requests: Arc<Mutex<Vec<ProviderHttpRequest>>>,
-    }
-
-    impl FakeTransport {
-        fn push_rendered_html(&self, url: &str, title: &str, html: &str) {
-            self.responses
-                .lock()
-                .unwrap()
-                .push_back(Ok(ProviderHttpResponse {
-                    status: 200,
-                    body: serde_json::json!({
-                        "status": "ok",
-                        "url": url,
-                        "title": title,
-                        "html": html,
-                        "text": html,
-                        "excerpt": html.chars().take(240).collect::<String>()
-                    })
-                    .to_string()
-                    .into_bytes(),
-                }));
-        }
-
-        fn requests(&self) -> Vec<ProviderHttpRequest> {
-            self.requests.lock().unwrap().clone()
-        }
-    }
-
-    #[async_trait]
-    impl ProviderHttpTransport for FakeTransport {
-        async fn send(
-            &self,
-            request: ProviderHttpRequest,
-            _config: ProviderHttpRuntimeConfig,
-        ) -> ProviderHttpResult<ProviderHttpResponse> {
-            self.requests.lock().unwrap().push(request);
-            self.responses
-                .lock()
-                .unwrap()
-                .pop_front()
-                .unwrap_or_else(|| {
-                    Err(ProviderHttpError::Transport {
-                        provider_id: MGSTAGE_PROVIDER_ID,
-                        operation: "fake",
-                        message: "fake transport response queue was empty".to_owned(),
-                        attempts: 0,
-                    })
-                })
-        }
     }
 }

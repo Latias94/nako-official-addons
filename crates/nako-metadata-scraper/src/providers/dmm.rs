@@ -2,8 +2,6 @@ mod client;
 mod enrichment;
 mod mapper;
 mod parser;
-#[cfg(test)]
-mod test_support;
 
 use async_trait::async_trait;
 
@@ -24,9 +22,9 @@ use crate::{
 };
 
 #[cfg(test)]
-use nako_addon_protocol::AddonArtworkKind;
+use crate::providers::rendered_av_fixture::{RenderedAvFixtureTransport, request_json_body};
 #[cfg(test)]
-use test_support::FakeTransport;
+use nako_addon_protocol::AddonArtworkKind;
 
 pub const DMM_PROVIDER_ID: &str = "dmm";
 pub(super) const DMM_URL_EXTERNAL_ID_PROVIDER: &str = "dmm_url";
@@ -190,7 +188,7 @@ mod tests {
 
     #[tokio::test]
     async fn dmm_provider_uses_browser_worker_render_contract_for_av_search_and_detail() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(DMM_PROVIDER_ID);
         transport.push_rendered_html(
             "https://dmm.example/search/=/searchstr=SSNI-644/",
             "DMM Search",
@@ -333,14 +331,12 @@ mod tests {
         assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].url, "http://browser-worker.example/render");
         assert_eq!(requests[1].url, "http://browser-worker.example/render");
-        let search_body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let search_body = request_json_body(&requests[0]);
         assert_eq!(
             search_body["url"],
             "https://dmm.example/search/=/searchstr=SSNI-644/"
         );
-        let detail_body: serde_json::Value =
-            serde_json::from_slice(requests[1].json_body.as_ref().unwrap()).unwrap();
+        let detail_body = request_json_body(&requests[1]);
         assert_eq!(
             detail_body["url"],
             "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/"
@@ -349,7 +345,7 @@ mod tests {
 
     #[tokio::test]
     async fn dmm_provider_uses_explicit_dmm_id_for_direct_detail_lookup() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(DMM_PROVIDER_ID);
         transport.push_rendered_html(
             "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/",
             "SSNI-644 Direct DMM Title",
@@ -408,8 +404,7 @@ mod tests {
 
         let requests = transport.requests();
         assert_eq!(requests.len(), 1);
-        let body: serde_json::Value =
-            serde_json::from_slice(requests[0].json_body.as_ref().unwrap()).unwrap();
+        let body = request_json_body(&requests[0]);
         assert_eq!(
             body["url"],
             "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/"
@@ -418,7 +413,7 @@ mod tests {
 
     #[tokio::test]
     async fn dmm_provider_skips_fc2_numbers() {
-        let transport = FakeTransport::default();
+        let transport = RenderedAvFixtureTransport::new(DMM_PROVIDER_ID);
         let runtime = ProviderHttpRuntime::with_transport(
             ProviderHttpRuntimeConfig {
                 retry_backoff_ms: 0,

@@ -16,6 +16,8 @@ pub mod javlibrary;
 pub mod mgstage;
 mod registry;
 mod rendered_av;
+#[cfg(test)]
+pub(crate) mod rendered_av_fixture;
 mod rendered_page;
 mod search_policy;
 pub mod tmdb;
