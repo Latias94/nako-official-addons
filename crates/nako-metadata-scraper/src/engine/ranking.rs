@@ -197,19 +197,14 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         &candidate.facts.provider_outcomes,
         candidate.facts.provider_note.as_deref(),
     );
-    let av = candidate.facts.av.clone();
-    let mut patch = candidate.patch;
-    native_writeback::materialize_native_metadata_patch(
-        &mut patch,
+    let native_projection = native_writeback::project_provider_candidate(&candidate);
+    let mut field_sources = field_sources_for_patch(
+        &native_projection.patch,
         &candidate.provider,
-        av.as_ref(),
-        &candidate.facts.external_ids,
-        &candidate.artwork_candidates,
+        &candidate.provider_id,
     );
-    let mut field_sources =
-        field_sources_for_patch(&patch, &candidate.provider, &candidate.provider_id);
     field_sources.extend(field_sources_for_av(
-        av.as_ref(),
+        native_projection.av.as_ref(),
         &candidate.provider,
         &candidate.provider_id,
     ));
@@ -219,9 +214,9 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         provider: candidate.provider,
         provider_id: candidate.provider_id,
         confidence_milli: score.clamp(0, 1000) as u16,
-        patch,
-        av,
-        artwork_candidates: candidate
+        patch: native_projection.patch,
+        av: native_projection.av,
+        artwork_candidates: native_projection
             .artwork_candidates
             .into_iter()
             .map(|artwork_candidate| ArtworkCandidate {

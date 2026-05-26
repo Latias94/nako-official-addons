@@ -3,7 +3,36 @@ use nako_addon_protocol::{
     AddonMetadataPatch, AddonMetadataStudio,
 };
 
-use super::{AvMetadataFacts, ProviderArtworkCandidate, ProviderExternalId};
+use super::{
+    AvMetadataFacts, ProviderArtworkCandidate, ProviderExternalId, ProviderMetadataCandidate,
+};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct NativeMetadataProjection {
+    pub(crate) patch: AddonMetadataPatch,
+    pub(crate) av: Option<AvMetadataFacts>,
+    pub(crate) artwork_candidates: Vec<ProviderArtworkCandidate>,
+}
+
+pub(crate) fn project_provider_candidate(
+    candidate: &ProviderMetadataCandidate,
+) -> NativeMetadataProjection {
+    let av = candidate.facts.av.clone();
+    let mut patch = candidate.patch.clone();
+    materialize_native_metadata_patch(
+        &mut patch,
+        &candidate.provider,
+        av.as_ref(),
+        &candidate.facts.external_ids,
+        &candidate.artwork_candidates,
+    );
+
+    NativeMetadataProjection {
+        patch,
+        av,
+        artwork_candidates: candidate.artwork_candidates.clone(),
+    }
+}
 
 pub(crate) fn materialize_native_metadata_patch(
     patch: &mut AddonMetadataPatch,

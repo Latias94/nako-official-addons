@@ -1,6 +1,7 @@
 pub mod artwork;
 pub mod av;
 pub mod bulk;
+mod fusion;
 mod native_writeback;
 mod orchestration;
 mod outcome;

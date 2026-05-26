@@ -20,6 +20,9 @@ JavLibrary, and MGStage; provider adapters keep URL construction and parsing.
 OMSAD-050 is complete: default AV field policy is generated from provider
 quality descriptors in the catalog, runtime receives that default explicitly,
 and request-provided `provider_field_policy` still overrides it.
+OMSAD-060 is complete: resolver owns cluster identity and merge evidence,
+`fusion` owns field selection/evidence, ranking owns score ordering, and native
+writeback projection is exposed through `native_writeback`.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -27,14 +30,14 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-060
+- Task ID: OMSAD-070
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/engine/resolver.rs`, `crates/nako-metadata-scraper/src/engine/ranking.rs`, `crates/nako-metadata-scraper/src/engine/artwork.rs`, `crates/nako-metadata-scraper/src/engine/native_writeback.rs`
-- Validation: `cargo nextest run -p nako-metadata-scraper resolver ranking artwork writeback av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/engine/writeback.rs`, `crates/nako-metadata-scraper/src/engine/artwork.rs`, `crates/nako-metadata-scraper/src/engine/runtime.rs`
+- Validation: `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm resolver owns cluster identity, fusion owns field
-  selection/evidence, ranking owns ordering, and native writeback projection is
-  not hidden inside ranking.
+- Review: Confirm disabled runtime, invalid target, access denied, access
+  failure, submit failure, and success statuses are tested through the shared
+  Interface.
 - Evidence:
 
 ## Decisions
@@ -53,6 +56,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-060 by splitting resolver cluster identity, candidate
-  field-fusion/evidence, ranking, artwork selection, and native writeback
-  projection behind narrower test seams.
+- Execute OMSAD-070 by consolidating metadata and artwork side-effect writeback
+  into one shared state machine with type-specific adapters for payload and
+  provenance.
