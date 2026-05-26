@@ -233,6 +233,70 @@ impl SideEffectWritebackRequest for artwork::ArtworkWritebackRequest {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::nako_runtime::{NakoSideEffectTarget, NakoSideEffectTargetKind};
+
+    use super::*;
+
+    #[test]
+    fn metadata_writeback_input_parses_explicit_payload() {
+        let input = metadata_writeback_input_from_payload(&serde_json::json!({
+            "writeback": {
+                "library_id": "library-1",
+                "target": {
+                    "kind": "media_source",
+                    "id": "source-1"
+                },
+                "idempotency_key": "metadata-demo-1"
+            }
+        }));
+
+        match input {
+            MetadataWritebackInput::Requested(request) => {
+                assert_eq!(request.library_id, "library-1");
+                assert_eq!(request.target.kind, NakoSideEffectTargetKind::MediaSource);
+                assert_eq!(request.idempotency_key, "metadata-demo-1");
+            }
+            other => panic!("unexpected metadata writeback input: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn metadata_writeback_input_rejects_host_policy_fields() {
+        let input = metadata_writeback_input_from_payload(&serde_json::json!({
+            "writeback": {
+                "library_id": "library-1",
+                "target": {
+                    "kind": "media_source",
+                    "id": "source-1"
+                },
+                "idempotency_key": "metadata-demo-1",
+                "refresh_mode": "full_refresh"
+            }
+        }));
+
+        assert_eq!(
+            input,
+            MetadataWritebackInput::Invalid {
+                safe_error_code: "invalid_writeback_request"
+            }
+        );
+    }
+
+    #[test]
+    fn metadata_target_validation_is_media_source_only() {
+        assert!(valid_metadata_target(&NakoSideEffectTarget {
+            kind: NakoSideEffectTargetKind::MediaSource,
+            id: "source-1".to_owned(),
+        }));
+        assert!(!valid_metadata_target(&NakoSideEffectTarget {
+            kind: NakoSideEffectTargetKind::MediaItem,
+            id: "item-1".to_owned(),
+        }));
+    }
+}
+
 struct ArtworkWritebackAdapter<'a> {
     request_id: &'a str,
     query: &'a MetadataQuery,

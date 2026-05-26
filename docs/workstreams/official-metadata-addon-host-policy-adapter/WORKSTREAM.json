@@ -1,0 +1,40 @@
+{
+  "slug": "official-metadata-addon-host-policy-adapter",
+  "title": "Official Metadata Addon Host Policy Adapter",
+  "status": "complete",
+  "last_updated": "2026-05-26",
+  "objective": "Keep the official metadata scraper writeback path as a facts-only sidecar adapter and prevent host merge/application policy from entering sidecar payloads.",
+  "current_task": null,
+  "tasks": [
+    {
+      "id": "OMAHPA-010",
+      "status": "done",
+      "scope": "crates/nako-metadata-scraper/src/engine/writeback.rs"
+    },
+    {
+      "id": "OMAHPA-020",
+      "status": "done",
+      "scope": "crates/nako-metadata-scraper/src/engine/native_writeback.rs"
+    },
+    {
+      "id": "OMAHPA-030",
+      "status": "done",
+      "scope": "crates/nako-metadata-scraper/src/engine/writeback.rs"
+    },
+    {
+      "id": "OMAHPA-040",
+      "status": "done",
+      "scope": "docs/workstreams/official-metadata-addon-host-policy-adapter"
+    }
+  ],
+  "related_workstreams": [
+    "../nako/docs/workstreams/metadata-application-policy-seam"
+  ],
+  "validation": [
+    "cargo nextest run -p nako-metadata-scraper metadata_writeback --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper side_effect --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper metadata_target_validation --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ]
+}
