@@ -1,11 +1,11 @@
 # Official Metadata Addon Scraper Architecture Deepening - Handoff
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## Current State
 
-The lane is active. The previous AV native writeback/provider wave 2 lane is
+The lane is closed. The previous AV native writeback/provider wave 2 lane is
 closed. OMSAD-020 is complete: runtime now builds a typed
 `MetadataScrapeOutcome`, response rendering projects from it, and bulk fresh
 scrape consumes typed AV facts, provider execution, failure reason, and provider
@@ -29,19 +29,21 @@ validation, candidate/payload preparation, provenance, submission, and result
 shape.
 
 The architecture review identified six deepening candidates. This workstream
-will solve all six unless a task reveals that a candidate should be split into a
-separate durable lane.
+implemented all six. Remaining provider breadth, Nako core refresh/locked-field
+policy, local metadata/artwork priority, and persistent provider cache/rate-limit
+work are follow-up scope, not unfinished work in this lane.
 
-## Active Task
+## Closed Task
 
 - Task ID: OMSAD-080
 - Owner: codex
 - Files: `crates/nako-metadata-scraper/src/engine`, `crates/nako-metadata-scraper/src/providers`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`, `docs/workstreams/official-metadata-addon-scraper-architecture-deepening`
 - Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check`
-- Status: READY
+- Status: DONE
 - Review: Confirm no architecture-review candidate remains unresolved unless
   explicitly split.
-- Evidence: OMSAD-070 passed `cargo nextest run -p nako-metadata-scraper side_effect_state_machine --no-fail-fast`, `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`, and `cargo fmt -p nako-metadata-scraper -- --check`.
+- Evidence: OMSAD-080 passed full Rust package validation, browser-worker tests,
+  format, workstream JSON, and diff hygiene on 2026-05-26.
 
 ## Decisions
 
@@ -59,5 +61,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-080 by running full gates, checking docs/readmes against the
-  shipped architecture, and closing or splitting any remaining follow-up work.
+- Keep this lane closed. Open a new workstream for provider waves, Nako core
+  refresh/locked-field policy, local metadata/artwork priority, persistent
+  provider cache/rate-limit policy, or release packaging.

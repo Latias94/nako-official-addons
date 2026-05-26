@@ -107,7 +107,8 @@ the native metadata graph shape: beyond scalar title fields, it can carry
 ratings, image references, credits, collections, studios, and external IDs.
 Missing runtime config, missing grants, empty candidates, and transport failures
 return a redaction-safe `payload.writeback` summary instead of mutating the
-library.
+library. The target must be a `media_source`; other target kinds are skipped
+with `invalid_metadata_target_kind` before runtime access checks.
 
 Use the direct smoke to exercise the explicit request shape:
 
@@ -164,7 +165,8 @@ object:
 The runtime gates are the same as metadata writeback, except the Nako Addon
 Grant must allow `artwork_write` for the target library. The target must be a
 `media_item`; Nako owns remote image fetch, validation, cache, selected artwork,
-and public image serving.
+and public image serving. Other target kinds are skipped with
+`invalid_artwork_target_kind` before runtime access checks.
 
 ## Bulk metadata scrape task status
 

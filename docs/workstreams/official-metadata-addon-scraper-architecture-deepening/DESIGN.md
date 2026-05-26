@@ -1,6 +1,6 @@
 # Official Metadata Addon Scraper Architecture Deepening
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## Why This Lane Exists
@@ -155,3 +155,20 @@ This lane can close when:
 - docs describe any broken task/output contract or config behavior;
 - workstream JSON and diff hygiene pass;
 - commits are split by coherent refactor slice.
+
+## Closeout Summary
+
+Closed on 2026-05-26. All six architecture-review candidates shipped:
+
+- typed scrape outcome for response and bulk projections;
+- typed render intent for browser-worker calls;
+- shared rendered AV flow for JavBus, JavLibrary, and MGStage;
+- provider descriptor-derived AV field quality defaults;
+- resolver/fusion/ranking/native writeback projection split;
+- shared side-effect writeback state machine for metadata and artwork writes.
+
+Final gates passed: full `nako-metadata-scraper` package validation,
+browser-worker tests, formatting, workstream JSON, and diff hygiene. Additional
+provider breadth, Nako core refresh/locked-field policy, local metadata/artwork
+priority, and persistent provider cache/rate-limit policy should use new
+workstreams.

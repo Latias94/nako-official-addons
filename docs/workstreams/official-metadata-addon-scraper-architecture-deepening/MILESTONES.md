@@ -1,6 +1,6 @@
 # Milestones
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## M1 - Lane Opened
@@ -48,7 +48,7 @@ Exit criteria:
 - Shared state-machine tests prove disabled runtime, invalid target, access
   denied, access failure, submit failure, and success paths.
 
-## M6 - Verification And Closeout
+## M6 - Verification And Closeout (Complete)
 
 Exit criteria:
 
@@ -56,3 +56,13 @@ Exit criteria:
 - `npm --prefix addons/browser-worker test` passes if browser-worker changed.
 - Workstream docs describe shipped behavior and split follow-ups.
 - Worktree has only intended changes staged/committed.
+
+Closeout result:
+
+- Full `nako-metadata-scraper` gate passed with 203 tests and 2 skipped.
+- Browser-worker gate passed with 4 tests.
+- Formatting, workstream JSON, and diff hygiene passed.
+- All architecture-review candidates are complete in this lane.
+- Remaining provider breadth, Nako core refresh/locked-field policy, local
+  metadata/artwork priority, and persistent provider cache/rate-limit work are
+  follow-up scope.

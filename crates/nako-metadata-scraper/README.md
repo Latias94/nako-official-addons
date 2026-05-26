@@ -126,12 +126,16 @@ contains a `writeback` object and the disabled-by-default Nako runtime side
 effect config is enabled. Ordinary metadata calls remain suggestion-only. When
 writeback is requested, selected AV facts are materialized into the native
 metadata patch as credits, studios, collections, external IDs, and image
-references instead of staying response-only.
+references instead of staying response-only. Metadata writes require a
+`media_source` target and return `invalid_metadata_target_kind` before access
+checks when another target kind is requested.
 
 Typed artwork candidates are returned with ranked metadata candidates. Explicit
 `artwork_write` submission is available only when the request payload contains
 an `artwork_writeback` object and Nako grants `artwork_write` for the target
-library.
+library. Artwork writes require a `media_item` target and return
+`invalid_artwork_target_kind` before access checks when another target kind is
+requested.
 
 Bulk Metadata Scrape is declared as the `bulk-metadata-scrape` Addon Task at
 `/tasks/bulk-metadata-scrape`. Nako owns task execution, progress, retry, and

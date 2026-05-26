@@ -1,6 +1,6 @@
 # Evidence And Gates
 
-Status: Active
+Status: Closed
 Last updated: 2026-05-26
 
 ## Required Gates
@@ -30,3 +30,4 @@ Last updated: 2026-05-26
 | 2026-05-26 | OMSAD-050 | `cargo nextest run -p nako-metadata-scraper registry_builds_default_av_field_policy_from_provider_quality_descriptors --no-fail-fast` red/green tracer; `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass: provider quality descriptors implemented; focused gate 62 passed |
 | 2026-05-26 | OMSAD-060 | `cargo nextest run -p nako-metadata-scraper resolver ranking artwork writeback av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass: resolver/fusion/ranking/native projection split; focused gate 56 passed |
 | 2026-05-26 | OMSAD-070 | `cargo nextest run -p nako-metadata-scraper side_effect_state_machine --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper writeback artwork runtime --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check` | Pass: metadata/artwork writeback share the side-effect state machine; shared status coverage 6 passed; focused gate 37 passed |
+| 2026-05-26 | OMSAD-080 | `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json`; `git diff --check` | Pass: closeout gate complete; Rust 203 passed/2 skipped; browser-worker 4 passed |
