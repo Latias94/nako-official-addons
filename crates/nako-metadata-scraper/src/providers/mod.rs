@@ -14,6 +14,7 @@ pub mod javbus;
 pub mod javdb;
 pub mod javlibrary;
 pub mod mgstage;
+pub mod prestige;
 mod registry;
 mod rendered_av;
 #[cfg(test)]
@@ -42,6 +43,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         javbus::catalog_entry(),
         javlibrary::catalog_entry(),
         mgstage::catalog_entry(),
+        prestige::catalog_entry(),
     ]
 }
 

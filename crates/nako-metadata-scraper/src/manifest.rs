@@ -95,6 +95,7 @@ mod tests {
         assert_eq!(provider_properties["javbus"]["default"], false);
         assert_eq!(provider_properties["javlibrary"]["default"], false);
         assert_eq!(provider_properties["mgstage"]["default"], false);
+        assert_eq!(provider_properties["prestige"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
     }
 
@@ -112,6 +113,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -161,6 +163,10 @@ mod tests {
             schema["properties"]["providers"]["properties"]["mgstage"]["default"],
             true
         );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["prestige"]["default"],
+            true
+        );
         assert_eq!(manifest.secret_reference_fields.len(), 2);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
@@ -194,6 +200,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Javbus),
                 ProviderConfig::disabled(ProviderId::Javlibrary),
                 ProviderConfig::disabled(ProviderId::Mgstage),
+                ProviderConfig::disabled(ProviderId::Prestige),
             ],
             ..Config::default()
         });

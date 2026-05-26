@@ -3,7 +3,7 @@ pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
     dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
     javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
-    mgstage::MgstageProviderConfig, tmdb::TmdbProviderConfig,
+    mgstage::MgstageProviderConfig, prestige::PrestigeProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -78,6 +78,7 @@ pub enum ProviderId {
     Javbus,
     Javlibrary,
     Mgstage,
+    Prestige,
 }
 
 impl ProviderId {
@@ -95,6 +96,7 @@ impl ProviderId {
             Self::Javbus => "javbus",
             Self::Javlibrary => "javlibrary",
             Self::Mgstage => "mgstage",
+            Self::Prestige => "prestige",
         }
     }
 }
@@ -217,6 +219,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn prestige(enabled: bool, config: PrestigeProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Prestige,
+            enabled,
+            kind: ProviderConfigKind::Prestige(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -296,6 +307,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn prestige_config(&self) -> Option<&PrestigeProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Prestige(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -324,6 +343,9 @@ impl ProviderConfig {
             ProviderId::Mgstage => {
                 Self::mgstage(enabled, MgstageProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Prestige => {
+                Self::prestige(enabled, PrestigeProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -341,6 +363,7 @@ pub enum ProviderConfigKind {
     Javbus(JavbusProviderConfig),
     Javlibrary(JavlibraryProviderConfig),
     Mgstage(MgstageProviderConfig),
+    Prestige(PrestigeProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -430,6 +453,7 @@ impl ProviderConfig {
                 config.rendered_pages.proxy_policy_configured()
             }
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Prestige(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -450,6 +474,7 @@ impl ProviderConfig {
                 config.rendered_pages.session_key_configured()
             }
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Prestige(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -623,6 +648,12 @@ mod tests {
         );
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[11].id, ProviderId::Prestige);
+        assert!(!config.providers[11].enabled);
+        let prestige = config.providers[11].prestige_config().unwrap();
+        assert_eq!(prestige.base_url, "https://www.prestige-av.com");
+        assert_eq!(prestige.timeout_ms, 10_000);
+        assert!(prestige.proxy_url.is_none());
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -634,8 +665,10 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_enabled(ProviderId::Javlibrary));
         assert!(!config.provider_enabled(ProviderId::Mgstage));
+        assert!(!config.provider_enabled(ProviderId::Prestige));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
+        assert!(!config.provider_proxy_configured(ProviderId::Prestige));
         assert_eq!(
             config.provider_execution,
             ProviderExecutionConfig::default()
@@ -665,6 +698,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -711,6 +745,13 @@ mod tests {
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_TIMEOUT_MS" => Some("9500".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_TIMEOUT_MS" => Some("10500".to_owned()),
+            "NAKO_METADATA_SCRAPER_PRESTIGE_BASE_URL" => {
+                Some("https://prestige.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_PRESTIGE_TIMEOUT_MS" => Some("11500".to_owned()),
+            "NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL" => {
+                Some(" http://prestige-proxy.example:8080 ".to_owned())
+            }
             "NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST" => Some("2".to_owned()),
             _ => None,
         });
@@ -836,6 +877,15 @@ mod tests {
         );
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10500);
+        assert!(config.provider_enabled(ProviderId::Prestige));
+        let prestige = config.providers[11].prestige_config().unwrap();
+        assert_eq!(prestige.base_url, "https://prestige.example");
+        assert_eq!(prestige.timeout_ms, 11500);
+        assert_eq!(
+            prestige.proxy_url.as_deref(),
+            Some("http://prestige-proxy.example:8080")
+        );
+        assert!(config.provider_proxy_configured(ProviderId::Prestige));
     }
 
     #[test]

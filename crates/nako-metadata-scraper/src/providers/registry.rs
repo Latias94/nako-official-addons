@@ -255,6 +255,7 @@ mod tests {
         assert_eq!(
             policy.providers_for("title"),
             &[
+                "prestige".to_owned(),
                 "dmm".to_owned(),
                 "mgstage".to_owned(),
                 "javdb".to_owned(),
@@ -270,6 +271,7 @@ mod tests {
                 "javdb".to_owned(),
                 "dmm".to_owned(),
                 "mgstage".to_owned(),
+                "prestige".to_owned(),
                 "javbus".to_owned(),
                 "fc2".to_owned(),
             ]
@@ -277,6 +279,7 @@ mod tests {
         assert_eq!(
             policy.providers_for("trailer_url"),
             &[
+                "prestige".to_owned(),
                 "mgstage".to_owned(),
                 "dmm".to_owned(),
                 "javdb".to_owned(),
@@ -315,7 +318,8 @@ mod tests {
                 "fc2",
                 "javbus",
                 "javlibrary",
-                "mgstage"
+                "mgstage",
+                "prestige"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -467,6 +471,22 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[11],
+            ProviderDescriptor {
+                id: "prestige",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "prestige_direct_lookup",
+                    "prestige_movie_search",
+                    "prestige_official_api"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -582,6 +602,20 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"mgstage_url")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "prestige"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"prestige_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "prestige_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"prestige_url")
+        }));
     }
 
     #[test]
@@ -626,6 +660,12 @@ mod tests {
             "mgstage_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("prestige_id", "prestige", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "prestige_url",
+            "prestige_url",
+            false
+        )));
     }
 
     #[test]
@@ -651,7 +691,8 @@ mod tests {
                 "fc2",
                 "javbus",
                 "javlibrary",
-                "mgstage"
+                "mgstage",
+                "prestige"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -704,7 +745,8 @@ mod tests {
                 "fc2",
                 "javbus",
                 "javlibrary",
-                "mgstage"
+                "mgstage",
+                "prestige"
             ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);

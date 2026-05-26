@@ -195,6 +195,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         network_policy_label(&state.provider_diagnostics, "tmdb_proxy_configured");
     let bangumi_proxy_configured =
         network_policy_label(&state.provider_diagnostics, "bangumi_proxy_configured");
+    let prestige_proxy_configured =
+        network_policy_label(&state.provider_diagnostics, "prestige_proxy_configured");
     let render_proxy_policy_configured =
         yes_no_label(state.config.rendered_page_proxy_policy_configured());
     let render_session_key_configured =
@@ -215,6 +217,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Enabled providers: {enabled_providers}</p>
   <p>TMDB proxy configured: {tmdb_proxy_configured}</p>
   <p>Bangumi proxy configured: {bangumi_proxy_configured}</p>
+  <p>Prestige proxy configured: {prestige_proxy_configured}</p>
   <p>Browser render proxy policy configured: {render_proxy_policy_configured}</p>
   <p>Browser render session key configured: {render_session_key_configured}</p>
   <p>Provider max selected per request: {max_selected_providers}</p>
@@ -544,7 +547,8 @@ mod tests {
                 "fc2",
                 "javbus",
                 "javlibrary",
-                "mgstage"
+                "mgstage",
+                "prestige"
             ])
         );
         assert_eq!(
@@ -557,6 +561,10 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["network_policy"]["bangumi_proxy_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["prestige_proxy_configured"],
             false
         );
     }
@@ -576,6 +584,9 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL" => {
                 Some("http://proxy.example:8080".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL" => {
+                Some("http://prestige-proxy.example:8080".to_owned())
             }
             _ => None,
         }))
@@ -604,8 +615,13 @@ mod tests {
             payload.diagnostics["network_policy"]["bangumi_proxy_configured"],
             true
         );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["prestige_proxy_configured"],
+            true
+        );
         let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
         assert!(!diagnostics.contains("proxy.example"));
+        assert!(!diagnostics.contains("prestige-proxy.example"));
         assert!(!diagnostics.contains("user:pass"));
     }
 }

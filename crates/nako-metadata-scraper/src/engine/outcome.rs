@@ -16,6 +16,7 @@ pub enum ProviderOutcome {
     JavbusRenderedHtmlParsed,
     JavlibraryRenderedHtmlParsed,
     MgstageRenderedHtmlParsed,
+    PrestigeOfficialApiParsed,
 }
 
 #[must_use]
@@ -85,6 +86,9 @@ impl ProviderOutcome {
             }
             Self::MgstageRenderedHtmlParsed => {
                 "MGStage AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::PrestigeOfficialApiParsed => {
+                "Prestige AV candidate parsed from the official JSON API."
             }
         }
     }

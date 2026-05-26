@@ -45,12 +45,17 @@ Current alpha provider defaults:
   rendered HTML and acts as a route-specific official source for amateur/MGS
   numbers such as `300MIUM-382`. It emits `mgstage`, `mgstage_url`, and
   `av_number` external IDs.
+- `prestige`: disabled by default; calls the official Prestige JSON API for
+  censored AV search/detail lookup. It emits `prestige`, `prestige_url`, and
+  `av_number` external IDs, and accepts `NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL`
+  for proxied API access.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, and `av_number`. These aliases
-are derived from provider-owned external ID capabilities.
+`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
+and `av_number`. These aliases are derived from provider-owned external ID
+capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
@@ -59,10 +64,11 @@ redaction-safe `query.av` facts when a number is recognized; full local paths
 are not echoed.
 
 When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`,
-`javlibrary_id`, `javlibrary_url`, `mgstage_id`, or `mgstage_url` is supplied,
-the matching provider performs direct detail lookup before falling back to
-inferred AV-number search. This is useful for appointed-source corrections
-where a user already knows the authoritative site record.
+`javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`,
+or `prestige_url` is supplied, the matching provider performs direct detail
+lookup before falling back to inferred AV-number search. This is useful for
+appointed-source corrections where a user already knows the authoritative site
+record.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
@@ -107,12 +113,13 @@ The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
 When no request policy is supplied, AV clusters use a conservative default
 derived from provider quality descriptors inspired by MDCx's field-priority
-behavior: DMM is preferred before MGStage, JavDB, FC2, JavBus, and JavLibrary
-for official title, overview, release/runtime, and studio-like facts. Community
-actor and wanted-count fields prefer JavLibrary/JavDB first. Trailer and image
-fields prefer providers that usually carry media URLs, starting with
-MGStage/DMM/JavDB. Passing an explicit `provider_field_policy` object replaces
-that descriptor-derived default for the request.
+behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2, JavBus, and
+JavLibrary for official title, overview, release/runtime, and studio-like
+facts. Community actor and wanted-count fields prefer JavLibrary/JavDB first.
+Trailer and image fields prefer providers that usually carry media URLs,
+starting with Prestige/MGStage/DMM/JavDB. Passing an explicit
+`provider_field_policy` object replaces that descriptor-derived default for the
+request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
@@ -120,12 +127,12 @@ caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
 FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM/JavBus
-providers.
+and Prestige providers.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 
-The `/health` diagnostics report whether TMDB/Bangumi proxy policy and browser
-render proxy/session policy are configured without exposing proxy URLs,
+The `/health` diagnostics report whether TMDB/Bangumi/Prestige proxy policy and
+browser render proxy/session policy are configured without exposing proxy URLs,
 credentials, or session key values. Browser-rendered AV providers use proxy
 configuration from the companion browser worker, for example
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust

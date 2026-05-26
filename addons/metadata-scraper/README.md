@@ -304,7 +304,7 @@ Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 
 The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB,
-Bangumi, and browser-render proxy/session policy is configured. They
+Bangumi, Prestige, and browser-render proxy/session policy is configured. They
 intentionally expose only boolean policy state, not proxy URLs, credentials, or
 session key values.
 Browser-rendered providers use the companion browser worker for proxying; set
@@ -320,8 +320,9 @@ defaults.
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, and `av_number`. These aliases
-are derived from provider-owned external ID capabilities.
+`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
+and `av_number`. These aliases are derived from provider-owned external ID
+capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -332,19 +333,23 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
-JavDB, DMM, FC2, JavBus, JavLibrary, and MGStage metadata are available when
-their providers are enabled and the same browser-worker companion service is
-reachable. JavDB searches by normalized non-FC2 AV numbers and supports
-explicit `javdb_id` direct lookup. DMM is an official censored-release tracer
-that searches by normalized AV number and supports explicit `dmm_id` or
-`dmm_url` direct lookup. FC2 handles FC2-number direct article lookup and
-supports explicit `fc2_id` direct lookup. JavBus is a broad disabled-by-default
-AV fallback for normalized censored and uncensored numbers and supports
-explicit `javbus_id` or `javbus_url` direct lookup. JavLibrary contributes
-community facts such as actors, score, and wanted count, and supports
-`javlibrary_id` or `javlibrary_url` direct lookup. MGStage is a route-specific
-official source for amateur/MGS numbers such as `300MIUM-382`, and supports
-`mgstage_id` or `mgstage_url` direct lookup. These AV providers emit
+JavDB, DMM, FC2, JavBus, JavLibrary, MGStage, and Prestige metadata are
+available when their providers are enabled. JavDB, DMM, FC2, JavBus,
+JavLibrary, and MGStage use the browser-worker companion service for rendered
+HTML. Prestige uses the official JSON API and can use
+`NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL` directly from the Rust sidecar.
+JavDB searches by normalized non-FC2 AV numbers and supports explicit
+`javdb_id` direct lookup. DMM is an official censored-release tracer that
+searches by normalized AV number and supports explicit `dmm_id` or `dmm_url`
+direct lookup. FC2 handles FC2-number direct article lookup and supports
+explicit `fc2_id` direct lookup. JavBus is a broad disabled-by-default AV
+fallback for normalized censored and uncensored numbers and supports explicit
+`javbus_id` or `javbus_url` direct lookup. JavLibrary contributes community
+facts such as actors, score, and wanted count, and supports `javlibrary_id` or
+`javlibrary_url` direct lookup. MGStage is a route-specific official source for
+amateur/MGS numbers such as `300MIUM-382`, and supports `mgstage_id` or
+`mgstage_url` direct lookup. Prestige is a censored-route official source and
+supports `prestige_id` or `prestige_url` direct lookup. These AV providers emit
 `av_number` external IDs so the resolver can merge compatible AV facts across
 sources.
 
@@ -405,12 +410,13 @@ The policy does not merge unrelated candidates by itself; it only chooses fields
 after providers have emitted compatible external IDs such as the same
 `av_number`. When no request policy is supplied, AV clusters use a conservative
 default derived from provider quality descriptors inspired by MDCx's
-field-priority behavior: DMM is preferred before MGStage, JavDB, FC2, JavBus,
-and JavLibrary for official title, overview, release/runtime, and studio-like
-facts. Community actor and wanted-count fields prefer JavLibrary/JavDB first.
-Trailer and image fields prefer providers that usually carry media URLs,
-starting with MGStage/DMM/JavDB. Passing an explicit `provider_field_policy`
-object replaces that descriptor-derived default for the request.
+field-priority behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2,
+JavBus, and JavLibrary for official title, overview, release/runtime, and
+studio-like facts. Community actor and wanted-count fields prefer
+JavLibrary/JavDB first. Trailer and image fields prefer providers that usually
+carry media URLs, starting with Prestige/MGStage/DMM/JavDB. Passing an explicit
+`provider_field_policy` object replaces that descriptor-derived default for the
+request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

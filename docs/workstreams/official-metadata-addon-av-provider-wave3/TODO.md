@@ -4,21 +4,14 @@ Prefix: OMAV3
 
 ## Active
 
-- [ ] OMAV3-040 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Add the first wave 3 provider, preferring Prestige if synthetic fixture mapping proves stable.
-  Validation: `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm the provider is disabled by default, emits declared external IDs, supports only correct AV routes, and uses independent parser fixtures.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV3-050 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Add one FC2 long-tail provider after evaluating FC2PPVDB, FC2Hub, and FC2Club for testable value.
   Validation: `cargo nextest run -p nako-metadata-scraper fc2 av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm it does not duplicate the existing FC2 official source and improves fallback coverage.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMAV3-060 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Add the official uncensored provider trio path for Caribbeancom, 1Pondo, and 10Musume, or split if one site needs a separate lane.
@@ -56,6 +49,13 @@ Prefix: OMAV3
   Review: Provider execution policy is explicit in request/config/output; bulk cache/cooldown state is bounded in task output/resume state; browser render proxy/session diagnostics are boolean-only.
   Evidence: PASS on 2026-05-26: 44 provider_guard/bulk/runtime/provider_execution tests and 207 full package tests; fmt and diff hygiene passed.
   Handoff: DONE. OMAV3-040 is active.
+
+- [x] OMAV3-040 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add the first wave 3 provider, preferring Prestige if synthetic fixture mapping proves stable.
+  Validation: `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Prestige is disabled by default, exposes `prestige_id`/`prestige_url` aliases, emits `prestige`, `prestige_url`, and `av_number` external IDs, supports censored-route AV search only, and uses independent JSON API fixtures.
+  Evidence: PASS on 2026-05-26: 62 prestige/config/registry/manifest/AV tests; dedicated Prestige provider fixture tests covered search, direct ID lookup, URL lookup, route skip, official field mapping, artwork, trailer, and proxy runtime config.
+  Handoff: DONE. OMAV3-050 is active.
 
 ## Follow-Up Candidates
 
