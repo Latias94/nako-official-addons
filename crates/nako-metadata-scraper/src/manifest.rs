@@ -90,6 +90,7 @@ mod tests {
         assert_eq!(provider_properties["browser_worker"]["default"], false);
         assert_eq!(provider_properties["douban"]["default"], false);
         assert_eq!(provider_properties["javdb"]["default"], false);
+        assert_eq!(provider_properties["dmm"]["default"], false);
         assert_eq!(provider_properties["fc2"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
     }
@@ -103,6 +104,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
@@ -131,6 +133,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["javdb"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["dmm"]["default"],
             true
         );
         assert_eq!(
@@ -165,6 +171,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::BrowserWorker),
                 ProviderConfig::disabled(ProviderId::Douban),
                 ProviderConfig::disabled(ProviderId::Javdb),
+                ProviderConfig::disabled(ProviderId::Dmm),
                 ProviderConfig::disabled(ProviderId::Fc2),
             ],
             ..Config::default()

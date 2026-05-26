@@ -11,6 +11,7 @@ pub enum ProviderOutcome {
     BangumiPartialTitleVariantSearchFailure,
     DoubanRenderedHtmlParsed,
     JavdbRenderedHtmlParsed,
+    DmmRenderedHtmlParsed,
     Fc2RenderedHtmlParsed,
 }
 
@@ -66,6 +67,9 @@ impl ProviderOutcome {
             }
             Self::JavdbRenderedHtmlParsed => {
                 "JavDB AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::DmmRenderedHtmlParsed => {
+                "DMM AV candidate parsed from browser-worker rendered HTML."
             }
             Self::Fc2RenderedHtmlParsed => {
                 "FC2 AV candidate parsed from browser-worker rendered HTML."

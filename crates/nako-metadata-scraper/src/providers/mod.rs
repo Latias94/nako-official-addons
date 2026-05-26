@@ -5,6 +5,7 @@ use crate::engine::{MetadataQuery, ProviderMetadataCandidate, av::AvNumberRoute}
 
 pub mod bangumi;
 pub mod browser_worker;
+pub mod dmm;
 pub mod douban;
 pub mod fc2;
 pub mod fixture;
@@ -30,6 +31,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         browser_worker::catalog_entry(),
         douban::catalog_entry(),
         javdb::catalog_entry(),
+        dmm::catalog_entry(),
         fc2::catalog_entry(),
     ]
 }

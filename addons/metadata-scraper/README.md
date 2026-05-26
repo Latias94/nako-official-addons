@@ -175,6 +175,20 @@ Each task item is a metadata request payload and may include the explicit
 returns a batch summary plus the per-item metadata payloads produced by the
 existing runtime.
 
+For AV libraries, items may provide `av_number`, `number`, `file_name`,
+`filename`, `path`, `title`, or `name`. The sidecar normalizes the recognized
+AV number into `payload.query.av`, including the route family such as `fc2` or
+`censored`, and does not echo full local paths. Duplicate AV numbers without
+side-effect requests can reuse a previous result and report
+`reused_from_index`.
+
+Task callers may pass the previous task output `resume_state` into a later task
+payload. This lets the sidecar reuse safe duplicate AV-number results across
+bounded batches while Nako keeps ownership of task scheduling, progress, retry,
+and cancellation. Batch output also includes `summary.failed_items`,
+`summary.failure_reasons`, and `summary.provider_execution` for redaction-safe
+failure accounting.
+
 ## Library scanned event proof
 
 The manifest declares one event subscription:
@@ -260,8 +274,9 @@ Bangumi proxy policy is configured. They intentionally expose only boolean
 policy state, not proxy URLs or credentials.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, and `browser_worker_url`. These aliases
-are derived from provider-owned external ID capabilities.
+`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
+`dmm_url`, `fc2_id`, and `av_number`. These aliases are derived from
+provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -272,10 +287,47 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
+JavDB, DMM, and FC2 metadata are available when their providers are enabled and
+the same browser-worker companion service is reachable. JavDB searches by
+normalized non-FC2 AV numbers and supports explicit `javdb_id` direct lookup.
+DMM is an official censored-release tracer that searches by normalized AV number
+and supports explicit `dmm_id` or `dmm_url` direct lookup. FC2 handles FC2-number
+direct article lookup and supports explicit `fc2_id` direct lookup. These AV
+providers emit `av_number` external IDs so the resolver can merge compatible AV
+facts across sources.
+
 The runtime then resolves exact duplicate candidates and candidates that share
 declared provider-emitted external IDs, caps the final list, and applies a
 small generic bonus from the shared community score/vote-count facts exposed by
 TMDB, Bangumi, and Douban. The protocol envelope does not change.
+
+Each metadata response includes `provider_execution`, which records the
+provider IDs selected, skipped by AV route, returned, empty, or failed with a
+safe failure category. This is the single-scrape counterpart to the bulk
+provider summary.
+
+Requests may optionally include `provider_field_policy` for field-level source
+priority inside an already-merged candidate cluster:
+
+```json
+{
+  "av_number": "SSNI-644",
+  "provider_field_policy": {
+    "title": ["javdb"],
+    "overview": ["dmm"],
+    "tags": ["dmm"]
+  }
+}
+```
+
+The policy does not merge unrelated candidates by itself; it only chooses fields
+after providers have emitted compatible external IDs such as the same
+`av_number`. When no request policy is supplied, AV clusters use a conservative
+built-in policy inspired by MDCx's field-priority behavior: DMM is preferred
+before JavDB and FC2 for official title, overview, release/runtime, tags, and
+poster/backdrop artwork when those providers emitted compatible facts. Passing
+an explicit `provider_field_policy` object replaces that default for the
+request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

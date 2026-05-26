@@ -19,8 +19,8 @@ pub use artwork::{
 };
 pub use outcome::{ProviderOutcome, render_provider_note};
 pub use query::{
-    ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, QueryExternalId,
-    QueryExternalIdAlias,
+    ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy,
+    QueryExternalId, QueryExternalIdAlias,
 };
 pub use ranking::{
     CandidateEvidence, MetadataCandidate, ProviderCandidateFacts, ProviderExternalId,
@@ -177,6 +177,16 @@ mod tests {
         calls: Arc<Mutex<usize>>,
     }
 
+    struct PolicyCandidateProvider {
+        candidate_provider: &'static str,
+        provider_id: &'static str,
+        title: &'static str,
+        overview: Option<&'static str>,
+        tags: &'static [&'static str],
+        artwork: &'static [(&'static str, &'static str)],
+        external_ids: &'static [(&'static str, &'static str)],
+    }
+
     #[async_trait]
     impl MetadataProvider for FailingProvider {
         fn id(&self) -> ProviderId {
@@ -287,6 +297,7 @@ mod tests {
         fn supports_av_route(&self, route: av::AvNumberRoute) -> bool {
             match self.provider_id {
                 ProviderId::Javdb => route != av::AvNumberRoute::Fc2,
+                ProviderId::Dmm => route == av::AvNumberRoute::Censored,
                 ProviderId::Fc2 => route == av::AvNumberRoute::Fc2,
                 _ => true,
             }
@@ -326,6 +337,72 @@ mod tests {
                     provider_note: None,
                 },
                 artwork_candidates: Vec::new(),
+            }])
+        }
+    }
+
+    #[async_trait]
+    impl MetadataProvider for PolicyCandidateProvider {
+        fn id(&self) -> ProviderId {
+            ProviderId::Fixture
+        }
+
+        async fn suggest(
+            &self,
+            _query: &MetadataQuery,
+        ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
+            Ok(vec![ProviderMetadataCandidate {
+                provider: self.candidate_provider.to_owned(),
+                provider_id: self.provider_id.to_owned(),
+                patch: AddonMetadataPatch {
+                    title: Some(self.title.to_owned()),
+                    original_title: None,
+                    sort_title: None,
+                    overview: self.overview.map(str::to_owned),
+                    release_date: None,
+                    runtime_minutes: None,
+                    tagline: None,
+                    genres: None,
+                    tags: (!self.tags.is_empty())
+                        .then(|| self.tags.iter().map(|tag| (*tag).to_owned()).collect()),
+                },
+                facts: ProviderCandidateFacts {
+                    title: Some(self.title.to_owned()),
+                    alternate_titles: Vec::new(),
+                    release_year: None,
+                    language: Some("zh-CN".to_owned()),
+                    community_score_milli: None,
+                    community_vote_count: None,
+                    external_ids: self
+                        .external_ids
+                        .iter()
+                        .map(|(provider, value)| ProviderExternalId {
+                            provider: (*provider).to_owned(),
+                            value: (*value).to_owned(),
+                        })
+                        .collect(),
+                    provider_outcomes: Vec::new(),
+                    provider_note: None,
+                },
+                artwork_candidates: self
+                    .artwork
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (kind, source_url))| ProviderArtworkCandidate {
+                        provider: self.candidate_provider.to_owned(),
+                        provider_id: format!("{}:artwork:{index}", self.provider_id),
+                        facts: ProviderArtworkCandidateFacts {
+                            kind: match *kind {
+                                "backdrop" => AddonArtworkKind::Backdrop,
+                                _ => AddonArtworkKind::Poster,
+                            },
+                            source_url: (*source_url).to_owned(),
+                            language: None,
+                            width: None,
+                            height: None,
+                        },
+                    })
+                    .collect(),
             }])
         }
     }
@@ -593,6 +670,142 @@ mod tests {
         let evidence_text = serde_json::to_string(&candidates[0]["evidence"]).unwrap();
         assert!(!evidence_text.contains("SSNI-644"));
         assert!(!evidence_text.contains("ssni-644"));
+    }
+
+    #[tokio::test]
+    async fn runtime_applies_default_av_provider_field_policy_within_merged_cluster() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
+            "zh-CN",
+            TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            vec![
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "javdb",
+                    provider_id: "javdb:movie:abc123",
+                    title: "SSNI-644 JavDB Title",
+                    overview: Some("JavDB overview"),
+                    tags: &["javdb-tag"],
+                    artwork: &[
+                        ("poster", "https://img.example/javdb-poster.jpg"),
+                        ("backdrop", "https://img.example/javdb-backdrop.jpg"),
+                    ],
+                    external_ids: &[("av_number", "SSNI-644"), ("javdb", "abc123")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "dmm",
+                    provider_id: "dmm:cid:ssni00644",
+                    title: "DMM Official Title",
+                    overview: Some("DMM overview"),
+                    tags: &["dmm-tag"],
+                    artwork: &[
+                        ("poster", "https://img.example/dmm-poster.jpg"),
+                        ("backdrop", "https://img.example/dmm-backdrop.jpg"),
+                    ],
+                    external_ids: &[("av_number", "ssni-644")],
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"av_number": "SSNI-644"}),
+            })
+            .await;
+
+        let candidate = &response.payload["candidates"][0];
+        assert_eq!(candidate["patch"]["title"], "DMM Official Title");
+        assert_eq!(candidate["patch"]["overview"], "DMM overview");
+        assert_eq!(candidate["patch"]["tags"], serde_json::json!(["dmm-tag"]));
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "title" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["artwork_candidates"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|artwork| artwork["provider"] == "dmm")
+        );
+    }
+
+    #[tokio::test]
+    async fn runtime_applies_request_provider_field_policy_within_merged_av_cluster() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities(
+            "zh-CN",
+            TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            vec![
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "javdb",
+                    provider_id: "javdb:movie:abc123",
+                    title: "SSNI-644 JavDB Title",
+                    overview: None,
+                    tags: &["javdb-tag"],
+                    artwork: &[],
+                    external_ids: &[("av_number", "SSNI-644"), ("javdb", "abc123")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "dmm",
+                    provider_id: "dmm:cid:ssni00644",
+                    title: "DMM Title",
+                    overview: Some("DMM overview"),
+                    tags: &["dmm-tag"],
+                    artwork: &[],
+                    external_ids: &[("av_number", "ssni-644")],
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({
+                    "av_number": "SSNI-644",
+                    "provider_field_policy": {
+                        "title": ["javdb"],
+                        "overview": ["dmm"],
+                        "tags": ["dmm"]
+                    }
+                }),
+            })
+            .await;
+
+        let candidate = &response.payload["candidates"][0];
+        assert_eq!(candidate["patch"]["title"], "SSNI-644 JavDB Title");
+        assert_eq!(candidate["patch"]["overview"], "DMM overview");
+        assert_eq!(candidate["patch"]["tags"], serde_json::json!(["dmm-tag"]));
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "title" && source["provider"] == "javdb")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "overview" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "tags" && source["provider"] == "dmm")
+        );
     }
 
     #[tokio::test]

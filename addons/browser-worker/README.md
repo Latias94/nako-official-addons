@@ -12,9 +12,12 @@ Internal browser automation worker for anti-bot metadata sources.
 `POST /render` is the stable browser contract for metadata providers that need
 rendered HTML. It accepts `{ "url": "https://example.test/page" }` and returns
 `status`, final `url`, `title`, rendered `html`, normalized body `text`, and a
-short `excerpt`. Site-specific metadata parsing stays in
-`nako-metadata-scraper`; this worker owns browser execution, not provider
-semantics.
+short `excerpt`.
+
+This worker is the Crawlee/Playwright execution boundary. It owns page loading,
+browser lifecycle, and future session/wait/proxy mechanics. Site-specific
+metadata search, detail parsing, field mapping, provider routing, and
+multi-source source policy stay in `nako-metadata-scraper`.
 
 ## Local run
 

@@ -510,6 +510,7 @@ mod tests {
                 "browser_worker",
                 "douban",
                 "javdb",
+                "dmm",
                 "fc2"
             ])
         );

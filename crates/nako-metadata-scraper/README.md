@@ -26,14 +26,18 @@ Current alpha provider defaults:
 - `javdb`: disabled by default; calls the companion browser worker for rendered
   HTML and searches by normalized AV number. It emits `javdb`, `javdb_url`, and
   `av_number` external IDs.
+- `dmm`: disabled by default; calls the companion browser worker for rendered
+  HTML and acts as an official censored-release AV tracer. It searches by
+  normalized AV number, supports explicit `dmm_id` or `dmm_url` direct lookup,
+  and emits `dmm`, `dmm_url`, and `av_number` external IDs.
 - `fc2`: disabled by default; calls the companion browser worker for rendered
   HTML and uses FC2 AV numbers for direct article lookup. It emits `fc2`,
   `fc2_url`, and `av_number` external IDs.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `fc2_id`,
-and `av_number`. These aliases are derived from provider-owned external ID
-capabilities.
+`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
+`dmm_url`, `fc2_id`, and `av_number`. These aliases are derived from
+provider-owned external ID capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
@@ -41,14 +45,50 @@ AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 redaction-safe `query.av` facts when a number is recognized; full local paths
 are not echoed.
 
+When `javdb_id`, `dmm_id`, `dmm_url`, or `fc2_id` is supplied, the matching
+provider performs direct detail lookup before falling back to inferred
+AV-number search. This is useful for appointed-source corrections where a user
+already knows the authoritative site record.
+
+Every metadata response includes `provider_execution`, a redaction-safe summary
+of the provider wave. It records provider IDs that were selected, skipped by AV
+route, returned candidates, returned no candidates, or failed with a safe
+failure category. Provider errors are logged with a safe category and are not
+echoed as raw error text in the response.
+
+Requests may optionally include `provider_field_policy` to choose field-level
+source priority within a merged candidate cluster. For example, a request can
+prefer JavDB for `title` while using another provider for `overview` and
+`tags`:
+
+```json
+{
+  "av_number": "SSNI-644",
+  "provider_field_policy": {
+    "title": ["javdb"],
+    "overview": ["dmm"],
+    "tags": ["dmm"]
+  }
+}
+```
+
+The policy only mixes fields inside candidates that already share an identity
+such as `av_number`; unrelated candidates are not merged by policy alone.
+When no request policy is supplied, AV clusters use a conservative built-in
+policy inspired by MDCx's field-priority behavior: DMM is preferred before
+JavDB and FC2 for official title, overview, release/runtime, tags, and
+poster/backdrop artwork when those providers emitted compatible facts. Passing
+an explicit `provider_field_policy` object replaces that default for the
+request.
+
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
-FC2 path and non-FC2 AV numbers stay on the JavDB path. Ranked candidate
-evidence also carries redaction-safe provider-source and field-source metadata
-when shared external IDs merge multiple provider facts.
+FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM providers.
+Ranked candidate evidence also carries redaction-safe provider-source and
+field-source metadata when shared external IDs merge multiple provider facts.
 
 The `/health` diagnostics report whether TMDB and Bangumi proxy policy is
 configured without exposing the proxy URL itself.
@@ -70,7 +110,19 @@ scrape execution behind that task path. Each bulk item also includes an optional
 number and route were used without exposing raw file paths. Within one bounded
 batch, duplicate AV numbers without metadata/artwork writeback requests reuse
 the first scrape result and report `reused_from_index`; items with empty
-candidate lists report `safe_failure_reason: "no_candidates"`.
+candidate lists report `safe_failure_reason`.
+
+Bulk requests may pass a previous output `resume_state` back into the next task
+payload. The sidecar can then reuse safe duplicate AV-number results across
+bounded batches while Nako still owns scheduling and retry. Bulk output also
+includes `summary.failure_reasons`, `summary.failed_items`, and
+`summary.provider_execution` so a batch runner can distinguish empty results,
+provider failures, and route skips without parsing provider-specific payloads.
+
+Rendered AV providers use the companion browser worker through `POST /render`.
+The worker is a Crawlee/Playwright execution boundary: it loads pages and
+returns rendered HTML/text/excerpts, while Rust providers own site-specific
+search, detail parsing, mapping, and source policy.
 
 Optional live drift smoke checks are available for manual use only:
 

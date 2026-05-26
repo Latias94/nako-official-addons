@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    MetadataQuery, ProviderExternalIdCapability, QueryExternalIdAlias, artwork, orchestration,
-    response, writeback,
+    MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy, QueryExternalIdAlias,
+    artwork, orchestration, response, writeback,
 };
 
 #[derive(Clone)]
@@ -86,10 +86,12 @@ where
         let writeback_request = writeback::MetadataWritebackInput::from_payload(&request.payload);
         let artwork_writeback_request =
             artwork::ArtworkWritebackInput::from_payload(&request.payload);
+        let provider_field_policy = ProviderFieldPolicy::from_payload(&request.payload);
         let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),
             &query,
             self.external_id_capabilities.as_ref().as_slice(),
+            &provider_field_policy,
         )
         .await;
         let selected_candidate = suggestions.candidates.first().cloned();

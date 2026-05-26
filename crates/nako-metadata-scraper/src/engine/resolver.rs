@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
+
 use super::{
-    MetadataCandidate, MetadataQuery, ProviderExternalId, ProviderExternalIdCapability,
-    ProviderMetadataCandidate,
-    ranking::{self, CandidateMergeReason, CandidateProviderSource},
+    MetadataCandidate, MetadataQuery, ProviderArtworkCandidate, ProviderExternalId,
+    ProviderExternalIdCapability, ProviderFieldPolicy, ProviderMetadataCandidate,
+    ranking::{self, CandidateFieldSource, CandidateMergeReason, CandidateProviderSource},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,9 +73,22 @@ impl ResolvedCandidateCluster {
     }
 
     #[must_use]
-    pub(crate) fn into_ranked_candidate(self, query: &MetadataQuery) -> MetadataCandidate {
+    pub(crate) fn into_ranked_candidate(
+        self,
+        query: &MetadataQuery,
+        provider_field_policy: &ProviderFieldPolicy,
+    ) -> MetadataCandidate {
         let provider_sources = self.provider_sources_for_evidence();
         let merge_reasons = self.merge_reasons_for_evidence(provider_sources.len());
+        if !provider_field_policy.is_empty() && self.facts.len() > 1 {
+            return self.into_policy_ranked_candidate(
+                query,
+                provider_sources,
+                merge_reasons,
+                provider_field_policy,
+            );
+        }
+
         let mut candidates = self
             .facts
             .into_iter()
@@ -91,6 +106,59 @@ impl ResolvedCandidateCluster {
             .into_iter()
             .next()
             .expect("resolved candidate cluster always contains at least one fact")
+    }
+
+    fn into_policy_ranked_candidate(
+        self,
+        query: &MetadataQuery,
+        provider_sources: Vec<CandidateProviderSource>,
+        merge_reasons: Vec<CandidateMergeReason>,
+        provider_field_policy: &ProviderFieldPolicy,
+    ) -> MetadataCandidate {
+        let facts = self.facts;
+        let mut ranked_facts = facts
+            .iter()
+            .enumerate()
+            .map(|(index, fact)| {
+                (
+                    index,
+                    ranking::rank_candidate_with_source_evidence(
+                        query,
+                        fact.candidate.clone(),
+                        provider_sources.clone(),
+                        merge_reasons.clone(),
+                    ),
+                )
+            })
+            .collect::<Vec<_>>();
+        ranked_facts
+            .sort_by(|(_, left), (_, right)| ranking::compare_metadata_candidates(left, right));
+        let base_index = ranked_facts
+            .first()
+            .map(|(index, _)| *index)
+            .expect("resolved candidate cluster always contains at least one fact");
+
+        let mut candidate = facts[base_index].candidate.clone();
+        let field_sources = apply_provider_field_policy(
+            &mut candidate.patch,
+            &facts,
+            base_index,
+            provider_field_policy,
+        );
+        apply_provider_artwork_policy(
+            &mut candidate.artwork_candidates,
+            &facts,
+            base_index,
+            provider_field_policy,
+        );
+
+        ranking::rank_candidate_with_evidence_overrides(
+            query,
+            candidate,
+            provider_sources,
+            merge_reasons,
+            Some(field_sources),
+        )
     }
 
     fn provider_sources_for_evidence(&self) -> Vec<CandidateProviderSource> {
@@ -212,6 +280,316 @@ impl ResolvedCandidateCluster {
             .filter_map(|(external_id, sources)| (sources.len() > 1).then_some(external_id))
             .collect()
     }
+}
+
+fn apply_provider_field_policy(
+    patch: &mut AddonMetadataPatch,
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+) -> Vec<CandidateFieldSource> {
+    let mut field_sources = Vec::new();
+
+    let (title, source) =
+        select_string_field(facts, base_index, provider_field_policy, "title", |patch| {
+            patch.title.as_deref()
+        });
+    patch.title = title;
+    push_selected_field_source(&mut field_sources, "title", facts, source);
+
+    let (original_title, source) = select_string_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "original_title",
+        |patch| patch.original_title.as_deref(),
+    );
+    patch.original_title = original_title;
+    push_selected_field_source(&mut field_sources, "original_title", facts, source);
+
+    let (sort_title, source) = select_string_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "sort_title",
+        |patch| patch.sort_title.as_deref(),
+    );
+    patch.sort_title = sort_title;
+    push_selected_field_source(&mut field_sources, "sort_title", facts, source);
+
+    let (overview, source) = select_string_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "overview",
+        |patch| patch.overview.as_deref(),
+    );
+    patch.overview = overview;
+    push_selected_field_source(&mut field_sources, "overview", facts, source);
+
+    let (release_date, source) = select_string_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "release_date",
+        |patch| patch.release_date.as_deref(),
+    );
+    patch.release_date = release_date;
+    push_selected_field_source(&mut field_sources, "release_date", facts, source);
+
+    let (runtime_minutes, source) = select_copy_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "runtime_minutes",
+        |patch| patch.runtime_minutes,
+    );
+    patch.runtime_minutes = runtime_minutes;
+    push_selected_field_source(&mut field_sources, "runtime_minutes", facts, source);
+
+    let (tagline, source) = select_string_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "tagline",
+        |patch| patch.tagline.as_deref(),
+    );
+    patch.tagline = tagline;
+    push_selected_field_source(&mut field_sources, "tagline", facts, source);
+
+    let (genres, source) = select_vec_field(
+        facts,
+        base_index,
+        provider_field_policy,
+        "genres",
+        |patch| patch.genres.as_ref(),
+    );
+    patch.genres = genres;
+    push_selected_field_source(&mut field_sources, "genres", facts, source);
+
+    let (tags, source) =
+        select_vec_field(facts, base_index, provider_field_policy, "tags", |patch| {
+            patch.tags.as_ref()
+        });
+    patch.tags = tags;
+    push_selected_field_source(&mut field_sources, "tags", facts, source);
+
+    field_sources
+}
+
+fn select_string_field(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    get_value: impl Fn(&AddonMetadataPatch) -> Option<&str>,
+) -> (Option<String>, Option<usize>) {
+    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
+        get_value(patch).is_some_and(|value| !value.trim().is_empty())
+    }) else {
+        return (None, None);
+    };
+
+    (
+        get_value(&facts[index].candidate.patch).map(str::to_owned),
+        Some(index),
+    )
+}
+
+fn select_vec_field(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    get_value: impl Fn(&AddonMetadataPatch) -> Option<&Vec<String>>,
+) -> (Option<Vec<String>>, Option<usize>) {
+    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
+        get_value(patch).is_some_and(|value| !value.is_empty())
+    }) else {
+        return (None, None);
+    };
+
+    (
+        get_value(&facts[index].candidate.patch).cloned(),
+        Some(index),
+    )
+}
+
+fn select_copy_field<T: Copy>(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    get_value: impl Fn(&AddonMetadataPatch) -> Option<T>,
+) -> (Option<T>, Option<usize>) {
+    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
+        get_value(patch).is_some()
+    }) else {
+        return (None, None);
+    };
+
+    (get_value(&facts[index].candidate.patch), Some(index))
+}
+
+fn select_fact_index(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &str,
+    has_value: impl Fn(&AddonMetadataPatch) -> bool,
+) -> Option<usize> {
+    let preferences = provider_field_policy.providers_for(field);
+    for provider in preferences {
+        if let Some(index) = facts
+            .iter()
+            .position(|fact| fact.source.provider == *provider && has_value(&fact.candidate.patch))
+        {
+            return Some(index);
+        }
+    }
+
+    if has_value(&facts[base_index].candidate.patch) {
+        return Some(base_index);
+    }
+
+    if preferences.is_empty() {
+        return None;
+    }
+
+    facts
+        .iter()
+        .position(|fact| has_value(&fact.candidate.patch))
+}
+
+fn apply_provider_artwork_policy(
+    artwork_candidates: &mut Vec<ProviderArtworkCandidate>,
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+) {
+    let mut selected = Vec::new();
+    push_selected_artwork_kind(
+        &mut selected,
+        facts,
+        base_index,
+        provider_field_policy,
+        "poster",
+        AddonArtworkKind::Poster,
+    );
+    push_selected_artwork_kind(
+        &mut selected,
+        facts,
+        base_index,
+        provider_field_policy,
+        "backdrop",
+        AddonArtworkKind::Backdrop,
+    );
+
+    if selected.is_empty() {
+        return;
+    }
+
+    selected.extend(
+        artwork_candidates
+            .iter()
+            .filter(|candidate| {
+                candidate.facts.kind != AddonArtworkKind::Poster
+                    && candidate.facts.kind != AddonArtworkKind::Backdrop
+            })
+            .cloned(),
+    );
+    *artwork_candidates = selected;
+}
+
+fn push_selected_artwork_kind(
+    selected: &mut Vec<ProviderArtworkCandidate>,
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &str,
+    kind: AddonArtworkKind,
+) {
+    let Some(index) =
+        select_artwork_fact_index(facts, base_index, provider_field_policy, field, kind)
+    else {
+        return;
+    };
+    selected.extend(
+        facts[index]
+            .candidate
+            .artwork_candidates
+            .iter()
+            .filter(|candidate| candidate.facts.kind == kind)
+            .cloned(),
+    );
+}
+
+fn select_artwork_fact_index(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &str,
+    kind: AddonArtworkKind,
+) -> Option<usize> {
+    let mut preferences = provider_field_policy
+        .providers_for(field)
+        .iter()
+        .collect::<Vec<_>>();
+    for provider in provider_field_policy.providers_for("artwork") {
+        if !preferences.contains(&provider) {
+            preferences.push(provider);
+        }
+    }
+
+    for provider in &preferences {
+        if let Some(index) = facts.iter().position(|fact| {
+            fact.source.provider.eq_ignore_ascii_case(provider)
+                && fact
+                    .candidate
+                    .artwork_candidates
+                    .iter()
+                    .any(|candidate| candidate.facts.kind == kind)
+        }) {
+            return Some(index);
+        }
+    }
+
+    if facts[base_index]
+        .candidate
+        .artwork_candidates
+        .iter()
+        .any(|candidate| candidate.facts.kind == kind)
+    {
+        return Some(base_index);
+    }
+
+    if preferences.is_empty() {
+        return None;
+    }
+
+    facts.iter().position(|fact| {
+        fact.candidate
+            .artwork_candidates
+            .iter()
+            .any(|candidate| candidate.facts.kind == kind)
+    })
+}
+
+fn push_selected_field_source(
+    field_sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    facts: &[ResolvedProviderFact],
+    source_index: Option<usize>,
+) {
+    let Some(source_index) = source_index else {
+        return;
+    };
+    let source = &facts[source_index].source;
+    field_sources.push(CandidateFieldSource {
+        field,
+        provider: source.provider.clone(),
+        provider_id: source.provider_id.clone(),
+    });
 }
 
 #[cfg(test)]

@@ -4,6 +4,7 @@ use crate::providers::MetadataProvider;
 
 use super::{
     MAX_CANDIDATES_PER_QUERY, MetadataCandidate, MetadataQuery, ProviderExternalIdCapability,
+    ProviderFieldPolicy,
     av::{AvNumberRoute, facts_from_query},
     ranking, resolver,
 };
@@ -49,6 +50,7 @@ pub(crate) async fn suggest_candidates(
     providers: &[Box<dyn MetadataProvider>],
     query: &MetadataQuery,
     external_id_capabilities: &[ProviderExternalIdCapability],
+    provider_field_policy: &ProviderFieldPolicy,
 ) -> ProviderSuggestionSet {
     let mut provider_candidates = Vec::new();
     let mut execution = ProviderExecutionSummary::default();
@@ -84,7 +86,7 @@ pub(crate) async fn suggest_candidates(
     let mut candidates =
         resolver::resolve_provider_candidates(provider_candidates, external_id_capabilities)
             .into_iter()
-            .map(|cluster| cluster.into_ranked_candidate(query))
+            .map(|cluster| cluster.into_ranked_candidate(query, provider_field_policy))
             .collect::<Vec<_>>();
     candidates.sort_by(ranking::compare_metadata_candidates);
     if candidates.len() > MAX_CANDIDATES_PER_QUERY {

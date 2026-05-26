@@ -260,6 +260,7 @@ mod tests {
                 "browser_worker",
                 "douban",
                 "javdb",
+                "dmm",
                 "fc2"
             ]
         );
@@ -336,6 +337,22 @@ mod tests {
         assert_eq!(
             diagnostics.supported[6],
             ProviderDescriptor {
+                id: "dmm",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "dmm_direct_lookup",
+                    "dmm_movie_search",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[7],
+            ProviderDescriptor {
                 id: "fc2",
                 enabled: false,
                 available: false,
@@ -394,6 +411,20 @@ mod tests {
                 && capability.top_level_fields.contains(&"javdb_id")
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "dmm"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"dmm_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "dmm_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"dmm_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "av_number"
                 && capability.value_kind == ExternalIdValueKind::Opaque
                 && capability.accepts_direct_lookup
@@ -426,6 +457,8 @@ mod tests {
         assert!(!aliases.iter().any(|alias| alias.provider == "douban"));
         assert!(aliases.contains(&QueryExternalIdAlias::new("av_number", "av_number", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javdb_id", "javdb", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_id", "dmm", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_url", "dmm_url", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("fc2_id", "fc2", false)));
     }
 
@@ -448,6 +481,7 @@ mod tests {
                 "browser_worker",
                 "douban",
                 "javdb",
+                "dmm",
                 "fc2"
             ]
         );
@@ -497,6 +531,7 @@ mod tests {
                 "browser_worker",
                 "douban",
                 "javdb",
+                "dmm",
                 "fc2"
             ]
         );

@@ -143,6 +143,16 @@ pub(crate) fn rank_candidate_with_source_evidence(
     provider_sources: Vec<CandidateProviderSource>,
     merge_reasons: Vec<CandidateMergeReason>,
 ) -> MetadataCandidate {
+    rank_candidate_with_evidence_overrides(query, candidate, provider_sources, merge_reasons, None)
+}
+
+pub(crate) fn rank_candidate_with_evidence_overrides(
+    query: &MetadataQuery,
+    candidate: ProviderMetadataCandidate,
+    provider_sources: Vec<CandidateProviderSource>,
+    merge_reasons: Vec<CandidateMergeReason>,
+    field_sources_override: Option<Vec<CandidateFieldSource>>,
+) -> MetadataCandidate {
     let mut score = 250_i16;
     let mut reasons = vec![CandidateScoreReason {
         kind: "base",
@@ -187,6 +197,7 @@ pub(crate) fn rank_candidate_with_source_evidence(
         &candidate.provider,
         &candidate.provider_id,
     );
+    let field_sources = field_sources_override.unwrap_or(field_sources);
 
     MetadataCandidate {
         provider: candidate.provider,

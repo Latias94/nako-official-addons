@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::BTreeMap;
 
 use super::{av, title};
 
@@ -17,6 +18,80 @@ pub struct MetadataQuery {
 pub struct QueryExternalId {
     pub provider: String,
     pub value: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
+pub struct ProviderFieldPolicy {
+    preferences: BTreeMap<String, Vec<String>>,
+}
+
+impl ProviderFieldPolicy {
+    #[must_use]
+    pub fn default_av() -> Self {
+        let preferences = [
+            ("title", &["dmm", "javdb", "fc2"][..]),
+            ("original_title", &["dmm", "javdb", "fc2"][..]),
+            ("sort_title", &["dmm", "javdb", "fc2"][..]),
+            ("overview", &["dmm", "javdb", "fc2"][..]),
+            ("release_date", &["dmm", "javdb", "fc2"][..]),
+            ("runtime_minutes", &["dmm", "javdb", "fc2"][..]),
+            ("tagline", &["dmm", "javdb", "fc2"][..]),
+            ("genres", &["dmm", "javdb", "fc2"][..]),
+            ("tags", &["dmm", "javdb", "fc2"][..]),
+            ("poster", &["dmm", "javdb", "fc2"][..]),
+            ("backdrop", &["dmm", "javdb"][..]),
+            ("artwork", &["dmm", "javdb", "fc2"][..]),
+        ]
+        .into_iter()
+        .map(|(field, providers)| {
+            (
+                field.to_owned(),
+                providers
+                    .iter()
+                    .map(|provider| (*provider).to_owned())
+                    .collect(),
+            )
+        })
+        .collect();
+
+        Self { preferences }
+    }
+
+    #[must_use]
+    pub fn providers_for(&self, field: &str) -> &[String] {
+        self.preferences
+            .get(&normalize_policy_field(field))
+            .map_or(&[], Vec::as_slice)
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.preferences.is_empty()
+    }
+
+    #[must_use]
+    pub fn from_payload(payload: &serde_json::Value) -> Self {
+        let Some(policy) = payload.get("provider_field_policy") else {
+            return Self::default_av();
+        };
+        let Some(values) = policy.as_object() else {
+            return Self::default_av();
+        };
+
+        let mut preferences = BTreeMap::<String, Vec<String>>::new();
+        for (field, value) in values {
+            let field = normalize_policy_field(field);
+            if field.is_empty() {
+                continue;
+            }
+            let providers = policy_providers_from_value(value);
+            if !providers.is_empty() {
+                preferences.insert(field, providers);
+            }
+        }
+
+        Self { preferences }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -175,6 +250,34 @@ impl MetadataQuery {
     pub fn search_title_variants(&self) -> Vec<String> {
         title::search_title_variants(&self.title)
     }
+}
+
+fn policy_providers_from_value(value: &serde_json::Value) -> Vec<String> {
+    if let Some(value) = value.as_str() {
+        return normalize_policy_provider(value).into_iter().collect();
+    }
+
+    value
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .filter_map(normalize_policy_provider)
+        .fold(Vec::new(), |mut providers, provider| {
+            if !providers.contains(&provider) {
+                providers.push(provider);
+            }
+            providers
+        })
+}
+
+fn normalize_policy_field(value: &str) -> String {
+    value.trim().to_ascii_lowercase()
+}
+
+fn normalize_policy_provider(value: &str) -> Option<String> {
+    let value = value.trim().to_ascii_lowercase();
+    (!value.is_empty()).then_some(value)
 }
 
 fn normalize_query_title(title: &str) -> String {

@@ -1,0 +1,46 @@
+{
+  "id": "official-metadata-addon-av-provider-policy",
+  "title": "Official Metadata Addon AV Provider Policy",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "OMAVP",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAVP-010",
+    "OMAVP-020",
+    "OMAVP-030",
+    "OMAVP-040",
+    "OMAVP-050"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper field_policy resolver ranking --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper dmm --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper config registry manifest --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-provider-policy/WORKSTREAM.json",
+      "python -m json.tool addons/metadata-scraper/manifest.example.json",
+      "git diff --check"
+    ]
+  },
+  "references": [
+    "repo-ref/mdcx/mdcx/core/file_crawler.py",
+    "repo-ref/mdcx/mdcx/config/models.py",
+    "repo-ref/mdcx/mdcx/crawlers/__init__.py",
+    "addons/browser-worker/src/app.mjs",
+    "addons/browser-worker/src/extract.mjs"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, regex tables, or structure.",
+  "follow_up_candidates": [
+    "browser-worker session/wait/proxy contract",
+    "additional AV providers after field policy"
+  ]
+}
