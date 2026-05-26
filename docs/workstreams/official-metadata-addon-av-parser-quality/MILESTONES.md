@@ -1,6 +1,6 @@
 # Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## M1 - Workstream Opened
@@ -28,8 +28,18 @@ Exit criteria:
 
 ## M4 - Verification And Closeout
 
+Status: Complete on 2026-05-26.
+
 Exit criteria:
 
 - Relevant targeted and package gates pass.
 - Workstream JSON and diff hygiene pass.
 - Remaining parser or provider breadth work is explicit follow-up scope.
+
+Closeout result:
+
+- `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed with 222
+  tests.
+- `cargo fmt -p nako-metadata-scraper -- --check`, workstream JSON validation,
+  and `git diff --check` passed.
+- No hidden parser migrations remain for current AV providers.

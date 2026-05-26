@@ -1,6 +1,6 @@
 # Official Metadata Addon AV Parser Quality
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-26
 
 ## Why This Lane Exists
@@ -71,3 +71,10 @@ This lane can close when:
 - docs and workstream evidence explain what is improved and what remains;
 - full relevant package, format, JSON, and diff hygiene gates pass;
 - remaining provider migrations are explicit follow-ups or completed.
+
+## Closeout Result
+
+Complete on 2026-05-26. All existing AV provider families now use the shared
+structured label helper for row-like metadata fields while keeping
+provider-specific selectors and media/link parsing local. Package, format, JSON,
+and diff hygiene gates passed.

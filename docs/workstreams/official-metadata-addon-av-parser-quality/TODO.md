@@ -4,12 +4,7 @@ Prefix: APQ
 
 ## Active
 
-- [ ] APQ-040 [owner=codex] [deps=APQ-020,APQ-030] [scope=crates/nako-metadata-scraper/README.md,addons/metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-parser-quality]
-  Goal: Verify parser-quality lane, document drift strategy, and close or split remaining provider parser work.
-  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json`; `git diff --check`
-  Review: Confirm no parser-quality decision exists only in journal notes.
-  Evidence:
-  Handoff:
+- None.
 
 ## Pending
 
@@ -37,6 +32,13 @@ Prefix: APQ
   Review: JavLibrary, JavDB, and FC2 now reuse structured label fallback for metadata rows while keeping provider-specific text, link, image, and URL helpers local.
   Evidence: PASS on 2026-05-26: 26 javlibrary/javdb/fc2/rendered_av tests; fmt check passed.
   Handoff: DONE. APQ-040 is active.
+
+- [x] APQ-040 [owner=codex] [deps=APQ-020,APQ-030] [scope=crates/nako-metadata-scraper/README.md,addons/metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-parser-quality]
+  Goal: Verify parser-quality lane, document drift strategy, and close or split remaining provider parser work.
+  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json`; `git diff --check`
+  Review: No parser-quality decision exists only in journal notes. All current AV providers use shared row-level label parsing where relevant; provider-specific selectors and media/link parsing remain local.
+  Evidence: PASS on 2026-05-26: full metadata-scraper package gate passed with 222 tests; README/docs, workstream JSON, fmt, and diff hygiene passed.
+  Handoff: DONE. Workstream complete.
 
 ## Follow-Up Candidates
 

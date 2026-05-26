@@ -432,4 +432,6 @@ Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the
 Playwright/Crawlee path for rendered-page extraction, while provider-specific
 metadata interpretation and render intent declaration remain in
-`nako-metadata-scraper`.
+`nako-metadata-scraper`. AV providers share parser primitives for row-level
+metadata labels, but each provider keeps its own row selectors and media/link
+rules so parser quality improves without flattening site-specific page models.

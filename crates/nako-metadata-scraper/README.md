@@ -235,6 +235,11 @@ Rendered AV providers use the companion browser worker through `POST /render`.
 The worker is a Crawlee/Playwright execution boundary: it loads pages and
 returns rendered HTML/text/excerpts, while Rust providers own site-specific
 search, detail parsing, mapping, source policy, and render intent declaration.
+Provider parsers share a row-level structured label helper for AV detail pages:
+each provider supplies its own metadata row selector, then falls back to
+full-text label scanning when the page is not row-structured. This keeps
+site-specific shape local while preventing one label value from swallowing
+following description, trailer, or media text.
 
 Optional live drift smoke checks are available for manual use only:
 

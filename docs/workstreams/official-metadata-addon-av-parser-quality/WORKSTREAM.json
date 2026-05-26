@@ -1,15 +1,17 @@
 {
   "id": "official-metadata-addon-av-parser-quality",
   "title": "Official Metadata Addon AV Parser Quality",
-  "status": "active",
+  "status": "complete",
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "APQ",
-  "current_task": "APQ-040",
+  "closed_at": "2026-05-26",
+  "current_task": null,
   "completed_tasks": [
     "APQ-010",
     "APQ-020",
-    "APQ-030"
+    "APQ-030",
+    "APQ-040"
   ],
   "scope": [
     "crates/nako-metadata-scraper/src/providers/rendered_av.rs",
@@ -35,7 +37,8 @@
     ]
   },
   "compatibility_policy": "Breaking internal parser helper APIs are allowed. Public provider IDs and response fields must remain documented.",
-  "top_recommendation": "Start by promoting the proven row-level label parser into rendered_av, then migrate providers only where tests prove cleaner behavior.",
+  "top_recommendation": "Parser-quality lane is complete. Future AV provider work should reuse rendered_av structured label helpers with provider-local row selectors and keep live drift checks manual unless adult payloads stay out of CI.",
+  "closeout_summary": "All existing AV provider families now use shared structured label parsing for row-like metadata fields. Full metadata-scraper, fmt, JSON, and diff hygiene gates passed on 2026-05-26.",
   "references": [
     "docs/workstreams/official-metadata-addon-av-provider-wave3/",
     "docs/workstreams/official-metadata-addon-av-mdcx-parity/",
