@@ -193,6 +193,7 @@ mod tests {
             provider_id: provider_id.to_owned(),
             confidence_milli,
             patch: nako_addon_protocol::AddonMetadataPatch::default(),
+            av: None,
             artwork_candidates: vec![ArtworkCandidate {
                 provider: provider.to_owned(),
                 provider_id: provider_id.to_owned(),

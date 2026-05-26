@@ -287,6 +287,22 @@ mod tests {
         }));
         assert_eq!(candidate.facts.community_score_milli, Some(920));
         assert_eq!(candidate.facts.community_vote_count, Some(123));
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().actors,
+            vec!["Actor One".to_owned(), "Actor Two".to_owned()]
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().studio.as_deref(),
+            Some("Studio Alpha")
+        );
+        assert_eq!(candidate.facts.av.as_ref().unwrap().wanted_count, Some(123));
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().extrafanart_urls,
+            vec![
+                "https://img.example/preview1.jpg".to_owned(),
+                "https://img.example/preview2.jpg".to_owned()
+            ]
+        );
         assert_eq!(candidate.artwork_candidates.len(), 3);
         assert_eq!(
             candidate.artwork_candidates[0].facts.kind,

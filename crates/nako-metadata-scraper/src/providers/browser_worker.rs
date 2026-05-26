@@ -216,6 +216,7 @@ fn rendered_text_candidate(
             alternate_titles: Vec::new(),
             release_year: None,
             language: Some(query.language.clone()),
+            av: None,
             community_score_milli: None,
             community_vote_count: None,
             external_ids: vec![ProviderExternalId {

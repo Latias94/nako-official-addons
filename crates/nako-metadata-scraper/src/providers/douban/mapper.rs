@@ -53,6 +53,7 @@ impl DoubanDetailFacts {
                 alternate_titles: Vec::new(),
                 release_year: self.release_year,
                 language: Some(query.language.clone()),
+                av: None,
                 community_score_milli: self.rating_milli,
                 community_vote_count: self.vote_count,
                 external_ids: vec![

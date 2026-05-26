@@ -6,6 +6,7 @@ use serde::Serialize;
 use super::{
     MetadataQuery, QueryExternalId,
     artwork::{ArtworkCandidate, ProviderArtworkCandidate},
+    av::AvMetadataFacts,
     outcome::{ProviderOutcome, render_provider_note},
     title::normalize_title,
 };
@@ -25,6 +26,7 @@ pub struct ProviderCandidateFacts {
     pub alternate_titles: Vec<String>,
     pub release_year: Option<i32>,
     pub language: Option<String>,
+    pub av: Option<AvMetadataFacts>,
     pub community_score_milli: Option<u16>,
     pub community_vote_count: Option<u32>,
     pub external_ids: Vec<ProviderExternalId>,
@@ -44,6 +46,8 @@ pub struct MetadataCandidate {
     pub provider_id: String,
     pub confidence_milli: u16,
     pub patch: AddonMetadataPatch,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub av: Option<AvMetadataFacts>,
     pub artwork_candidates: Vec<ArtworkCandidate>,
     pub evidence: CandidateEvidence,
 }
@@ -192,11 +196,17 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         &candidate.facts.provider_outcomes,
         candidate.facts.provider_note.as_deref(),
     );
-    let field_sources = field_sources_for_patch(
+    let av = candidate.facts.av.clone();
+    let mut field_sources = field_sources_for_patch(
         &candidate.patch,
         &candidate.provider,
         &candidate.provider_id,
     );
+    field_sources.extend(field_sources_for_av(
+        av.as_ref(),
+        &candidate.provider,
+        &candidate.provider_id,
+    ));
     let field_sources = field_sources_override.unwrap_or(field_sources);
 
     MetadataCandidate {
@@ -204,6 +214,7 @@ pub(crate) fn rank_candidate_with_evidence_overrides(
         provider_id: candidate.provider_id,
         confidence_milli: score.clamp(0, 1000) as u16,
         patch: candidate.patch,
+        av,
         artwork_candidates: candidate
             .artwork_candidates
             .into_iter()
@@ -297,6 +308,94 @@ fn field_sources_for_patch(
     sources
 }
 
+fn field_sources_for_av(
+    av: Option<&AvMetadataFacts>,
+    provider: &str,
+    provider_id: &str,
+) -> Vec<CandidateFieldSource> {
+    let Some(av) = av else {
+        return Vec::new();
+    };
+
+    let mut sources = Vec::new();
+    push_av_vec_field_source(&mut sources, "actors", &av.actors, provider, provider_id);
+    push_av_vec_field_source(
+        &mut sources,
+        "all_actors",
+        &av.all_actors,
+        provider,
+        provider_id,
+    );
+    push_av_vec_field_source(
+        &mut sources,
+        "directors",
+        &av.directors,
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "series",
+        av.series.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "studio",
+        av.studio.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "publisher",
+        av.publisher.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "maker",
+        av.maker.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "label",
+        av.label.as_deref(),
+        provider,
+        provider_id,
+    );
+    if av.wanted_count.is_some() {
+        sources.push(field_source("wanted_count", provider, provider_id));
+    }
+    push_av_string_field_source(
+        &mut sources,
+        "thumb_url",
+        av.thumb_url.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_string_field_source(
+        &mut sources,
+        "trailer_url",
+        av.trailer_url.as_deref(),
+        provider,
+        provider_id,
+    );
+    push_av_vec_field_source(
+        &mut sources,
+        "extrafanart_urls",
+        &av.extrafanart_urls,
+        provider,
+        provider_id,
+    );
+
+    sources
+}
+
 fn push_string_field_source(
     sources: &mut Vec<CandidateFieldSource>,
     field: &'static str,
@@ -317,6 +416,28 @@ fn push_vec_field_source(
     provider_id: &str,
 ) {
     if value.is_some_and(|value| !value.is_empty()) {
+        sources.push(field_source(field, provider, provider_id));
+    }
+}
+
+fn push_av_string_field_source(
+    sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    value: Option<&str>,
+    provider: &str,
+    provider_id: &str,
+) {
+    push_string_field_source(sources, field, value, provider, provider_id);
+}
+
+fn push_av_vec_field_source(
+    sources: &mut Vec<CandidateFieldSource>,
+    field: &'static str,
+    value: &[String],
+    provider: &str,
+    provider_id: &str,
+) {
+    if !value.is_empty() {
         sources.push(field_source(field, provider, provider_id));
     }
 }
@@ -637,6 +758,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -686,6 +808,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("en-US".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -722,6 +845,7 @@ mod tests {
                     alternate_titles: vec!["Crouching Tiger Hidden Dragon".to_owned()],
                     release_year: None,
                     language: Some("zh-CN".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -757,6 +881,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("en".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -794,6 +919,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("zh".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -834,6 +960,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: Some(1999),
                     language: Some("en".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -877,6 +1004,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: Some(2003),
                     language: Some("en".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -917,6 +1045,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: Some(2001),
                     language: Some("ja-JP".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -967,6 +1096,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: Some(1999),
                     language: Some("en-US".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -1008,6 +1138,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("ja-JP".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -1029,6 +1160,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("ja-JP".to_owned()),
+                    av: None,
                     community_score_milli: Some(880),
                     community_vote_count: Some(12_000),
                     external_ids: Vec::new(),

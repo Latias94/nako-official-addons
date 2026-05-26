@@ -201,6 +201,7 @@ impl BangumiSubjectCandidate {
                 alternate_titles,
                 release_year: release_year.map(i32::from),
                 language: title_language,
+                av: None,
                 community_score_milli: rating.as_ref().and_then(|rating| {
                     rating
                         .score

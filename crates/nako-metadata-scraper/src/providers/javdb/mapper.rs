@@ -1,8 +1,8 @@
 use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 
 use crate::engine::{
-    MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
-    ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
+    AvMetadataFacts, MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts,
+    ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
     av::AV_NUMBER_EXTERNAL_ID_PROVIDER,
 };
 
@@ -72,6 +72,21 @@ impl JavdbDetailFacts {
                 alternate_titles: vec![self.av.number.clone()],
                 release_year: self.release_year,
                 language: Some(query.language.clone()),
+                av: AvMetadataFacts {
+                    actors: self.actors.clone(),
+                    all_actors: self.actors.clone(),
+                    directors: self.director.clone().into_iter().collect(),
+                    series: self.series.clone(),
+                    studio: self.studio.clone(),
+                    publisher: self.publisher.clone(),
+                    maker: self.studio.clone(),
+                    label: self.publisher.clone(),
+                    wanted_count: self.wanted_count,
+                    thumb_url: self.poster_url.clone(),
+                    trailer_url: None,
+                    extrafanart_urls: self.backdrop_urls.clone(),
+                }
+                .non_empty(),
                 community_score_milli: self.rating_milli,
                 community_vote_count: self.wanted_count,
                 external_ids: vec![

@@ -511,7 +511,8 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
-                "fc2"
+                "fc2",
+                "javbus"
             ])
         );
         assert_eq!(

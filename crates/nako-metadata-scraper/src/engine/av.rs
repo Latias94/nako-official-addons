@@ -38,6 +38,57 @@ pub struct AvQueryFacts {
     pub search_terms: Vec<String>,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+pub struct AvMetadataFacts {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub actors: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub all_actors: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub directors: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub series: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub studio: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publisher: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maker: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wanted_count: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumb_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trailer_url: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub extrafanart_urls: Vec<String>,
+}
+
+impl AvMetadataFacts {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.actors.is_empty()
+            && self.all_actors.is_empty()
+            && self.directors.is_empty()
+            && self.series.is_none()
+            && self.studio.is_none()
+            && self.publisher.is_none()
+            && self.maker.is_none()
+            && self.label.is_none()
+            && self.wanted_count.is_none()
+            && self.thumb_url.is_none()
+            && self.trailer_url.is_none()
+            && self.extrafanart_urls.is_empty()
+    }
+
+    #[must_use]
+    pub fn non_empty(self) -> Option<Self> {
+        (!self.is_empty()).then_some(self)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ParsedAvNumber {
     number: String,

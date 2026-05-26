@@ -275,8 +275,8 @@ policy state, not proxy URLs or credentials.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, and `av_number`. These aliases are derived from
-provider-owned external ID capabilities.
+`dmm_url`, `fc2_id`, `javbus_id`, `javbus_url`, and `av_number`. These aliases
+are derived from provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -287,14 +287,23 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
-JavDB, DMM, and FC2 metadata are available when their providers are enabled and
-the same browser-worker companion service is reachable. JavDB searches by
-normalized non-FC2 AV numbers and supports explicit `javdb_id` direct lookup.
-DMM is an official censored-release tracer that searches by normalized AV number
-and supports explicit `dmm_id` or `dmm_url` direct lookup. FC2 handles FC2-number
-direct article lookup and supports explicit `fc2_id` direct lookup. These AV
-providers emit `av_number` external IDs so the resolver can merge compatible AV
-facts across sources.
+JavDB, DMM, FC2, and JavBus metadata are available when their providers are
+enabled and the same browser-worker companion service is reachable. JavDB
+searches by normalized non-FC2 AV numbers and supports explicit `javdb_id`
+direct lookup. DMM is an official censored-release tracer that searches by
+normalized AV number and supports explicit `dmm_id` or `dmm_url` direct lookup.
+FC2 handles FC2-number direct article lookup and supports explicit `fc2_id`
+direct lookup. JavBus is a broad disabled-by-default AV fallback for normalized
+censored and uncensored numbers and supports explicit `javbus_id` or
+`javbus_url` direct lookup. These AV providers emit `av_number` external IDs so
+the resolver can merge compatible AV facts across sources.
+
+AV candidates also expose a response-side `av` object for MDCx-style fields
+that are not yet part of the portable `AddonMetadataPatch`, including actors,
+all actors, directors, series, studio, publisher, maker, label, wanted count,
+thumbnail URL, trailer URL, and extra fanart URLs. Until the Nako writeback
+protocol grows those fields, metadata side effects still persist only the
+portable patch fields plus artwork writebacks.
 
 The runtime then resolves exact duplicate candidates and candidates that share
 declared provider-emitted external IDs, caps the final list, and applies a
@@ -315,7 +324,9 @@ priority inside an already-merged candidate cluster:
   "provider_field_policy": {
     "title": ["javdb"],
     "overview": ["dmm"],
-    "tags": ["dmm"]
+    "tags": ["dmm"],
+    "actors": ["javdb"],
+    "studio": ["dmm"]
   }
 }
 ```
@@ -324,10 +335,10 @@ The policy does not merge unrelated candidates by itself; it only chooses fields
 after providers have emitted compatible external IDs such as the same
 `av_number`. When no request policy is supplied, AV clusters use a conservative
 built-in policy inspired by MDCx's field-priority behavior: DMM is preferred
-before JavDB and FC2 for official title, overview, release/runtime, tags, and
-poster/backdrop artwork when those providers emitted compatible facts. Passing
-an explicit `provider_field_policy` object replaces that default for the
-request.
+before JavDB, FC2, and JavBus for official title, overview, release/runtime,
+tags, structured AV facts, and poster/backdrop artwork when those providers
+emitted compatible facts. Passing an explicit `provider_field_policy` object
+replaces that default for the request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

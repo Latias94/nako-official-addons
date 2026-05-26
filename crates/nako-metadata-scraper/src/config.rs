@@ -2,7 +2,7 @@ use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
     dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    javdb::JavdbProviderConfig, tmdb::TmdbProviderConfig,
+    javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -57,6 +57,7 @@ pub enum ProviderId {
     Javdb,
     Dmm,
     Fc2,
+    Javbus,
 }
 
 impl ProviderId {
@@ -71,6 +72,7 @@ impl ProviderId {
             Self::Javdb => "javdb",
             Self::Dmm => "dmm",
             Self::Fc2 => "fc2",
+            Self::Javbus => "javbus",
         }
     }
 }
@@ -166,6 +168,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn javbus(enabled: bool, config: JavbusProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Javbus,
+            enabled,
+            kind: ProviderConfigKind::Javbus(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -221,6 +232,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn javbus_config(&self) -> Option<&JavbusProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Javbus(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -240,6 +259,9 @@ impl ProviderConfig {
             }
             ProviderId::Dmm => Self::dmm(enabled, DmmProviderConfig::from_env_lookup(|_| None)),
             ProviderId::Fc2 => Self::fc2(enabled, Fc2ProviderConfig::from_env_lookup(|_| None)),
+            ProviderId::Javbus => {
+                Self::javbus(enabled, JavbusProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -254,6 +276,7 @@ pub enum ProviderConfigKind {
     Javdb(JavdbProviderConfig),
     Dmm(DmmProviderConfig),
     Fc2(Fc2ProviderConfig),
+    Javbus(JavbusProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -438,6 +461,16 @@ mod tests {
         );
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[8].id, ProviderId::Javbus);
+        assert!(!config.providers[8].enabled);
+        let javbus = config.providers[8].javbus_config().unwrap();
+        assert_eq!(javbus.base_url, "https://www.javbus.com");
+        assert_eq!(
+            javbus.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(javbus.render_path, "/render");
+        assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -446,6 +479,7 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Javdb));
         assert!(!config.provider_enabled(ProviderId::Dmm));
         assert!(!config.provider_enabled(ProviderId::Fc2));
+        assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
     }
@@ -468,6 +502,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -503,6 +538,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_DMM_TIMEOUT_MS" => Some("3500".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS" => Some("4500".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL" => Some("https://javbus.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS" => Some("8500".to_owned()),
             _ => None,
         });
 
@@ -591,6 +628,15 @@ mod tests {
         );
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 4500);
+        assert!(config.provider_enabled(ProviderId::Javbus));
+        let javbus = config.providers[8].javbus_config().unwrap();
+        assert_eq!(javbus.base_url, "https://javbus.example");
+        assert_eq!(
+            javbus.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(javbus.render_path, "/render");
+        assert_eq!(javbus.rendered_pages.timeout_ms, 8500);
     }
 
     #[test]

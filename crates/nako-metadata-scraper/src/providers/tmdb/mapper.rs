@@ -123,6 +123,7 @@ impl TmdbMovieSearchResult {
                 alternate_titles,
                 release_year: release_year.map(i32::from),
                 language: Some(query.language.clone()),
+                av: None,
                 community_score_milli: vote_average
                     .map(|value| (value * 100.0).round().clamp(0.0, 1000.0) as u16),
                 community_vote_count: vote_count,
@@ -234,6 +235,7 @@ impl TmdbMovieCandidate {
                 release_year: release_year.map(i32::from),
                 language: non_empty(self.detail.original_language)
                     .or_else(|| Some(query.language.clone())),
+                av: None,
                 community_score_milli: vote_average
                     .map(|value| (value * 100.0).round().clamp(0.0, 1000.0) as u16),
                 community_vote_count: vote_count,

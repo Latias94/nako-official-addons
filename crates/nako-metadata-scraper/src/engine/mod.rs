@@ -17,6 +17,7 @@ pub use artwork::{
     ArtworkCandidate, ArtworkWritebackResult, ArtworkWritebackStatus, ProviderArtworkCandidate,
     ProviderArtworkCandidateFacts,
 };
+pub use av::AvMetadataFacts;
 pub use outcome::{ProviderOutcome, render_provider_note};
 pub use query::{
     ExternalIdValueKind, MetadataQuery, ProviderExternalIdCapability, ProviderFieldPolicy,
@@ -135,6 +136,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: self.year,
                     language: Some(query.language.clone()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: Vec::new(),
@@ -183,6 +185,9 @@ mod tests {
         title: &'static str,
         overview: Option<&'static str>,
         tags: &'static [&'static str],
+        av_actors: &'static [&'static str],
+        av_studio: Option<&'static str>,
+        av_wanted_count: Option<u32>,
         artwork: &'static [(&'static str, &'static str)],
         external_ids: &'static [(&'static str, &'static str)],
     }
@@ -227,6 +232,7 @@ mod tests {
                         alternate_titles: Vec::new(),
                         release_year: Some(2000 + index as i32),
                         language: Some("en-US".to_owned()),
+                        av: None,
                         community_score_milli: None,
                         community_vote_count: None,
                         external_ids: Vec::new(),
@@ -270,6 +276,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: self.year,
                     language: Some("en-US".to_owned()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: self
@@ -327,6 +334,7 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: query.year,
                     language: Some(query.language.clone()),
+                    av: None,
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: vec![ProviderExternalId {
@@ -371,6 +379,22 @@ mod tests {
                     alternate_titles: Vec::new(),
                     release_year: None,
                     language: Some("zh-CN".to_owned()),
+                    av: AvMetadataFacts {
+                        actors: self
+                            .av_actors
+                            .iter()
+                            .map(|actor| (*actor).to_owned())
+                            .collect(),
+                        all_actors: self
+                            .av_actors
+                            .iter()
+                            .map(|actor| (*actor).to_owned())
+                            .collect(),
+                        studio: self.av_studio.map(str::to_owned),
+                        wanted_count: self.av_wanted_count,
+                        ..AvMetadataFacts::default()
+                    }
+                    .non_empty(),
                     community_score_milli: None,
                     community_vote_count: None,
                     external_ids: self
@@ -684,6 +708,9 @@ mod tests {
                     title: "SSNI-644 JavDB Title",
                     overview: Some("JavDB overview"),
                     tags: &["javdb-tag"],
+                    av_actors: &["JavDB Actor"],
+                    av_studio: Some("JavDB Studio"),
+                    av_wanted_count: Some(77),
                     artwork: &[
                         ("poster", "https://img.example/javdb-poster.jpg"),
                         ("backdrop", "https://img.example/javdb-backdrop.jpg"),
@@ -696,6 +723,9 @@ mod tests {
                     title: "DMM Official Title",
                     overview: Some("DMM overview"),
                     tags: &["dmm-tag"],
+                    av_actors: &["DMM Actor"],
+                    av_studio: Some("DMM Studio"),
+                    av_wanted_count: None,
                     artwork: &[
                         ("poster", "https://img.example/dmm-poster.jpg"),
                         ("backdrop", "https://img.example/dmm-backdrop.jpg"),
@@ -720,12 +750,29 @@ mod tests {
         assert_eq!(candidate["patch"]["title"], "DMM Official Title");
         assert_eq!(candidate["patch"]["overview"], "DMM overview");
         assert_eq!(candidate["patch"]["tags"], serde_json::json!(["dmm-tag"]));
+        assert_eq!(candidate["av"]["actors"], serde_json::json!(["DMM Actor"]));
+        assert_eq!(candidate["av"]["studio"], "DMM Studio");
+        assert_eq!(candidate["av"]["wanted_count"], 77);
         assert!(
             candidate["evidence"]["field_sources"]
                 .as_array()
                 .unwrap()
                 .iter()
                 .any(|source| source["field"] == "title" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "actors" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "wanted_count" && source["provider"] == "javdb")
         );
         assert!(
             candidate["artwork_candidates"]
@@ -748,6 +795,9 @@ mod tests {
                     title: "SSNI-644 JavDB Title",
                     overview: None,
                     tags: &["javdb-tag"],
+                    av_actors: &["JavDB Actor"],
+                    av_studio: Some("JavDB Studio"),
+                    av_wanted_count: Some(77),
                     artwork: &[],
                     external_ids: &[("av_number", "SSNI-644"), ("javdb", "abc123")],
                 }),
@@ -757,6 +807,9 @@ mod tests {
                     title: "DMM Title",
                     overview: Some("DMM overview"),
                     tags: &["dmm-tag"],
+                    av_actors: &["DMM Actor"],
+                    av_studio: Some("DMM Studio"),
+                    av_wanted_count: None,
                     artwork: &[],
                     external_ids: &[("av_number", "ssni-644")],
                 }),
@@ -775,7 +828,9 @@ mod tests {
                     "provider_field_policy": {
                         "title": ["javdb"],
                         "overview": ["dmm"],
-                        "tags": ["dmm"]
+                        "tags": ["dmm"],
+                        "actors": ["javdb"],
+                        "studio": ["dmm"]
                     }
                 }),
             })
@@ -785,6 +840,11 @@ mod tests {
         assert_eq!(candidate["patch"]["title"], "SSNI-644 JavDB Title");
         assert_eq!(candidate["patch"]["overview"], "DMM overview");
         assert_eq!(candidate["patch"]["tags"], serde_json::json!(["dmm-tag"]));
+        assert_eq!(
+            candidate["av"]["actors"],
+            serde_json::json!(["JavDB Actor"])
+        );
+        assert_eq!(candidate["av"]["studio"], "DMM Studio");
         assert!(
             candidate["evidence"]["field_sources"]
                 .as_array()
@@ -805,6 +865,20 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|source| source["field"] == "tags" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "actors" && source["provider"] == "javdb")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "studio" && source["provider"] == "dmm")
         );
     }
 

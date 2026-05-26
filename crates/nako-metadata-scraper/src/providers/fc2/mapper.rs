@@ -1,8 +1,8 @@
 use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 
 use crate::engine::{
-    MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
-    ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
+    AvMetadataFacts, MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts,
+    ProviderCandidateFacts, ProviderExternalId, ProviderMetadataCandidate, ProviderOutcome,
     av::AV_NUMBER_EXTERNAL_ID_PROVIDER,
 };
 
@@ -53,6 +53,13 @@ impl Fc2DetailFacts {
                 alternate_titles: vec![self.av.number.clone()],
                 release_year: self.release_year,
                 language: Some(query.language.clone()),
+                av: AvMetadataFacts {
+                    studio: self.seller.clone(),
+                    publisher: self.seller.clone(),
+                    thumb_url: self.poster_url.clone(),
+                    ..AvMetadataFacts::default()
+                }
+                .non_empty(),
                 community_score_milli: None,
                 community_vote_count: None,
                 external_ids: vec![

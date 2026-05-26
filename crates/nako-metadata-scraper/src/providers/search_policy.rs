@@ -313,6 +313,7 @@ mod tests {
                 alternate_titles: Vec::new(),
                 release_year: query.year,
                 language: Some(query.language.clone()),
+                av: None,
                 community_score_milli: None,
                 community_vote_count: None,
                 external_ids: vec![ProviderExternalId {

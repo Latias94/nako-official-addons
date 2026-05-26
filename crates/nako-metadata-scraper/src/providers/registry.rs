@@ -261,7 +261,8 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
-                "fc2"
+                "fc2",
+                "javbus"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -365,6 +366,22 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[8],
+            ProviderDescriptor {
+                id: "javbus",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "javbus_direct_lookup",
+                    "javbus_movie_search",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -438,6 +455,20 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"fc2_id")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "javbus"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"javbus_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "javbus_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"javbus_url")
+        }));
     }
 
     #[test]
@@ -460,6 +491,12 @@ mod tests {
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_id", "dmm", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_url", "dmm_url", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("fc2_id", "fc2", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("javbus_id", "javbus", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "javbus_url",
+            "javbus_url",
+            false
+        )));
     }
 
     #[test]
@@ -482,7 +519,8 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
-                "fc2"
+                "fc2",
+                "javbus"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -532,7 +570,8 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
-                "fc2"
+                "fc2",
+                "javbus"
             ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);

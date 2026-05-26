@@ -296,6 +296,22 @@ mod tests {
                 && id.value == "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/"
         }));
         assert_eq!(candidate.facts.community_score_milli, Some(880));
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().actors,
+            vec!["Actress One".to_owned()]
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().studio.as_deref(),
+            Some("Studio Alpha")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().label.as_deref(),
+            Some("Label Beta")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().extrafanart_urls,
+            vec!["https://pics.example/sample1.jpg".to_owned()]
+        );
         assert_eq!(candidate.artwork_candidates.len(), 2);
         assert_eq!(
             candidate.artwork_candidates[0].facts.kind,

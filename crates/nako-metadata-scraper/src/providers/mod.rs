@@ -10,6 +10,7 @@ pub mod douban;
 pub mod fc2;
 pub mod fixture;
 pub mod http_runtime;
+pub mod javbus;
 pub mod javdb;
 mod registry;
 mod rendered_page;
@@ -33,6 +34,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         javdb::catalog_entry(),
         dmm::catalog_entry(),
         fc2::catalog_entry(),
+        javbus::catalog_entry(),
     ]
 }
 

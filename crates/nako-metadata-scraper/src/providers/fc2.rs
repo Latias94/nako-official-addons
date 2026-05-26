@@ -240,6 +240,14 @@ mod tests {
             candidate.patch.overview.as_deref(),
             Some("Synthetic outline.")
         );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().publisher.as_deref(),
+            Some("FC2 Seller")
+        );
+        assert_eq!(
+            candidate.facts.av.as_ref().unwrap().thumb_url.as_deref(),
+            Some("https://img.example/fc2-cover.jpg")
+        );
         assert!(candidate.facts.external_ids.iter().any(|id| {
             id.provider == AV_NUMBER_EXTERNAL_ID_PROVIDER && id.value == "FC2-1723984"
         }));

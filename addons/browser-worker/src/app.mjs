@@ -1,6 +1,10 @@
 import express from 'express';
 
-import { extractRenderedPage } from './extract.mjs';
+import {
+  browserWorkerProxyFacts,
+  extractRenderedPage,
+  normalizeRenderOptions,
+} from './extract.mjs';
 
 const FIXTURE_HTML = `<!doctype html>
 <html lang="en">
@@ -19,7 +23,41 @@ const FIXTURE_HTML = `<!doctype html>
 </body>
 </html>`;
 
-export function createApp() {
+function renderRequestFromBody(body) {
+  const url = body?.url;
+  if (typeof url !== 'string' || !url.trim()) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        status: 'error',
+        error: 'invalid_request',
+        safe_error_code: 'missing_url',
+      },
+    };
+  }
+
+  const options = normalizeRenderOptions(body);
+  if (!options) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        status: 'error',
+        error: 'invalid_request',
+        safe_error_code: 'invalid_render_options',
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    url: url.trim(),
+    options,
+  };
+}
+
+export function createApp({ env = process.env } = {}) {
   const app = express();
 
   app.use(express.json({ limit: '64kb' }));
@@ -30,6 +68,7 @@ export function createApp() {
       service: 'nako-browser-worker',
       renderer: 'playwright',
       crawler: 'crawlee',
+      ...browserWorkerProxyFacts(env),
     });
   });
 
@@ -38,18 +77,14 @@ export function createApp() {
   });
 
   app.post('/extract', async (request, response) => {
-    const url = request.body?.url;
-    if (typeof url !== 'string' || !url.trim()) {
-      response.status(400).json({
-        status: 'error',
-        error: 'invalid_request',
-        safe_error_code: 'missing_url',
-      });
+    const renderRequest = renderRequestFromBody(request.body);
+    if (!renderRequest.ok) {
+      response.status(renderRequest.status).json(renderRequest.body);
       return;
     }
 
     try {
-      const extracted = await extractRenderedPage(url.trim());
+      const extracted = await extractRenderedPage(renderRequest.url, renderRequest.options, env);
       response.json({
         status: 'ok',
         ...extracted,
@@ -64,18 +99,14 @@ export function createApp() {
   });
 
   app.post('/render', async (request, response) => {
-    const url = request.body?.url;
-    if (typeof url !== 'string' || !url.trim()) {
-      response.status(400).json({
-        status: 'error',
-        error: 'invalid_request',
-        safe_error_code: 'missing_url',
-      });
+    const renderRequest = renderRequestFromBody(request.body);
+    if (!renderRequest.ok) {
+      response.status(renderRequest.status).json(renderRequest.body);
       return;
     }
 
     try {
-      const rendered = await extractRenderedPage(url.trim());
+      const rendered = await extractRenderedPage(renderRequest.url, renderRequest.options, env);
       response.json({
         status: 'ok',
         url: rendered.url,
