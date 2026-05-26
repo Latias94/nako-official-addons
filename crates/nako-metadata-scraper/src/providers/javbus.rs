@@ -11,13 +11,14 @@ use crate::{
         ProviderExternalIdCapability, ProviderMetadataCandidate, ProviderOutcome,
         av::{
             AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute, AvNumberSource, AvQueryFacts,
-            facts_from_query, facts_from_text,
+            facts_from_text,
         },
     },
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        rendered_av,
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
@@ -196,41 +197,7 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
-        if let Some(id) = direct_external_id(query, JAVBUS_PROVIDER_ID) {
-            let detail_url = self.detail_url(&id);
-            let detail = self.render(detail_url.clone()).await?;
-            return Ok(parse_detail_page(&detail.html, &detail_url, None)
-                .into_iter()
-                .map(|facts| facts.into_candidate(query))
-                .collect());
-        }
-
-        if let Some(url) = direct_external_id(query, JAVBUS_URL_EXTERNAL_ID_PROVIDER) {
-            let detail = self.render(url.clone()).await?;
-            return Ok(parse_detail_page(&detail.html, &url, None)
-                .into_iter()
-                .map(|facts| facts.into_candidate(query))
-                .collect());
-        }
-
-        let Some(av) = facts_from_query(query) else {
-            return Ok(Vec::new());
-        };
-        if !self.supports_av_route(av.route) {
-            return Ok(Vec::new());
-        }
-
-        let search = self.render(self.search_url(&av.number)).await?;
-        let results = parse_search_results(&search.html, &av, &self.config.base_url);
-        let Some(result) = results.into_iter().next() else {
-            return Ok(Vec::new());
-        };
-        let detail = self.render(result.url.clone()).await?;
-
-        Ok(parse_detail_page(&detail.html, &result.url, Some(av))
-            .into_iter()
-            .map(|facts| facts.into_candidate(query))
-            .collect())
+        rendered_av::suggest_candidates(self, query).await
     }
 
     fn search_url(&self, number: &str) -> String {
@@ -247,6 +214,71 @@ where
             self.config.base_url.trim_end_matches('/'),
             id.trim().trim_start_matches('/')
         )
+    }
+}
+
+#[async_trait]
+impl<T> rendered_av::RenderedAvFlow for JavbusMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    fn provider_id(&self) -> &'static str {
+        JAVBUS_PROVIDER_ID
+    }
+
+    fn url_external_id_provider(&self) -> &'static str {
+        JAVBUS_URL_EXTERNAL_ID_PROVIDER
+    }
+
+    fn supports_route(&self, route: AvNumberRoute) -> bool {
+        matches!(route, AvNumberRoute::Censored | AvNumberRoute::Uncensored)
+    }
+
+    async fn render_html_page(
+        &self,
+        url: String,
+    ) -> anyhow::Result<crate::providers::rendered_page::RenderedHtmlPage> {
+        self.render(url).await
+    }
+
+    fn absolute_url(&self, value: &str) -> String {
+        rendered_av::absolute_url(&self.config.base_url, value)
+    }
+
+    fn detail_url(&self, id: &str) -> String {
+        JavbusMetadataProvider::detail_url(self, id)
+    }
+
+    fn direct_lookup_av(&self, _query: &MetadataQuery) -> Option<AvQueryFacts> {
+        None
+    }
+
+    fn search_url(&self, av: &AvQueryFacts) -> Option<String> {
+        Some(JavbusMetadataProvider::search_url(self, &av.number))
+    }
+
+    fn search_results(
+        &self,
+        html: &str,
+        av: &AvQueryFacts,
+    ) -> Vec<rendered_av::RenderedAvSearchResult> {
+        parse_search_results(html, av, &self.config.base_url)
+            .into_iter()
+            .map(|result| rendered_av::RenderedAvSearchResult::new(result.url))
+            .collect()
+    }
+
+    fn detail_candidates(
+        &self,
+        html: &str,
+        detail_url: &str,
+        av: Option<AvQueryFacts>,
+        query: &MetadataQuery,
+    ) -> Vec<ProviderMetadataCandidate> {
+        parse_detail_page(html, detail_url, av)
+            .into_iter()
+            .map(|facts| facts.into_candidate(query))
+            .collect()
     }
 }
 
@@ -512,15 +544,6 @@ fn javbus_artwork_candidate(
             height: None,
         },
     }
-}
-
-fn direct_external_id(query: &MetadataQuery, provider: &str) -> Option<String> {
-    query
-        .external_ids
-        .iter()
-        .find(|external_id| external_id.provider.eq_ignore_ascii_case(provider))
-        .map(|external_id| external_id.value.trim().to_owned())
-        .filter(|value| !value.is_empty())
 }
 
 fn dedupe_search_results(results: Vec<JavbusSearchResult>) -> Vec<JavbusSearchResult> {

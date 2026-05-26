@@ -20,7 +20,7 @@ Exit criteria:
 - Bulk no longer reads provider execution, AV facts, or failure classes from
   public response JSON.
 
-## M3 - Render Intent And Rendered AV Flow (In Progress)
+## M3 - Render Intent And Rendered AV Flow (Complete)
 
 Exit criteria:
 

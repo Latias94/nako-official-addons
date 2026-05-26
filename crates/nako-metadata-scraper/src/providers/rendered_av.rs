@@ -1,6 +1,129 @@
+use async_trait::async_trait;
 use scraper::{Html, Selector};
 
-use crate::engine::av::{AvNumberSource, AvQueryFacts, facts_from_text};
+use crate::{
+    engine::{
+        MetadataQuery, ProviderMetadataCandidate,
+        av::{AvNumberRoute, AvNumberSource, AvQueryFacts, facts_from_query, facts_from_text},
+    },
+    providers::rendered_page::RenderedHtmlPage,
+};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RenderedAvSearchResult {
+    pub(crate) url: String,
+}
+
+impl RenderedAvSearchResult {
+    #[must_use]
+    pub(crate) fn new(url: impl Into<String>) -> Self {
+        Self { url: url.into() }
+    }
+}
+
+#[async_trait]
+pub(crate) trait RenderedAvFlow: Sync {
+    fn provider_id(&self) -> &'static str;
+
+    fn url_external_id_provider(&self) -> &'static str;
+
+    fn supports_route(&self, route: AvNumberRoute) -> bool;
+
+    async fn render_html_page(&self, url: String) -> anyhow::Result<RenderedHtmlPage>;
+
+    fn absolute_url(&self, value: &str) -> String;
+
+    fn detail_url(&self, id: &str) -> String;
+
+    fn direct_lookup_av(&self, query: &MetadataQuery) -> Option<AvQueryFacts> {
+        facts_from_query(query)
+    }
+
+    fn search_url(&self, _av: &AvQueryFacts) -> Option<String> {
+        None
+    }
+
+    fn search_results(&self, _html: &str, _av: &AvQueryFacts) -> Vec<RenderedAvSearchResult> {
+        Vec::new()
+    }
+
+    fn detail_candidates(
+        &self,
+        html: &str,
+        detail_url: &str,
+        av: Option<AvQueryFacts>,
+        query: &MetadataQuery,
+    ) -> Vec<ProviderMetadataCandidate>;
+}
+
+pub(crate) async fn suggest_candidates<F>(
+    flow: &F,
+    query: &MetadataQuery,
+) -> anyhow::Result<Vec<ProviderMetadataCandidate>>
+where
+    F: RenderedAvFlow + ?Sized,
+{
+    if let Some(url) = direct_external_id(query, flow.url_external_id_provider()) {
+        return render_detail_candidates(
+            flow,
+            flow.absolute_url(&url),
+            flow.direct_lookup_av(query),
+            query,
+        )
+        .await;
+    }
+
+    if let Some(id) = direct_external_id(query, flow.provider_id()) {
+        return render_detail_candidates(
+            flow,
+            flow.detail_url(&id),
+            flow.direct_lookup_av(query),
+            query,
+        )
+        .await;
+    }
+
+    let Some(av) = facts_from_query(query) else {
+        return Ok(Vec::new());
+    };
+    if !flow.supports_route(av.route) {
+        return Ok(Vec::new());
+    }
+
+    let detail_url = if let Some(search_url) = flow.search_url(&av) {
+        let search = flow.render_html_page(search_url).await?;
+        let Some(result) = flow.search_results(&search.html, &av).into_iter().next() else {
+            return Ok(Vec::new());
+        };
+        result.url
+    } else {
+        flow.detail_url(&av.number)
+    };
+
+    render_detail_candidates(flow, detail_url, Some(av), query).await
+}
+
+async fn render_detail_candidates<F>(
+    flow: &F,
+    detail_url: String,
+    av: Option<AvQueryFacts>,
+    query: &MetadataQuery,
+) -> anyhow::Result<Vec<ProviderMetadataCandidate>>
+where
+    F: RenderedAvFlow + ?Sized,
+{
+    let detail = flow.render_html_page(detail_url.clone()).await?;
+    Ok(flow.detail_candidates(&detail.html, &detail_url, av, query))
+}
+
+pub(crate) fn direct_external_id(query: &MetadataQuery, provider: &str) -> Option<String> {
+    query
+        .external_ids
+        .iter()
+        .find(|external_id| external_id.provider.eq_ignore_ascii_case(provider))
+        .map(|external_id| external_id.value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
 
 pub(crate) fn element_text(document: &Html, selector: &str) -> Option<String> {
     let selector = Selector::parse(selector).ok()?;
@@ -220,4 +343,123 @@ fn compact(value: &str) -> String {
         .filter(|character| character.is_ascii_alphanumeric())
         .map(|character| character.to_ascii_uppercase())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use async_trait::async_trait;
+    use nako_addon_protocol::AddonMetadataPatch;
+
+    use crate::engine::{
+        MetadataQuery, ProviderCandidateFacts, ProviderMetadataCandidate, QueryExternalId,
+        av::{AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute, AvQueryFacts},
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn rendered_av_flow_searches_then_renders_first_detail_result() {
+        let flow = FakeRenderedAvFlow::default();
+        let query = MetadataQuery {
+            title: "SSNI-644".to_owned(),
+            year: None,
+            language: "zh-CN".to_owned(),
+            external_ids: vec![QueryExternalId {
+                provider: AV_NUMBER_EXTERNAL_ID_PROVIDER.to_owned(),
+                value: "SSNI-644".to_owned(),
+            }],
+        };
+
+        let candidates = suggest_candidates(&flow, &query).await.unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "fake:detail");
+        assert_eq!(
+            flow.rendered_urls(),
+            vec![
+                "https://site.test/search/SSNI-644".to_owned(),
+                "https://site.test/detail/SSNI-644".to_owned()
+            ]
+        );
+    }
+
+    #[derive(Clone, Default)]
+    struct FakeRenderedAvFlow {
+        rendered_urls: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl FakeRenderedAvFlow {
+        fn rendered_urls(&self) -> Vec<String> {
+            self.rendered_urls.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait]
+    impl RenderedAvFlow for FakeRenderedAvFlow {
+        fn provider_id(&self) -> &'static str {
+            "fake"
+        }
+
+        fn url_external_id_provider(&self) -> &'static str {
+            "fake_url"
+        }
+
+        fn supports_route(&self, route: AvNumberRoute) -> bool {
+            route == AvNumberRoute::Censored
+        }
+
+        async fn render_html_page(
+            &self,
+            url: String,
+        ) -> anyhow::Result<crate::providers::rendered_page::RenderedHtmlPage> {
+            self.rendered_urls.lock().unwrap().push(url.clone());
+            let html = if url.contains("/search/") {
+                "search"
+            } else {
+                "detail"
+            };
+            Ok(crate::providers::rendered_page::RenderedHtmlPage {
+                html: html.to_owned(),
+            })
+        }
+
+        fn absolute_url(&self, value: &str) -> String {
+            absolute_url("https://site.test", value)
+        }
+
+        fn detail_url(&self, id: &str) -> String {
+            format!("https://site.test/detail/{id}")
+        }
+
+        fn search_url(&self, av: &AvQueryFacts) -> Option<String> {
+            Some(format!("https://site.test/search/{}", av.number))
+        }
+
+        fn search_results(&self, html: &str, av: &AvQueryFacts) -> Vec<RenderedAvSearchResult> {
+            assert_eq!(html, "search");
+            vec![RenderedAvSearchResult::new(format!(
+                "https://site.test/detail/{}",
+                av.number
+            ))]
+        }
+
+        fn detail_candidates(
+            &self,
+            html: &str,
+            _detail_url: &str,
+            _av: Option<AvQueryFacts>,
+            _query: &MetadataQuery,
+        ) -> Vec<ProviderMetadataCandidate> {
+            assert_eq!(html, "detail");
+            vec![ProviderMetadataCandidate {
+                provider: "fake".to_owned(),
+                provider_id: "fake:detail".to_owned(),
+                patch: AddonMetadataPatch::default(),
+                facts: ProviderCandidateFacts::default(),
+                artwork_candidates: Vec::new(),
+            }]
+        }
+    }
 }

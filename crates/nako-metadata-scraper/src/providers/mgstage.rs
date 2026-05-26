@@ -11,7 +11,7 @@ use crate::{
         ProviderExternalIdCapability, ProviderMetadataCandidate, ProviderOutcome,
         av::{
             AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute, AvNumberSource, AvQueryFacts,
-            facts_from_query, facts_from_text,
+            facts_from_text,
         },
     },
     providers::{
@@ -192,41 +192,7 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
-        if let Some(url) = direct_external_id(query, MGSTAGE_URL_EXTERNAL_ID_PROVIDER) {
-            let detail_url = self.absolute_url(&url);
-            let detail = self.render(detail_url.clone()).await?;
-            return Ok(
-                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
-                    .into_iter()
-                    .map(|facts| facts.into_candidate(query))
-                    .collect(),
-            );
-        }
-
-        if let Some(id) = direct_external_id(query, MGSTAGE_PROVIDER_ID) {
-            let detail_url = self.detail_url(&id);
-            let detail = self.render(detail_url.clone()).await?;
-            return Ok(
-                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
-                    .into_iter()
-                    .map(|facts| facts.into_candidate(query))
-                    .collect(),
-            );
-        }
-
-        let Some(av) = facts_from_query(query) else {
-            return Ok(Vec::new());
-        };
-        if !self.supports_av_route(av.route) {
-            return Ok(Vec::new());
-        }
-
-        let detail_url = self.detail_url(&av.number);
-        let detail = self.render(detail_url.clone()).await?;
-        Ok(parse_detail_page(&detail.html, &detail_url, Some(av))
-            .into_iter()
-            .map(|facts| facts.into_candidate(query))
-            .collect())
+        rendered_av::suggest_candidates(self, query).await
     }
 
     fn detail_url(&self, id: &str) -> String {
@@ -242,6 +208,49 @@ where
 
     fn absolute_url(&self, value: &str) -> String {
         rendered_av::absolute_url(&self.config.base_url, value)
+    }
+}
+
+#[async_trait]
+impl<T> rendered_av::RenderedAvFlow for MgstageMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    fn provider_id(&self) -> &'static str {
+        MGSTAGE_PROVIDER_ID
+    }
+
+    fn url_external_id_provider(&self) -> &'static str {
+        MGSTAGE_URL_EXTERNAL_ID_PROVIDER
+    }
+
+    fn supports_route(&self, route: AvNumberRoute) -> bool {
+        matches!(route, AvNumberRoute::Amateur | AvNumberRoute::Censored)
+    }
+
+    async fn render_html_page(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
+        self.render(url).await
+    }
+
+    fn absolute_url(&self, value: &str) -> String {
+        MgstageMetadataProvider::absolute_url(self, value)
+    }
+
+    fn detail_url(&self, id: &str) -> String {
+        MgstageMetadataProvider::detail_url(self, id)
+    }
+
+    fn detail_candidates(
+        &self,
+        html: &str,
+        detail_url: &str,
+        av: Option<AvQueryFacts>,
+        query: &MetadataQuery,
+    ) -> Vec<ProviderMetadataCandidate> {
+        parse_detail_page(html, detail_url, av)
+            .into_iter()
+            .map(|facts| facts.into_candidate(query))
+            .collect()
     }
 }
 
@@ -540,15 +549,6 @@ fn mgstage_artwork_candidate(
             height: None,
         },
     }
-}
-
-fn direct_external_id(query: &MetadataQuery, provider: &str) -> Option<String> {
-    query
-        .external_ids
-        .iter()
-        .find(|external_id| external_id.provider.eq_ignore_ascii_case(provider))
-        .map(|external_id| external_id.value.trim().to_owned())
-        .filter(|value| !value.is_empty())
 }
 
 fn normalize_mgstage_id(value: &str) -> Option<String> {

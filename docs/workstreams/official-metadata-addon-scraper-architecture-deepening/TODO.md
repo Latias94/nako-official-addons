@@ -4,21 +4,14 @@ Prefix: OMSAD
 
 ## Active
 
-- [ ] OMSAD-040 [owner=codex] [deps=OMSAD-030] [scope=crates/nako-metadata-scraper/src/providers/rendered_av.rs,crates/nako-metadata-scraper/src/providers/javbus.rs,crates/nako-metadata-scraper/src/providers/javlibrary.rs,crates/nako-metadata-scraper/src/providers/mgstage.rs]
-  Goal: Deepen rendered AV provider flow so direct lookup, AV route gating, search-to-detail, and empty/failure policy live in one reusable Module.
-  Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm provider adapters retain URL/parser/mapper quirks while shared flow owns ordering and repeated control behavior.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMSAD-050 [owner=codex] [deps=OMSAD-040] [scope=crates/nako-metadata-scraper/src/providers/registry.rs,crates/nako-metadata-scraper/src/providers/mod.rs,crates/nako-metadata-scraper/src/providers/*,crates/nako-metadata-scraper/src/engine/query.rs,crates/nako-metadata-scraper/src/engine/resolver.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Move AV provider field-quality/default policy facts toward provider descriptors and stop hard-coding default provider identity lists in engine query code.
   Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirm request-provided `provider_field_policy` still overrides defaults and docs describe descriptor-derived defaults.
   Evidence:
   Handoff:
+
+## Pending
 
 - [ ] OMSAD-060 [owner=codex] [deps=OMSAD-050] [scope=crates/nako-metadata-scraper/src/engine/resolver.rs,crates/nako-metadata-scraper/src/engine/ranking.rs,crates/nako-metadata-scraper/src/engine/artwork.rs,crates/nako-metadata-scraper/src/engine/native_writeback.rs]
   Goal: Split entity resolution from candidate fusion/ranking/native writeback projection so each Interface is testable at one Seam.
@@ -62,7 +55,14 @@ Prefix: OMSAD
   Validation: `cargo nextest run -p nako-metadata-scraper rendered_page browser_worker douban javbus javlibrary mgstage --no-fail-fast`; `npm --prefix addons/browser-worker test`; `cargo fmt -p nako-metadata-scraper -- --check`
   Review: Confirmed providers declare browser-worker calls through `RenderedPageIntent` and `RenderedPageSupportConfig::intent`; wait/proxy/session fields serialize through one shared request projection without provider-local payload assembly.
   Evidence: PASS on 2026-05-26; render intent red/green tracer passed, 19 focused Rust tests passed, 4 browser-worker tests passed.
-  Handoff: DONE. OMSAD-040 is active.
+  Handoff: DONE. OMSAD-040 completed.
+
+- [x] OMSAD-040 [owner=codex] [deps=OMSAD-030] [scope=crates/nako-metadata-scraper/src/providers/rendered_av.rs,crates/nako-metadata-scraper/src/providers/javbus.rs,crates/nako-metadata-scraper/src/providers/javlibrary.rs,crates/nako-metadata-scraper/src/providers/mgstage.rs]
+  Goal: Deepen rendered AV provider flow so direct lookup, AV route gating, search-to-detail, and empty/failure policy live in one reusable Module.
+  Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Confirmed `RenderedAvFlow` owns direct URL/ID lookup, AV route gating, search-to-detail, first-result empty behavior, and detail rendering; provider adapters retain URL construction, parser, and mapper quirks.
+  Evidence: PASS on 2026-05-26; rendered AV flow red/green tracer passed and 33 focused Rust tests passed.
+  Handoff: DONE. OMSAD-050 is active.
 
 ## Follow-Up Candidates
 

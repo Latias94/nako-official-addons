@@ -11,7 +11,7 @@ use crate::{
         ProviderExternalIdCapability, ProviderMetadataCandidate, ProviderOutcome,
         av::{
             AV_NUMBER_EXTERNAL_ID_PROVIDER, AvNumberRoute, AvNumberSource, AvQueryFacts,
-            facts_from_query, facts_from_text,
+            facts_from_text,
         },
     },
     providers::{
@@ -204,48 +204,7 @@ where
         &self,
         query: &MetadataQuery,
     ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
-        if let Some(url) = direct_external_id(query, JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER) {
-            let detail_url = self.absolute_url(&url);
-            let detail = self.render(detail_url.clone()).await?;
-            return Ok(
-                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
-                    .into_iter()
-                    .map(|facts| facts.into_candidate(query))
-                    .collect(),
-            );
-        }
-
-        if let Some(id) = direct_external_id(query, JAVLIBRARY_PROVIDER_ID) {
-            let detail_url = self.detail_url(&id);
-            let detail = self.render(detail_url.clone()).await?;
-            return Ok(
-                parse_detail_page(&detail.html, &detail_url, facts_from_query(query))
-                    .into_iter()
-                    .map(|facts| facts.into_candidate(query))
-                    .collect(),
-            );
-        }
-
-        let Some(av) = facts_from_query(query) else {
-            return Ok(Vec::new());
-        };
-        if !self.supports_av_route(av.route) {
-            return Ok(Vec::new());
-        }
-
-        let search = self.render(self.search_url(&av.number)).await?;
-        let Some(result) = parse_search_results(&search.html, &av, &self.localized_base_url())
-            .into_iter()
-            .next()
-        else {
-            return Ok(Vec::new());
-        };
-        let detail = self.render(result.url.clone()).await?;
-
-        Ok(parse_detail_page(&detail.html, &result.url, Some(av))
-            .into_iter()
-            .map(|facts| facts.into_candidate(query))
-            .collect())
+        rendered_av::suggest_candidates(self, query).await
     }
 
     fn search_url(&self, av_number: &str) -> String {
@@ -282,6 +241,67 @@ where
                 .trim_matches('/')
                 .trim_start_matches('.')
         )
+    }
+}
+
+#[async_trait]
+impl<T> rendered_av::RenderedAvFlow for JavlibraryMetadataProvider<T>
+where
+    T: ProviderHttpTransport,
+{
+    fn provider_id(&self) -> &'static str {
+        JAVLIBRARY_PROVIDER_ID
+    }
+
+    fn url_external_id_provider(&self) -> &'static str {
+        JAVLIBRARY_URL_EXTERNAL_ID_PROVIDER
+    }
+
+    fn supports_route(&self, route: AvNumberRoute) -> bool {
+        matches!(
+            route,
+            AvNumberRoute::Censored | AvNumberRoute::Uncensored | AvNumberRoute::Amateur
+        )
+    }
+
+    async fn render_html_page(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
+        self.render(url).await
+    }
+
+    fn absolute_url(&self, value: &str) -> String {
+        JavlibraryMetadataProvider::absolute_url(self, value)
+    }
+
+    fn detail_url(&self, id: &str) -> String {
+        JavlibraryMetadataProvider::detail_url(self, id)
+    }
+
+    fn search_url(&self, av: &AvQueryFacts) -> Option<String> {
+        Some(JavlibraryMetadataProvider::search_url(self, &av.number))
+    }
+
+    fn search_results(
+        &self,
+        html: &str,
+        av: &AvQueryFacts,
+    ) -> Vec<rendered_av::RenderedAvSearchResult> {
+        parse_search_results(html, av, &self.localized_base_url())
+            .into_iter()
+            .map(|result| rendered_av::RenderedAvSearchResult::new(result.url))
+            .collect()
+    }
+
+    fn detail_candidates(
+        &self,
+        html: &str,
+        detail_url: &str,
+        av: Option<AvQueryFacts>,
+        query: &MetadataQuery,
+    ) -> Vec<ProviderMetadataCandidate> {
+        parse_detail_page(html, detail_url, av)
+            .into_iter()
+            .map(|facts| facts.into_candidate(query))
+            .collect()
     }
 }
 
@@ -620,15 +640,6 @@ fn javlibrary_artwork_candidate(movie_id: &str, source_url: String) -> ProviderA
             height: None,
         },
     }
-}
-
-fn direct_external_id(query: &MetadataQuery, provider: &str) -> Option<String> {
-    query
-        .external_ids
-        .iter()
-        .find(|external_id| external_id.provider.eq_ignore_ascii_case(provider))
-        .map(|external_id| external_id.value.trim().to_owned())
-        .filter(|value| !value.is_empty())
 }
 
 fn javlibrary_id_from_url(url: &str) -> Option<String> {

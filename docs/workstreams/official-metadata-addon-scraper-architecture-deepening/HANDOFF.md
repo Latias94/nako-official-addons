@@ -14,6 +14,9 @@ OMSAD-030 is complete: rendered providers now declare a typed
 `RenderedPageIntent`, shared runtime projection serializes browser-worker
 `wait_for`, `proxy_policy`, and `session_key`, and environment defaults can
 shape all rendered-page requests without provider-local JSON assembly.
+OMSAD-040 is complete: `RenderedAvFlow` owns direct lookup, route gating,
+search-to-detail, empty result behavior, and detail rendering for JavBus,
+JavLibrary, and MGStage; provider adapters keep URL construction and parsing.
 
 The architecture review identified six deepening candidates. This workstream
 will solve all six unless a task reveals that a candidate should be split into a
@@ -21,13 +24,13 @@ separate durable lane.
 
 ## Active Task
 
-- Task ID: OMSAD-040
+- Task ID: OMSAD-050
 - Owner: codex
-- Files: `crates/nako-metadata-scraper/src/providers/rendered_av.rs`, `crates/nako-metadata-scraper/src/providers/javbus.rs`, `crates/nako-metadata-scraper/src/providers/javlibrary.rs`, `crates/nako-metadata-scraper/src/providers/mgstage.rs`
-- Validation: `cargo nextest run -p nako-metadata-scraper javbus javlibrary mgstage av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+- Files: `crates/nako-metadata-scraper/src/providers/registry.rs`, `crates/nako-metadata-scraper/src/providers/mod.rs`, `crates/nako-metadata-scraper/src/providers/*`, `crates/nako-metadata-scraper/src/engine/query.rs`, `crates/nako-metadata-scraper/src/engine/resolver.rs`, `addons/metadata-scraper/README.md`, `crates/nako-metadata-scraper/README.md`
+- Validation: `cargo nextest run -p nako-metadata-scraper config registry manifest field_policy resolver av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
 - Status: READY
-- Review: Confirm provider adapters retain URL/parser/mapper quirks while
-  shared flow owns ordering and repeated control behavior.
+- Review: Confirm request-provided `provider_field_policy` still overrides
+  defaults and docs describe descriptor-derived defaults.
 - Evidence:
 
 ## Decisions
@@ -46,6 +49,6 @@ separate durable lane.
 
 ## Next Recommended Action
 
-- Execute OMSAD-040 by extracting the repeated rendered AV lookup/search/detail
-  flow from JavBus, JavLibrary, and MGStage into `rendered_av`, leaving
-  provider adapters focused on URL construction and parser/mapper quirks.
+- Execute OMSAD-050 by moving default AV field-quality/profile facts into
+  provider descriptors and removing provider identity lists from engine query
+  policy construction.
