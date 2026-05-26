@@ -40,6 +40,18 @@
       "type": "object",
       "properties": {
         "preferred_language": { "type": "string", "default": "en-US" },
+        "av_provider_preset": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "fast_safe",
+            "official_only",
+            "community_first",
+            "fc2_enhanced",
+            "uncensored_official"
+          ],
+          "default": "manual"
+        },
         "providers": {
           "type": "object",
         "properties": {

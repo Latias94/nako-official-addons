@@ -109,6 +109,129 @@ impl ProviderId {
             Self::Prestige => "prestige",
         }
     }
+
+    #[must_use]
+    pub const fn is_av_metadata_provider(self) -> bool {
+        matches!(
+            self,
+            Self::Javdb
+                | Self::Dmm
+                | Self::Fc2
+                | Self::Fc2ppvdb
+                | Self::Caribbean
+                | Self::OnePondo
+                | Self::TenMusume
+                | Self::Javbus
+                | Self::Javlibrary
+                | Self::Mgstage
+                | Self::Prestige
+        )
+    }
+}
+
+pub const AV_PROVIDER_PRESET_ENV_VAR: &str = "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET";
+
+const FAST_SAFE_AV_PROVIDERS: &[ProviderId] = &[
+    ProviderId::Javdb,
+    ProviderId::Dmm,
+    ProviderId::Fc2,
+    ProviderId::Mgstage,
+    ProviderId::Prestige,
+];
+const OFFICIAL_ONLY_AV_PROVIDERS: &[ProviderId] = &[
+    ProviderId::Dmm,
+    ProviderId::Fc2,
+    ProviderId::Mgstage,
+    ProviderId::Prestige,
+    ProviderId::Caribbean,
+    ProviderId::OnePondo,
+    ProviderId::TenMusume,
+];
+const COMMUNITY_FIRST_AV_PROVIDERS: &[ProviderId] = &[
+    ProviderId::Javdb,
+    ProviderId::Javbus,
+    ProviderId::Javlibrary,
+    ProviderId::Dmm,
+    ProviderId::Fc2,
+    ProviderId::Fc2ppvdb,
+    ProviderId::Mgstage,
+    ProviderId::Prestige,
+];
+const FC2_ENHANCED_AV_PROVIDERS: &[ProviderId] = &[ProviderId::Fc2, ProviderId::Fc2ppvdb];
+const UNCENSORED_OFFICIAL_AV_PROVIDERS: &[ProviderId] = &[
+    ProviderId::Caribbean,
+    ProviderId::OnePondo,
+    ProviderId::TenMusume,
+];
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum AvProviderPreset {
+    #[default]
+    Manual,
+    FastSafe,
+    OfficialOnly,
+    CommunityFirst,
+    Fc2Enhanced,
+    UncensoredOfficial,
+}
+
+impl AvProviderPreset {
+    pub const SCHEMA_VALUES: &[&str] = &[
+        "manual",
+        "fast_safe",
+        "official_only",
+        "community_first",
+        "fc2_enhanced",
+        "uncensored_official",
+    ];
+
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::FastSafe => "fast_safe",
+            Self::OfficialOnly => "official_only",
+            Self::CommunityFirst => "community_first",
+            Self::Fc2Enhanced => "fc2_enhanced",
+            Self::UncensoredOfficial => "uncensored_official",
+        }
+    }
+
+    #[must_use]
+    pub fn from_env_value(value: &str) -> Option<Self> {
+        let normalized = value.trim().to_ascii_lowercase().replace('-', "_");
+        let normalized = normalized.replace(' ', "_");
+        match normalized.as_str() {
+            "manual" => Some(Self::Manual),
+            "fast_safe" => Some(Self::FastSafe),
+            "official_only" => Some(Self::OfficialOnly),
+            "community_first" => Some(Self::CommunityFirst),
+            "fc2_enhanced" => Some(Self::Fc2Enhanced),
+            "uncensored_official" => Some(Self::UncensoredOfficial),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn enabled_provider_ids(self) -> &'static [ProviderId] {
+        match self {
+            Self::Manual => &[],
+            Self::FastSafe => FAST_SAFE_AV_PROVIDERS,
+            Self::OfficialOnly => OFFICIAL_ONLY_AV_PROVIDERS,
+            Self::CommunityFirst => COMMUNITY_FIRST_AV_PROVIDERS,
+            Self::Fc2Enhanced => FC2_ENHANCED_AV_PROVIDERS,
+            Self::UncensoredOfficial => UNCENSORED_OFFICIAL_AV_PROVIDERS,
+        }
+    }
+
+    #[must_use]
+    fn default_enabled(self, provider_id: ProviderId) -> Option<bool> {
+        if self == Self::Manual || !provider_id.is_av_metadata_provider() {
+            return None;
+        }
+
+        Some(self.enabled_provider_ids().contains(&provider_id))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -483,6 +606,7 @@ pub struct Config {
     pub listen_addr: String,
     pub base_url: String,
     pub preferred_language: String,
+    pub av_provider_preset: AvProviderPreset,
     pub providers: Vec<ProviderConfig>,
     pub provider_execution: ProviderExecutionConfig,
     pub nako_runtime: NakoRuntimeConfig,
@@ -496,16 +620,28 @@ impl Config {
 
     #[must_use]
     pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        let listen_addr = lookup("NAKO_METADATA_SCRAPER_LISTEN_ADDR")
+            .unwrap_or_else(|| "127.0.0.1:9100".to_owned());
+        let base_url = lookup("NAKO_METADATA_SCRAPER_BASE_URL")
+            .unwrap_or_else(|| "http://127.0.0.1:9100".to_owned());
+        let preferred_language =
+            lookup("NAKO_METADATA_SCRAPER_LANGUAGE").unwrap_or_else(|| "en-US".to_owned());
+        let av_provider_preset = lookup(AV_PROVIDER_PRESET_ENV_VAR)
+            .as_deref()
+            .and_then(AvProviderPreset::from_env_value)
+            .unwrap_or_default();
+        let providers = provider_configs_from_catalog(|name| lookup(name), av_provider_preset);
+        let provider_execution = ProviderExecutionConfig::from_env_lookup(|name| lookup(name));
+        let nako_runtime = NakoRuntimeConfig::from_env_lookup(|name| lookup(name));
+
         Self {
-            listen_addr: lookup("NAKO_METADATA_SCRAPER_LISTEN_ADDR")
-                .unwrap_or_else(|| "127.0.0.1:9100".to_owned()),
-            base_url: lookup("NAKO_METADATA_SCRAPER_BASE_URL")
-                .unwrap_or_else(|| "http://127.0.0.1:9100".to_owned()),
-            preferred_language: lookup("NAKO_METADATA_SCRAPER_LANGUAGE")
-                .unwrap_or_else(|| "en-US".to_owned()),
-            providers: provider_configs_from_catalog(|name| lookup(name)),
-            provider_execution: ProviderExecutionConfig::from_env_lookup(|name| lookup(name)),
-            nako_runtime: NakoRuntimeConfig::from_env_lookup(|name| lookup(name)),
+            listen_addr,
+            base_url,
+            preferred_language,
+            av_provider_preset,
+            providers,
+            provider_execution,
+            nako_runtime,
         }
     }
 
@@ -612,7 +748,8 @@ impl Default for Config {
             listen_addr: "127.0.0.1:9100".to_owned(),
             base_url: "http://127.0.0.1:9100".to_owned(),
             preferred_language: "en-US".to_owned(),
-            providers: provider_configs_from_catalog(|_| None),
+            av_provider_preset: AvProviderPreset::default(),
+            providers: provider_configs_from_catalog(|_| None, AvProviderPreset::default()),
             provider_execution: ProviderExecutionConfig::default(),
             nako_runtime: NakoRuntimeConfig::disabled(),
         }
@@ -621,13 +758,17 @@ impl Default for Config {
 
 fn provider_configs_from_catalog(
     mut lookup: impl FnMut(&str) -> Option<String>,
+    av_provider_preset: AvProviderPreset,
 ) -> Vec<ProviderConfig> {
     ProviderRegistry::catalog()
         .into_iter()
         .map(|entry| {
+            let default_enabled = av_provider_preset
+                .default_enabled(entry.id)
+                .unwrap_or(entry.default_enabled);
             let enabled = lookup(entry.enabled_env_var)
                 .and_then(|value| parse_bool(&value))
-                .unwrap_or(entry.default_enabled);
+                .unwrap_or(default_enabled);
             (entry.load_config)(ProviderConfigInput {
                 enabled,
                 lookup: &mut lookup,
@@ -665,6 +806,7 @@ mod tests {
     fn default_config_enables_only_fixture_provider() {
         let config = Config::default();
 
+        assert_eq!(config.av_provider_preset, AvProviderPreset::Manual);
         assert_eq!(
             config.providers[0],
             ProviderConfig::enabled(ProviderId::Fixture)
@@ -851,6 +993,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_LISTEN_ADDR" => Some("0.0.0.0:9200".to_owned()),
             "NAKO_METADATA_SCRAPER_BASE_URL" => Some("https://addon.example".to_owned()),
             "NAKO_METADATA_SCRAPER_LANGUAGE" => Some("zh-CN".to_owned()),
+            "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET" => Some("community-first".to_owned()),
             "NAKO_METADATA_SCRAPER_NAKO_BASE_URL" => Some("https://nako.example".to_owned()),
             "NAKO_METADATA_SCRAPER_ADDON_TOKEN" => Some(" addon-token ".to_owned()),
             "NAKO_METADATA_SCRAPER_SIDE_EFFECTS_ENABLED" => Some("yes".to_owned()),
@@ -945,6 +1088,7 @@ mod tests {
         assert_eq!(config.listen_addr, "0.0.0.0:9200");
         assert_eq!(config.base_url, "https://addon.example");
         assert_eq!(config.preferred_language, "zh-CN");
+        assert_eq!(config.av_provider_preset, AvProviderPreset::CommunityFirst);
         assert_eq!(
             config.nako_runtime,
             NakoRuntimeConfig {
@@ -970,6 +1114,10 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Fixture));
         assert!(config.provider_enabled(ProviderId::Tmdb));
         assert!(config.provider_enabled(ProviderId::Bangumi));
+        assert!(config.provider_enabled(ProviderId::Javdb));
+        assert!(config.provider_enabled(ProviderId::Javbus));
+        assert!(config.provider_enabled(ProviderId::Javlibrary));
+        assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
         let tmdb = config.providers[1].tmdb_config().unwrap();
         assert_eq!(tmdb.read_access_token.as_deref(), Some("tmdb-token"));
         assert_eq!(tmdb.api_base_url, "https://tmdb.example/3");
@@ -1108,6 +1256,36 @@ mod tests {
             Some("http://prestige-proxy.example:8080")
         );
         assert!(config.provider_proxy_configured(ProviderId::Prestige));
+    }
+
+    #[test]
+    fn av_provider_preset_applies_default_av_provider_enablement() {
+        let config = Config::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET" => Some("fc2_enhanced".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.av_provider_preset, AvProviderPreset::Fc2Enhanced);
+        assert!(config.provider_enabled(ProviderId::Fc2));
+        assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
+        assert!(!config.provider_enabled(ProviderId::Javdb));
+        assert!(!config.provider_enabled(ProviderId::Prestige));
+    }
+
+    #[test]
+    fn explicit_provider_env_overrides_av_provider_preset_defaults() {
+        let config = Config::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET" => Some("official_only".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("false".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.av_provider_preset, AvProviderPreset::OfficialOnly);
+        assert!(!config.provider_enabled(ProviderId::Dmm));
+        assert!(config.provider_enabled(ProviderId::Javdb));
+        assert!(config.provider_enabled(ProviderId::Fc2));
+        assert!(config.provider_enabled(ProviderId::Caribbean));
     }
 
     #[test]

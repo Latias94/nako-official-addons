@@ -1,7 +1,11 @@
 use nako_addon_protocol::{AddonManifest, AddonSecretReferenceFieldDeclaration};
 use nako_official_addon_catalog::metadata_scraper;
 
-use crate::{Config, config::ProviderConfig, providers::ProviderRegistry};
+use crate::{
+    Config,
+    config::{AvProviderPreset, ProviderConfig},
+    providers::ProviderRegistry,
+};
 
 pub const ADDON_ID: &str = metadata_scraper::ADDON_ID;
 pub const ADDON_NAME: &str = metadata_scraper::ADDON_NAME;
@@ -9,13 +13,15 @@ pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[must_use]
 pub fn addon_manifest(config: &Config) -> AddonManifest {
-    metadata_scraper::manifest_with_version(
+    let mut manifest = metadata_scraper::manifest_with_version(
         ADDON_VERSION,
         config.base_url.clone(),
         config.preferred_language.clone(),
         provider_toggles(config),
         secret_reference_fields(config),
-    )
+    );
+    add_av_provider_preset_schema(&mut manifest, config.av_provider_preset);
+    manifest
 }
 
 #[must_use]
@@ -33,31 +39,54 @@ fn provider_toggle(provider: &ProviderConfig) -> metadata_scraper::ProviderToggl
     metadata_scraper::ProviderToggle::new(provider.id.as_str(), provider.enabled)
 }
 
+fn add_av_provider_preset_schema(manifest: &mut AddonManifest, preset: AvProviderPreset) {
+    let Some(configuration_schema) = manifest.configuration_schema.as_mut() else {
+        return;
+    };
+    let Some(properties) = configuration_schema
+        .schema
+        .get_mut("properties")
+        .and_then(|value| value.as_object_mut())
+    else {
+        return;
+    };
+
+    properties.insert(
+        "av_provider_preset".to_owned(),
+        serde_json::json!({
+            "type": "string",
+            "enum": AvProviderPreset::SCHEMA_VALUES,
+            "default": preset.as_str(),
+        }),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use nako_addon_protocol::{AddonScope, validate_manifest};
 
     use super::*;
-    use crate::config::{BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig};
+    use crate::config::{
+        AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig,
+    };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
 
     #[test]
     fn addon_manifest_is_valid() {
         let config = Config::default();
         let manifest = addon_manifest(&config);
+        let mut expected_manifest = metadata_scraper::manifest_with_version(
+            ADDON_VERSION,
+            metadata_scraper::DEFAULT_BASE_URL,
+            metadata_scraper::DEFAULT_LANGUAGE,
+            provider_toggles(&config),
+            Vec::new(),
+        );
+        add_av_provider_preset_schema(&mut expected_manifest, AvProviderPreset::default());
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
-        assert_eq!(
-            manifest,
-            metadata_scraper::manifest_with_version(
-                ADDON_VERSION,
-                metadata_scraper::DEFAULT_BASE_URL,
-                metadata_scraper::DEFAULT_LANGUAGE,
-                provider_toggles(&config),
-                Vec::new(),
-            )
-        );
+        assert_eq!(manifest, expected_manifest);
         assert_eq!(
             manifest.resources[0].path,
             metadata_scraper::METADATA_RESOURCE_PATH
@@ -84,6 +113,21 @@ mod tests {
         let schema = &manifest.configuration_schema.unwrap().schema;
         let provider_properties = &schema["properties"]["providers"]["properties"];
 
+        assert_eq!(
+            schema["properties"]["av_provider_preset"]["default"],
+            "manual"
+        );
+        assert_eq!(
+            schema["properties"]["av_provider_preset"]["enum"],
+            serde_json::json!([
+                "manual",
+                "fast_safe",
+                "official_only",
+                "community_first",
+                "fc2_enhanced",
+                "uncensored_official"
+            ])
+        );
         assert_eq!(provider_properties["fixture"]["default"], true);
         assert_eq!(provider_properties["tmdb"]["default"], false);
         assert_eq!(provider_properties["bangumi"]["default"], false);
@@ -212,6 +256,7 @@ mod tests {
         .unwrap();
         let runtime_manifest = addon_manifest(&Config {
             base_url: "http://nako-metadata-scraper:9100".to_owned(),
+            av_provider_preset: AvProviderPreset::default(),
             providers: vec![
                 ProviderConfig::enabled(ProviderId::Fixture),
                 ProviderConfig::disabled(ProviderId::Tmdb),

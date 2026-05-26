@@ -74,6 +74,14 @@ Provider defaults:
 - `douban`: disabled by default; uses the companion browser worker `POST /render`
   contract through `NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL`, with
   provider-specific parsing kept in the Rust sidecar.
+- AV metadata providers are disabled by default unless
+  `NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET` is set. Supported presets are
+  `manual`, `fast_safe`, `official_only`, `community_first`, `fc2_enhanced`,
+  and `uncensored_official`; explicit
+  `NAKO_METADATA_SCRAPER_PROVIDER_*_ENABLED` values override the preset.
+  Manual live AV drift checks use
+  `NAKO_METADATA_SCRAPER_LIVE_AV_PROVIDER_DRIFT_CASES` and report only
+  redaction-safe field health.
 - `notification_bridge.http_webhook`: disabled by default; configured through
   `NAKO_NOTIFICATION_BRIDGE_HTTP_WEBHOOK_*` sidecar environment variables and
   reported only through redaction-safe diagnostics. When enabled with a valid

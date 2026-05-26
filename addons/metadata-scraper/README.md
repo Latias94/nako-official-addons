@@ -317,6 +317,42 @@ worker. The Rust sidecar can require, bypass, or default that worker proxy via
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` as typed render intent
 defaults.
 
+AV provider presets can enable coherent provider groups without setting every
+provider toggle individually. Set `NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET` to
+one of:
+
+- `manual`: catalog defaults only; this preserves the default fixture-only
+  local smoke behavior.
+- `fast_safe`: `javdb`, `dmm`, `fc2`, `mgstage`, and `prestige`.
+- `official_only`: `dmm`, `fc2`, `mgstage`, `prestige`, `caribbean`,
+  `1pondo`, and `10musume`.
+- `community_first`: `javdb`, `javbus`, `javlibrary`, `dmm`, `fc2`,
+  `fc2ppvdb`, `mgstage`, and `prestige`.
+- `fc2_enhanced`: `fc2` and `fc2ppvdb`.
+- `uncensored_official`: `caribbean`, `1pondo`, and `10musume`.
+
+The preset is only the default AV enablement policy. Any explicit
+`NAKO_METADATA_SCRAPER_PROVIDER_*_ENABLED` value wins over the preset, so an
+operator can disable one unstable site or add a specialty provider while
+keeping the named base strategy.
+
+Manual AV provider drift checks are opt-in and ignored by default. They report
+only provider IDs, field names, missing-field lists, and counts; raw titles,
+actors, source URLs, artwork URLs, provider IDs, and AV numbers are not printed.
+Configure one or more cases as `provider=AV-NUMBER`, start the browser worker
+for rendered providers, and run:
+
+```powershell
+$env:NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT = '1'
+$env:NAKO_METADATA_SCRAPER_LIVE_AV_PROVIDER_DRIFT_CASES = 'javdb=SSNI-644;fc2=FC2-1723984'
+cargo test -p nako-metadata-scraper --test live_provider_drift -- --ignored av_live_provider_field_health_smoke
+```
+
+The harness enables only the AV providers named in the case list, then calls
+the same provider registry and `MetadataProvider::suggest` seam used by runtime
+scraping. Browser-rendered providers inherit
+`NAKO_METADATA_SCRAPER_BROWSER_WORKER_*` render settings and proxy policy.
+
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
