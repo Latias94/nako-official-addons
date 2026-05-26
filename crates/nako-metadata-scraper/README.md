@@ -38,6 +38,18 @@ Current alpha provider defaults:
   FC2PPVDB article URLs by normalized FC2 number, supports `fc2ppvdb_id` or
   `fc2ppvdb_url` direct lookup, and emits `fc2ppvdb`, `fc2ppvdb_url`, and
   `av_number` external IDs.
+- `caribbean`: disabled by default; calls the companion browser worker for
+  rendered HTML and acts as an official uncensored source for date-style IDs
+  such as `010116-001`. It supports `caribbean_id` or `caribbean_url` direct
+  lookup and emits `caribbean`, `caribbean_url`, and `av_number` external IDs.
+- `1pondo`: disabled by default; calls the companion browser worker for
+  rendered HTML and acts as an official uncensored source for date-style IDs
+  such as `010116_001`. It supports `1pondo_id` or `1pondo_url` direct lookup
+  and emits `1pondo`, `1pondo_url`, and `av_number` external IDs.
+- `10musume`: disabled by default; calls the companion browser worker for
+  rendered HTML and acts as an official uncensored source for date-style IDs
+  such as `010116_01`. It supports `10musume_id` or `10musume_url` direct
+  lookup and emits `10musume`, `10musume_url`, and `av_number` external IDs.
 - `javbus`: disabled by default; calls the companion browser worker for
   rendered HTML and acts as a broad AV fallback for normalized censored and
   uncensored numbers. It emits `javbus`, `javbus_url`, and `av_number`
@@ -57,23 +69,27 @@ Current alpha provider defaults:
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `javbus_id`,
-`javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`,
-`prestige_id`, `prestige_url`, and `av_number`. These aliases are derived from
-provider-owned external ID capabilities.
+`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
+`caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
+`javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`,
+`mgstage_url`, `prestige_id`, `prestige_url`, and `av_number`. These aliases
+are derived from provider-owned external ID capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
-`FC2PPV-1723984` before provider search. Normal scrape responses include
+`FC2PPV-1723984`, plus official uncensored date-style IDs such as
+`010116-001`, before provider search. Normal scrape responses include
 redaction-safe `query.av` facts when a number is recognized; full local paths
 are not echoed.
 
 When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`,
-`fc2ppvdb_url`, `javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`,
-`mgstage_id`, `mgstage_url`, `prestige_id`, or `prestige_url` is supplied, the
-matching provider performs direct detail lookup before falling back to inferred
-AV-number search. This is useful for appointed-source corrections where a user
-already knows the authoritative site record.
+`fc2ppvdb_url`, `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`,
+`10musume_id`, `10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
+`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, or
+`prestige_url` is supplied, the matching provider performs direct detail lookup
+before falling back to inferred AV-number search. This is useful for
+appointed-source corrections where a user already knows the authoritative site
+record.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
@@ -118,14 +134,15 @@ The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
 When no request policy is supplied, AV clusters use a conservative default
 derived from provider quality descriptors inspired by MDCx's field-priority
-behavior: Prestige is preferred before DMM, MGStage, JavDB, FC2, FC2PPVDB,
-JavBus, and JavLibrary for official title, overview, release/runtime, and
-studio-like facts. Community actor and wanted-count fields prefer
-JavLibrary/JavDB first, with FC2PPVDB above the official FC2 source when it
-has actor labels. Trailer and image fields prefer providers that usually carry
-media URLs, starting with Prestige/MGStage/DMM/JavDB/FC2PPVDB. Passing an explicit
-`provider_field_policy` object replaces that descriptor-derived default for the
-request.
+behavior: Prestige, Caribbean, 1Pondo, and 10Musume are preferred before DMM,
+MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for official title,
+overview, release/runtime, and studio-like facts. Community actor and
+wanted-count fields prefer JavLibrary/JavDB first, with FC2PPVDB and the
+official uncensored sites above the official FC2 source when they have actor
+labels. Trailer and image fields prefer providers that usually carry media
+URLs, starting with Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/JavDB/
+FC2PPVDB. Passing an explicit `provider_field_policy` object replaces that
+descriptor-derived default for the request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
@@ -133,7 +150,8 @@ caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
 FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM/JavBus
-and Prestige providers.
+and Prestige providers. Official uncensored date-style IDs fan out only to
+enabled Caribbean/1Pondo/10Musume and uncensored-capable fallback providers.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 

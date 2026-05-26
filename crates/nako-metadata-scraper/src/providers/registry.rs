@@ -256,6 +256,9 @@ mod tests {
             policy.providers_for("title"),
             &[
                 "prestige".to_owned(),
+                "caribbean".to_owned(),
+                "1pondo".to_owned(),
+                "10musume".to_owned(),
                 "dmm".to_owned(),
                 "mgstage".to_owned(),
                 "javdb".to_owned(),
@@ -274,6 +277,9 @@ mod tests {
                 "fc2ppvdb".to_owned(),
                 "mgstage".to_owned(),
                 "prestige".to_owned(),
+                "caribbean".to_owned(),
+                "1pondo".to_owned(),
+                "10musume".to_owned(),
                 "javbus".to_owned(),
                 "fc2".to_owned(),
             ]
@@ -282,6 +288,9 @@ mod tests {
             policy.providers_for("trailer_url"),
             &[
                 "prestige".to_owned(),
+                "caribbean".to_owned(),
+                "1pondo".to_owned(),
+                "10musume".to_owned(),
                 "mgstage".to_owned(),
                 "dmm".to_owned(),
                 "javdb".to_owned(),
@@ -320,6 +329,9 @@ mod tests {
                 "dmm",
                 "fc2",
                 "fc2ppvdb",
+                "caribbean",
+                "1pondo",
+                "10musume",
                 "javbus",
                 "javlibrary",
                 "mgstage",
@@ -446,6 +458,54 @@ mod tests {
         assert_eq!(
             diagnostics.supported[9],
             ProviderDescriptor {
+                id: "caribbean",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "caribbean_direct_lookup",
+                    "official_uncensored",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[10],
+            ProviderDescriptor {
+                id: "1pondo",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "1pondo_direct_lookup",
+                    "official_uncensored",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[11],
+            ProviderDescriptor {
+                id: "10musume",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "10musume_direct_lookup",
+                    "official_uncensored",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[12],
+            ProviderDescriptor {
                 id: "javbus",
                 enabled: false,
                 available: false,
@@ -460,7 +520,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[10],
+            diagnostics.supported[13],
             ProviderDescriptor {
                 id: "javlibrary",
                 enabled: false,
@@ -476,7 +536,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[11],
+            diagnostics.supported[14],
             ProviderDescriptor {
                 id: "mgstage",
                 enabled: false,
@@ -492,7 +552,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[12],
+            diagnostics.supported[15],
             ProviderDescriptor {
                 id: "prestige",
                 enabled: false,
@@ -595,6 +655,48 @@ mod tests {
                 && capability.top_level_fields.contains(&"fc2ppvdb_url")
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "caribbean"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"caribbean_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "caribbean_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"caribbean_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "1pondo"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"1pondo_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "1pondo_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"1pondo_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "10musume"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"10musume_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "10musume_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"10musume_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "javbus"
                 && capability.value_kind == ExternalIdValueKind::Opaque
                 && capability.accepts_direct_lookup
@@ -678,6 +780,28 @@ mod tests {
             "fc2ppvdb_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "caribbean_id",
+            "caribbean",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "caribbean_url",
+            "caribbean_url",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("1pondo_id", "1pondo", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "1pondo_url",
+            "1pondo_url",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("10musume_id", "10musume", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "10musume_url",
+            "10musume_url",
+            false
+        )));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javbus_id", "javbus", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "javbus_url",
@@ -730,6 +854,9 @@ mod tests {
                 "dmm",
                 "fc2",
                 "fc2ppvdb",
+                "caribbean",
+                "1pondo",
+                "10musume",
                 "javbus",
                 "javlibrary",
                 "mgstage",
@@ -785,6 +912,9 @@ mod tests {
                 "dmm",
                 "fc2",
                 "fc2ppvdb",
+                "caribbean",
+                "1pondo",
+                "10musume",
                 "javbus",
                 "javlibrary",
                 "mgstage",

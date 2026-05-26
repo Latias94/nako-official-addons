@@ -36,15 +36,14 @@ Exit criteria:
 
 ## M4 - Provider Wave 3
 
-Status: In progress on 2026-05-26. Prestige and FC2PPVDB provider work is
-complete; uncensored official provider work remains.
+Status: Complete on 2026-05-26.
 
 Exit criteria:
 
 - Selected wave 3 providers are disabled by default.
 - Registry, config, manifest, aliases, docs, and field-quality descriptors are
   updated.
-- Providers have independent synthetic rendered-HTML tests.
+- Providers have independent synthetic JSON or rendered-HTML tests.
 
 ## M5 - Verification And Closeout
 

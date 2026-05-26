@@ -1,10 +1,11 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
     bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
-    dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig, javdb::JavdbProviderConfig,
-    javlibrary::JavlibraryProviderConfig, mgstage::MgstageProviderConfig,
-    prestige::PrestigeProviderConfig, tmdb::TmdbProviderConfig,
+    caribbean::CaribbeanProviderConfig, dmm::DmmProviderConfig, douban::DoubanProviderConfig,
+    fc2::Fc2ProviderConfig, fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig,
+    javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
+    mgstage::MgstageProviderConfig, onepondo::OnePondoProviderConfig,
+    prestige::PrestigeProviderConfig, tenmusume::TenMusumeProviderConfig, tmdb::TmdbProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -77,6 +78,9 @@ pub enum ProviderId {
     Dmm,
     Fc2,
     Fc2ppvdb,
+    Caribbean,
+    OnePondo,
+    TenMusume,
     Javbus,
     Javlibrary,
     Mgstage,
@@ -96,6 +100,9 @@ impl ProviderId {
             Self::Dmm => "dmm",
             Self::Fc2 => "fc2",
             Self::Fc2ppvdb => "fc2ppvdb",
+            Self::Caribbean => "caribbean",
+            Self::OnePondo => "1pondo",
+            Self::TenMusume => "10musume",
             Self::Javbus => "javbus",
             Self::Javlibrary => "javlibrary",
             Self::Mgstage => "mgstage",
@@ -204,6 +211,33 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn caribbean(enabled: bool, config: CaribbeanProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Caribbean,
+            enabled,
+            kind: ProviderConfigKind::Caribbean(config),
+        }
+    }
+
+    #[must_use]
+    pub fn onepondo(enabled: bool, config: OnePondoProviderConfig) -> Self {
+        Self {
+            id: ProviderId::OnePondo,
+            enabled,
+            kind: ProviderConfigKind::OnePondo(config),
+        }
+    }
+
+    #[must_use]
+    pub fn tenmusume(enabled: bool, config: TenMusumeProviderConfig) -> Self {
+        Self {
+            id: ProviderId::TenMusume,
+            enabled,
+            kind: ProviderConfigKind::TenMusume(config),
+        }
+    }
+
+    #[must_use]
     pub fn javbus(enabled: bool, config: JavbusProviderConfig) -> Self {
         Self {
             id: ProviderId::Javbus,
@@ -304,6 +338,30 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn caribbean_config(&self) -> Option<&CaribbeanProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Caribbean(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn onepondo_config(&self) -> Option<&OnePondoProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::OnePondo(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn tenmusume_config(&self) -> Option<&TenMusumeProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::TenMusume(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn javbus_config(&self) -> Option<&JavbusProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Javbus(config) => Some(config),
@@ -357,6 +415,33 @@ impl ProviderConfig {
             ProviderId::Fc2ppvdb => {
                 Self::fc2ppvdb(enabled, Fc2ppvdbProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Caribbean => Self::caribbean(
+                enabled,
+                CaribbeanProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_CARIBBEAN_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_CARIBBEAN_TIMEOUT_MS",
+                    "https://www.caribbeancom.com",
+                ),
+            ),
+            ProviderId::OnePondo => Self::onepondo(
+                enabled,
+                OnePondoProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_1PONDO_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_1PONDO_TIMEOUT_MS",
+                    "https://www.1pondo.tv",
+                ),
+            ),
+            ProviderId::TenMusume => Self::tenmusume(
+                enabled,
+                TenMusumeProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_10MUSUME_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_10MUSUME_TIMEOUT_MS",
+                    "https://www.10musume.com",
+                ),
+            ),
             ProviderId::Javbus => {
                 Self::javbus(enabled, JavbusProviderConfig::from_env_lookup(|_| None))
             }
@@ -384,6 +469,9 @@ pub enum ProviderConfigKind {
     Dmm(DmmProviderConfig),
     Fc2(Fc2ProviderConfig),
     Fc2ppvdb(Fc2ppvdbProviderConfig),
+    Caribbean(CaribbeanProviderConfig),
+    OnePondo(OnePondoProviderConfig),
+    TenMusume(TenMusumeProviderConfig),
     Javbus(JavbusProviderConfig),
     Javlibrary(JavlibraryProviderConfig),
     Mgstage(MgstageProviderConfig),
@@ -473,6 +561,13 @@ impl ProviderConfig {
             ProviderConfigKind::Dmm(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Caribbean(config) => {
+                config.rendered_pages.proxy_policy_configured()
+            }
+            ProviderConfigKind::OnePondo(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::TenMusume(config) => {
+                config.rendered_pages.proxy_policy_configured()
+            }
             ProviderConfigKind::Javbus(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.proxy_policy_configured()
@@ -495,6 +590,9 @@ impl ProviderConfig {
             ProviderConfigKind::Dmm(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Caribbean(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::OnePondo(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::TenMusume(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Javbus(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.session_key_configured()
@@ -653,9 +751,39 @@ mod tests {
         );
         assert_eq!(fc2ppvdb.render_path, "/render");
         assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[9].id, ProviderId::Javbus);
+        assert_eq!(config.providers[9].id, ProviderId::Caribbean);
         assert!(!config.providers[9].enabled);
-        let javbus = config.providers[9].javbus_config().unwrap();
+        let caribbean = config.providers[9].caribbean_config().unwrap();
+        assert_eq!(caribbean.base_url, "https://www.caribbeancom.com");
+        assert_eq!(
+            caribbean.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(caribbean.render_path, "/render");
+        assert_eq!(caribbean.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[10].id, ProviderId::OnePondo);
+        assert!(!config.providers[10].enabled);
+        let onepondo = config.providers[10].onepondo_config().unwrap();
+        assert_eq!(onepondo.base_url, "https://www.1pondo.tv");
+        assert_eq!(
+            onepondo.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(onepondo.render_path, "/render");
+        assert_eq!(onepondo.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[11].id, ProviderId::TenMusume);
+        assert!(!config.providers[11].enabled);
+        let tenmusume = config.providers[11].tenmusume_config().unwrap();
+        assert_eq!(tenmusume.base_url, "https://www.10musume.com");
+        assert_eq!(
+            tenmusume.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(tenmusume.render_path, "/render");
+        assert_eq!(tenmusume.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(config.providers[12].id, ProviderId::Javbus);
+        assert!(!config.providers[12].enabled);
+        let javbus = config.providers[12].javbus_config().unwrap();
         assert_eq!(javbus.base_url, "https://www.javbus.com");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -663,9 +791,9 @@ mod tests {
         );
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[10].id, ProviderId::Javlibrary);
-        assert!(!config.providers[10].enabled);
-        let javlibrary = config.providers[10].javlibrary_config().unwrap();
+        assert_eq!(config.providers[13].id, ProviderId::Javlibrary);
+        assert!(!config.providers[13].enabled);
+        let javlibrary = config.providers[13].javlibrary_config().unwrap();
         assert_eq!(javlibrary.base_url, "https://www.javlibrary.com");
         assert_eq!(javlibrary.language_path, "cn");
         assert_eq!(
@@ -674,9 +802,9 @@ mod tests {
         );
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[11].id, ProviderId::Mgstage);
-        assert!(!config.providers[11].enabled);
-        let mgstage = config.providers[11].mgstage_config().unwrap();
+        assert_eq!(config.providers[14].id, ProviderId::Mgstage);
+        assert!(!config.providers[14].enabled);
+        let mgstage = config.providers[14].mgstage_config().unwrap();
         assert_eq!(mgstage.base_url, "https://www.mgstage.com");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -684,9 +812,9 @@ mod tests {
         );
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[12].id, ProviderId::Prestige);
-        assert!(!config.providers[12].enabled);
-        let prestige = config.providers[12].prestige_config().unwrap();
+        assert_eq!(config.providers[15].id, ProviderId::Prestige);
+        assert!(!config.providers[15].enabled);
+        let prestige = config.providers[15].prestige_config().unwrap();
         assert_eq!(prestige.base_url, "https://www.prestige-av.com");
         assert_eq!(prestige.timeout_ms, 10_000);
         assert!(prestige.proxy_url.is_none());
@@ -699,6 +827,9 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Dmm));
         assert!(!config.provider_enabled(ProviderId::Fc2));
         assert!(!config.provider_enabled(ProviderId::Fc2ppvdb));
+        assert!(!config.provider_enabled(ProviderId::Caribbean));
+        assert!(!config.provider_enabled(ProviderId::OnePondo));
+        assert!(!config.provider_enabled(ProviderId::TenMusume));
         assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_enabled(ProviderId::Javlibrary));
         assert!(!config.provider_enabled(ProviderId::Mgstage));
@@ -733,6 +864,9 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_1PONDO_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
@@ -778,6 +912,16 @@ mod tests {
                 Some("https://fc2ppvdb.example".to_owned())
             }
             "NAKO_METADATA_SCRAPER_FC2PPVDB_TIMEOUT_MS" => Some("4700".to_owned()),
+            "NAKO_METADATA_SCRAPER_CARIBBEAN_BASE_URL" => {
+                Some("https://caribbean.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_CARIBBEAN_TIMEOUT_MS" => Some("4800".to_owned()),
+            "NAKO_METADATA_SCRAPER_1PONDO_BASE_URL" => Some("https://1pondo.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_1PONDO_TIMEOUT_MS" => Some("4900".to_owned()),
+            "NAKO_METADATA_SCRAPER_10MUSUME_BASE_URL" => {
+                Some("https://10musume.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_10MUSUME_TIMEOUT_MS" => Some("5100".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL" => Some("https://javbus.example".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS" => Some("8500".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_BASE_URL" => {
@@ -900,8 +1044,35 @@ mod tests {
         );
         assert_eq!(fc2ppvdb.render_path, "/render");
         assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 4700);
+        assert!(config.provider_enabled(ProviderId::Caribbean));
+        let caribbean = config.providers[9].caribbean_config().unwrap();
+        assert_eq!(caribbean.base_url, "https://caribbean.example");
+        assert_eq!(
+            caribbean.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(caribbean.render_path, "/render");
+        assert_eq!(caribbean.rendered_pages.timeout_ms, 4800);
+        assert!(config.provider_enabled(ProviderId::OnePondo));
+        let onepondo = config.providers[10].onepondo_config().unwrap();
+        assert_eq!(onepondo.base_url, "https://1pondo.example");
+        assert_eq!(
+            onepondo.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(onepondo.render_path, "/render");
+        assert_eq!(onepondo.rendered_pages.timeout_ms, 4900);
+        assert!(config.provider_enabled(ProviderId::TenMusume));
+        let tenmusume = config.providers[11].tenmusume_config().unwrap();
+        assert_eq!(tenmusume.base_url, "https://10musume.example");
+        assert_eq!(
+            tenmusume.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(tenmusume.render_path, "/render");
+        assert_eq!(tenmusume.rendered_pages.timeout_ms, 5100);
         assert!(config.provider_enabled(ProviderId::Javbus));
-        let javbus = config.providers[9].javbus_config().unwrap();
+        let javbus = config.providers[12].javbus_config().unwrap();
         assert_eq!(javbus.base_url, "https://javbus.example");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -910,7 +1081,7 @@ mod tests {
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 8500);
         assert!(config.provider_enabled(ProviderId::Javlibrary));
-        let javlibrary = config.providers[10].javlibrary_config().unwrap();
+        let javlibrary = config.providers[13].javlibrary_config().unwrap();
         assert_eq!(javlibrary.base_url, "https://javlibrary.example");
         assert_eq!(javlibrary.language_path, "ja");
         assert_eq!(
@@ -920,7 +1091,7 @@ mod tests {
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 9500);
         assert!(config.provider_enabled(ProviderId::Mgstage));
-        let mgstage = config.providers[11].mgstage_config().unwrap();
+        let mgstage = config.providers[14].mgstage_config().unwrap();
         assert_eq!(mgstage.base_url, "https://mgstage.example");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -929,7 +1100,7 @@ mod tests {
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10500);
         assert!(config.provider_enabled(ProviderId::Prestige));
-        let prestige = config.providers[12].prestige_config().unwrap();
+        let prestige = config.providers[15].prestige_config().unwrap();
         assert_eq!(prestige.base_url, "https://prestige.example");
         assert_eq!(prestige.timeout_ms, 11500);
         assert_eq!(

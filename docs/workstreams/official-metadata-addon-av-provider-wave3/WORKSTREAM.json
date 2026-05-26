@@ -5,13 +5,14 @@
   "created_at": "2026-05-26",
   "updated_at": "2026-05-26",
   "task_prefix": "OMAV3",
-  "current_task": "OMAV3-060",
+  "current_task": "OMAV3-070",
   "completed_tasks": [
     "OMAV3-010",
     "OMAV3-020",
     "OMAV3-030",
     "OMAV3-040",
-    "OMAV3-050"
+    "OMAV3-050",
+    "OMAV3-060"
   ],
   "scope": [
     "crates/nako-metadata-scraper/src/providers",

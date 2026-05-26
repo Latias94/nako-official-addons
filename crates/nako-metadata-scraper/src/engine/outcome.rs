@@ -14,6 +14,9 @@ pub enum ProviderOutcome {
     DmmRenderedHtmlParsed,
     Fc2RenderedHtmlParsed,
     Fc2ppvdbRenderedHtmlParsed,
+    CaribbeanRenderedHtmlParsed,
+    OnePondoRenderedHtmlParsed,
+    TenMusumeRenderedHtmlParsed,
     JavbusRenderedHtmlParsed,
     JavlibraryRenderedHtmlParsed,
     MgstageRenderedHtmlParsed,
@@ -81,6 +84,15 @@ impl ProviderOutcome {
             }
             Self::Fc2ppvdbRenderedHtmlParsed => {
                 "FC2PPVDB AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::CaribbeanRenderedHtmlParsed => {
+                "Caribbeancom AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::OnePondoRenderedHtmlParsed => {
+                "1Pondo AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::TenMusumeRenderedHtmlParsed => {
+                "10Musume AV candidate parsed from browser-worker rendered HTML."
             }
             Self::JavbusRenderedHtmlParsed => {
                 "JavBus AV candidate parsed from browser-worker rendered HTML."

@@ -5,6 +5,7 @@ use crate::engine::{MetadataQuery, ProviderMetadataCandidate, av::AvNumberRoute}
 
 pub mod bangumi;
 pub mod browser_worker;
+pub mod caribbean;
 pub mod dmm;
 pub mod douban;
 pub mod fc2;
@@ -15,6 +16,8 @@ pub mod javbus;
 pub mod javdb;
 pub mod javlibrary;
 pub mod mgstage;
+mod official_uncensored;
+pub mod onepondo;
 pub mod prestige;
 mod registry;
 mod rendered_av;
@@ -22,6 +25,7 @@ mod rendered_av;
 pub(crate) mod rendered_av_fixture;
 mod rendered_page;
 mod search_policy;
+pub mod tenmusume;
 pub mod tmdb;
 
 pub use registry::{
@@ -42,6 +46,9 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         dmm::catalog_entry(),
         fc2::catalog_entry(),
         fc2ppvdb::catalog_entry(),
+        caribbean::catalog_entry(),
+        onepondo::catalog_entry(),
+        tenmusume::catalog_entry(),
         javbus::catalog_entry(),
         javlibrary::catalog_entry(),
         mgstage::catalog_entry(),

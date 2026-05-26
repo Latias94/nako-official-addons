@@ -4,21 +4,16 @@ Prefix: OMAV3
 
 ## Active
 
-- [ ] OMAV3-060 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
-  Goal: Add the official uncensored provider trio path for Caribbeancom, 1Pondo, and 10Musume, or split if one site needs a separate lane.
-  Validation: `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
-  Review: Confirm each provider has independent fixtures, route gates, external IDs, field quality descriptors, and docs.
-  Evidence:
-  Handoff:
-
-## Pending
-
 - [ ] OMAV3-070 [owner=codex] [deps=OMAV3-040,OMAV3-050,OMAV3-060] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-provider-wave3]
   Goal: Run full gates, document provider wave 3 behavior, and close or split remaining provider candidates.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
   Review: Confirm no provider or protection work remains hidden in handoff notes.
   Evidence:
   Handoff:
+
+## Pending
+
+- None.
 
 ## Completed
 
@@ -56,6 +51,13 @@ Prefix: OMAV3
   Review: FC2PPVDB was selected because it has deterministic article URLs and richer release/runtime/actor/tag/seller/trailer fallback coverage than FC2Hub/FC2Club for this slice; it does not replace the official FC2 provider.
   Evidence: PASS on 2026-05-26: 68 fc2/AV/config/registry/manifest tests; dedicated FC2PPVDB provider fixture tests covered FC2 route search, explicit ID lookup, explicit URL lookup, route skip, long-tail field mapping, artwork, and trailer separation.
   Handoff: DONE. OMAV3-060 is active.
+
+- [x] OMAV3-060 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add the official uncensored provider trio path for Caribbeancom, 1Pondo, and 10Musume, or split if one site needs a separate lane.
+  Validation: `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Caribbean, 1Pondo, and 10Musume share a deep official-uncensored implementation with independent site descriptors and synthetic rendered HTML fixtures; each is disabled by default, route-gated to uncensored date-style IDs, exposes ID/URL aliases, emits provider URL and `av_number` external IDs, and participates in field quality descriptors.
+  Evidence: PASS on 2026-05-26: 63 caribbean/1pondo/10musume/AV/config/registry/manifest tests; fmt, workstream JSON, and diff hygiene passed.
+  Handoff: DONE. OMAV3-070 is active.
 
 ## Follow-Up Candidates
 

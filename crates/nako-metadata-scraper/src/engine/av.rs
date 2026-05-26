@@ -252,6 +252,7 @@ fn parse_number(value: &str) -> Option<ParsedAvNumber> {
         .or_else(|| parse_domestic(&candidate))
         .or_else(|| parse_western_date(&candidate))
         .or_else(|| parse_amateur(&candidate))
+        .or_else(|| parse_uncensored_date_id(&candidate))
         .or_else(|| parse_uncensored(&candidate))
         .or_else(|| parse_censored(&candidate))
 }
@@ -440,6 +441,28 @@ fn parse_uncensored(value: &str) -> Option<ParsedAvNumber> {
     None
 }
 
+fn parse_uncensored_date_id(value: &str) -> Option<ParsedAvNumber> {
+    let tokens = tokens(value);
+    for window in tokens.windows(2) {
+        if window[0].len() == 6
+            && window[0]
+                .chars()
+                .all(|character| character.is_ascii_digit())
+            && (2..=4).contains(&window[1].len())
+            && window[1]
+                .chars()
+                .all(|character| character.is_ascii_digit())
+        {
+            return Some(ParsedAvNumber {
+                number: format!("{}_{}", window[0], window[1]),
+                route: AvNumberRoute::Uncensored,
+            });
+        }
+    }
+
+    None
+}
+
 fn parse_censored(value: &str) -> Option<ParsedAvNumber> {
     let tokens = tokens(value);
     for index in 0..tokens.len() {
@@ -503,7 +526,7 @@ fn should_replace_title_with_av_number(title: &str) -> bool {
 }
 
 fn search_terms_for(number: &str) -> Vec<String> {
-    let compact = number.replace(['-', '.', ' '], "");
+    let compact = number.replace(['-', '_', '.', ' '], "");
     if compact == number {
         vec![number.to_owned()]
     } else {
@@ -620,6 +643,19 @@ mod tests {
         assert_eq!(facts.number, "BRAZZERSEXXTRA.21.02.01");
         assert_eq!(facts.route, AvNumberRoute::Western);
         assert_eq!(facts.source, AvNumberSource::Path);
+    }
+
+    #[test]
+    fn av_number_classifies_official_uncensored_date_id() {
+        let facts = facts_from_payload(&serde_json::json!({
+            "file_name": "010116-001.mp4"
+        }))
+        .unwrap();
+
+        assert_eq!(facts.number, "010116_001");
+        assert_eq!(facts.route, AvNumberRoute::Uncensored);
+        assert_eq!(facts.source, AvNumberSource::FileName);
+        assert_eq!(facts.search_terms, vec!["010116_001", "010116001"]);
     }
 
     #[test]
