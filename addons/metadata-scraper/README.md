@@ -326,9 +326,9 @@ one of:
 - `fast_safe`: `javdb`, `dmm`, `fc2`, `mgstage`, and `prestige`.
 - `official_only`: `dmm`, `fc2`, `mgstage`, `prestige`, `caribbean`,
   `1pondo`, and `10musume`.
-- `community_first`: `javdb`, `javbus`, `javlibrary`, `dmm`, `fc2`,
-  `fc2ppvdb`, `mgstage`, and `prestige`.
-- `fc2_enhanced`: `fc2` and `fc2ppvdb`.
+- `community_first`: `javdb`, `javbus`, `javlibrary`, `airav`, `avsox`,
+  `dmm`, `xcity`, `fc2`, `fc2ppvdb`, `mgstage`, and `prestige`.
+- `fc2_enhanced`: `fc2`, `fc2ppvdb`, `airav`, and `avsox`.
 - `uncensored_official`: `caribbean`, `1pondo`, and `10musume`.
 
 The preset is only the default AV enablement policy. Any explicit
@@ -355,11 +355,12 @@ scraping. Browser-rendered providers inherit
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
-`caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
-`javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`,
-`mgstage_url`, `prestige_id`, `prestige_url`, and `av_number`. These aliases
-are derived from provider-owned external ID capabilities.
+`dmm_url`, `xcity_id`, `xcity_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`,
+`caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`,
+`10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
+`javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`, `avsox_url`,
+`mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, and `av_number`.
+These aliases are derived from provider-owned external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker

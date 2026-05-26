@@ -1,0 +1,49 @@
+{
+  "id": "official-metadata-addon-av-provider-wave4",
+  "title": "Official Metadata Addon AV Provider Wave 4",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "AVW4",
+  "closed_at": "2026-05-26",
+  "current_task": null,
+  "completed_tasks": [
+    "AVW4-010",
+    "AVW4-020",
+    "AVW4-030"
+  ],
+  "scope": [
+    "crates/nako-metadata-scraper/src/config.rs",
+    "crates/nako-metadata-scraper/src/manifest.rs",
+    "crates/nako-metadata-scraper/src/providers",
+    "crates/nako-metadata-scraper/tests/live_provider_drift.rs",
+    "addons/metadata-scraper/manifest.example.json",
+    "README.md",
+    "addons/metadata-scraper/README.md",
+    "docs/workstreams/official-metadata-addon-av-provider-wave4"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper airav avsox xcity manifest av_provider_preset field_policy --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave4/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking internal provider/config architecture is allowed. Public provider IDs, env var names, manifest fields, and external-id aliases must be documented.",
+  "top_recommendation": "Wave 4 provider breadth is complete. Next high-leverage AV work is adding token/hash workflows such as ThePornDB or additional MDCx long-tail providers on top of the rendered-search base.",
+  "closeout_summary": "Added a reusable rendered-search AV provider base and thin AirAV, AVSox, and XCity providers. Provider config, presets, manifest schema/example, field policy, diagnostics, external-id aliases, drift harness, README docs, and workstream evidence were updated. Full package, fmt, JSON, and diff hygiene gates passed on 2026-05-26.",
+  "references": [
+    "repo-ref/mdcx/",
+    "docs/workstreams/official-metadata-addon-av-mdcx-parity/",
+    "docs/workstreams/official-metadata-addon-av-ops-presets-and-drift/"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only. Use it for high-level provider coverage, source stratification, and batch strategy only. Do not copy source, selectors, regex tables, comments, fixtures, or structure."
+}

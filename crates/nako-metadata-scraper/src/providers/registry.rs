@@ -260,11 +260,14 @@ mod tests {
                 "1pondo".to_owned(),
                 "10musume".to_owned(),
                 "dmm".to_owned(),
+                "xcity".to_owned(),
                 "mgstage".to_owned(),
                 "javdb".to_owned(),
                 "fc2".to_owned(),
                 "fc2ppvdb".to_owned(),
+                "airav".to_owned(),
                 "javbus".to_owned(),
+                "avsox".to_owned(),
                 "javlibrary".to_owned(),
             ]
         );
@@ -277,11 +280,14 @@ mod tests {
                 "fc2ppvdb".to_owned(),
                 "mgstage".to_owned(),
                 "prestige".to_owned(),
+                "airav".to_owned(),
                 "caribbean".to_owned(),
                 "1pondo".to_owned(),
                 "10musume".to_owned(),
                 "javbus".to_owned(),
                 "fc2".to_owned(),
+                "avsox".to_owned(),
+                "xcity".to_owned(),
             ]
         );
         assert_eq!(
@@ -296,7 +302,9 @@ mod tests {
                 "javdb".to_owned(),
                 "fc2ppvdb".to_owned(),
                 "fc2".to_owned(),
+                "xcity".to_owned(),
                 "javbus".to_owned(),
+                "airav".to_owned(),
             ]
         );
     }
@@ -327,6 +335,7 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
+                "xcity",
                 "fc2",
                 "fc2ppvdb",
                 "caribbean",
@@ -334,6 +343,8 @@ mod tests {
                 "10musume",
                 "javbus",
                 "javlibrary",
+                "airav",
+                "avsox",
                 "mgstage",
                 "prestige"
             ]
@@ -427,6 +438,22 @@ mod tests {
         assert_eq!(
             diagnostics.supported[7],
             ProviderDescriptor {
+                id: "xcity",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "xcity_movie_search",
+                    "xcity_direct_url",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[8],
+            ProviderDescriptor {
                 id: "fc2",
                 enabled: false,
                 available: false,
@@ -440,7 +467,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[8],
+            diagnostics.supported[9],
             ProviderDescriptor {
                 id: "fc2ppvdb",
                 enabled: false,
@@ -456,7 +483,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[9],
+            diagnostics.supported[10],
             ProviderDescriptor {
                 id: "caribbean",
                 enabled: false,
@@ -472,7 +499,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[10],
+            diagnostics.supported[11],
             ProviderDescriptor {
                 id: "1pondo",
                 enabled: false,
@@ -488,7 +515,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[11],
+            diagnostics.supported[12],
             ProviderDescriptor {
                 id: "10musume",
                 enabled: false,
@@ -504,7 +531,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[12],
+            diagnostics.supported[13],
             ProviderDescriptor {
                 id: "javbus",
                 enabled: false,
@@ -520,7 +547,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[13],
+            diagnostics.supported[14],
             ProviderDescriptor {
                 id: "javlibrary",
                 enabled: false,
@@ -536,7 +563,39 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[14],
+            diagnostics.supported[15],
+            ProviderDescriptor {
+                id: "airav",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "airav_movie_search",
+                    "airav_direct_url",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[16],
+            ProviderDescriptor {
+                id: "avsox",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "avsox_movie_search",
+                    "avsox_direct_url",
+                    "browser_worker_rendered_html"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[17],
             ProviderDescriptor {
                 id: "mgstage",
                 enabled: false,
@@ -552,7 +611,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[15],
+            diagnostics.supported[18],
             ProviderDescriptor {
                 id: "prestige",
                 enabled: false,
@@ -625,6 +684,13 @@ mod tests {
                 && capability.accepts_direct_lookup
                 && capability.emits
                 && capability.top_level_fields.contains(&"dmm_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "xcity_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"xcity_url")
         }));
         assert!(capabilities.iter().any(|capability| {
             capability.provider == "av_number"
@@ -725,6 +791,20 @@ mod tests {
                 && capability.top_level_fields.contains(&"javlibrary_url")
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "airav_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"airav_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "avsox_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"avsox_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "mgstage"
                 && capability.value_kind == ExternalIdValueKind::Opaque
                 && capability.accepts_direct_lookup
@@ -773,6 +853,8 @@ mod tests {
         assert!(aliases.contains(&QueryExternalIdAlias::new("javdb_id", "javdb", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_id", "dmm", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("dmm_url", "dmm_url", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("xcity_id", "xcity", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("xcity_url", "xcity_url", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("fc2_id", "fc2", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("fc2ppvdb_id", "fc2ppvdb", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new(
@@ -818,6 +900,10 @@ mod tests {
             "javlibrary_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("airav_id", "airav", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("airav_url", "airav_url", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("avsox_id", "avsox", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("avsox_url", "avsox_url", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("mgstage_id", "mgstage", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "mgstage_url",
@@ -852,6 +938,7 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
+                "xcity",
                 "fc2",
                 "fc2ppvdb",
                 "caribbean",
@@ -859,6 +946,8 @@ mod tests {
                 "10musume",
                 "javbus",
                 "javlibrary",
+                "airav",
+                "avsox",
                 "mgstage",
                 "prestige"
             ]
@@ -910,6 +999,7 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
+                "xcity",
                 "fc2",
                 "fc2ppvdb",
                 "caribbean",
@@ -917,6 +1007,8 @@ mod tests {
                 "10musume",
                 "javbus",
                 "javlibrary",
+                "airav",
+                "avsox",
                 "mgstage",
                 "prestige"
             ]

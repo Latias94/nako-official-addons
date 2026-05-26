@@ -1,11 +1,12 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
-    bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
-    caribbean::CaribbeanProviderConfig, dmm::DmmProviderConfig, douban::DoubanProviderConfig,
-    fc2::Fc2ProviderConfig, fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig,
-    javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
-    mgstage::MgstageProviderConfig, onepondo::OnePondoProviderConfig,
-    prestige::PrestigeProviderConfig, tenmusume::TenMusumeProviderConfig, tmdb::TmdbProviderConfig,
+    airav::AiravProviderConfig, avsox::AvsoxProviderConfig, bangumi::BangumiProviderConfig,
+    browser_worker::BrowserWorkerProviderConfig, caribbean::CaribbeanProviderConfig,
+    dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
+    fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig, javdb::JavdbProviderConfig,
+    javlibrary::JavlibraryProviderConfig, mgstage::MgstageProviderConfig,
+    onepondo::OnePondoProviderConfig, prestige::PrestigeProviderConfig,
+    tenmusume::TenMusumeProviderConfig, tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -76,6 +77,7 @@ pub enum ProviderId {
     Douban,
     Javdb,
     Dmm,
+    Xcity,
     Fc2,
     Fc2ppvdb,
     Caribbean,
@@ -83,6 +85,8 @@ pub enum ProviderId {
     TenMusume,
     Javbus,
     Javlibrary,
+    Airav,
+    Avsox,
     Mgstage,
     Prestige,
 }
@@ -98,6 +102,7 @@ impl ProviderId {
             Self::Douban => "douban",
             Self::Javdb => "javdb",
             Self::Dmm => "dmm",
+            Self::Xcity => "xcity",
             Self::Fc2 => "fc2",
             Self::Fc2ppvdb => "fc2ppvdb",
             Self::Caribbean => "caribbean",
@@ -105,6 +110,8 @@ impl ProviderId {
             Self::TenMusume => "10musume",
             Self::Javbus => "javbus",
             Self::Javlibrary => "javlibrary",
+            Self::Airav => "airav",
+            Self::Avsox => "avsox",
             Self::Mgstage => "mgstage",
             Self::Prestige => "prestige",
         }
@@ -116,6 +123,7 @@ impl ProviderId {
             self,
             Self::Javdb
                 | Self::Dmm
+                | Self::Xcity
                 | Self::Fc2
                 | Self::Fc2ppvdb
                 | Self::Caribbean
@@ -123,6 +131,8 @@ impl ProviderId {
                 | Self::TenMusume
                 | Self::Javbus
                 | Self::Javlibrary
+                | Self::Airav
+                | Self::Avsox
                 | Self::Mgstage
                 | Self::Prestige
         )
@@ -151,13 +161,21 @@ const COMMUNITY_FIRST_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Javdb,
     ProviderId::Javbus,
     ProviderId::Javlibrary,
+    ProviderId::Airav,
+    ProviderId::Avsox,
     ProviderId::Dmm,
+    ProviderId::Xcity,
     ProviderId::Fc2,
     ProviderId::Fc2ppvdb,
     ProviderId::Mgstage,
     ProviderId::Prestige,
 ];
-const FC2_ENHANCED_AV_PROVIDERS: &[ProviderId] = &[ProviderId::Fc2, ProviderId::Fc2ppvdb];
+const FC2_ENHANCED_AV_PROVIDERS: &[ProviderId] = &[
+    ProviderId::Fc2,
+    ProviderId::Fc2ppvdb,
+    ProviderId::Airav,
+    ProviderId::Avsox,
+];
 const UNCENSORED_OFFICIAL_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Caribbean,
     ProviderId::OnePondo,
@@ -316,6 +334,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn xcity(enabled: bool, config: XcityProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Xcity,
+            enabled,
+            kind: ProviderConfigKind::Xcity(config),
+        }
+    }
+
+    #[must_use]
     pub fn fc2(enabled: bool, config: Fc2ProviderConfig) -> Self {
         Self {
             id: ProviderId::Fc2,
@@ -375,6 +402,24 @@ impl ProviderConfig {
             id: ProviderId::Javlibrary,
             enabled,
             kind: ProviderConfigKind::Javlibrary(config),
+        }
+    }
+
+    #[must_use]
+    pub fn airav(enabled: bool, config: AiravProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Airav,
+            enabled,
+            kind: ProviderConfigKind::Airav(config),
+        }
+    }
+
+    #[must_use]
+    pub fn avsox(enabled: bool, config: AvsoxProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Avsox,
+            enabled,
+            kind: ProviderConfigKind::Avsox(config),
         }
     }
 
@@ -445,6 +490,14 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn xcity_config(&self) -> Option<&XcityProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Xcity(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn fc2_config(&self) -> Option<&Fc2ProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Fc2(config) => Some(config),
@@ -501,6 +554,22 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn airav_config(&self) -> Option<&AiravProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Airav(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn avsox_config(&self) -> Option<&AvsoxProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Avsox(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn mgstage_config(&self) -> Option<&MgstageProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Mgstage(config) => Some(config),
@@ -534,6 +603,15 @@ impl ProviderConfig {
                 Self::javdb(enabled, JavdbProviderConfig::from_env_lookup(|_| None))
             }
             ProviderId::Dmm => Self::dmm(enabled, DmmProviderConfig::from_env_lookup(|_| None)),
+            ProviderId::Xcity => Self::xcity(
+                enabled,
+                XcityProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_XCITY_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_XCITY_TIMEOUT_MS",
+                    "https://xcity.jp",
+                ),
+            ),
             ProviderId::Fc2 => Self::fc2(enabled, Fc2ProviderConfig::from_env_lookup(|_| None)),
             ProviderId::Fc2ppvdb => {
                 Self::fc2ppvdb(enabled, Fc2ppvdbProviderConfig::from_env_lookup(|_| None))
@@ -571,6 +649,24 @@ impl ProviderConfig {
             ProviderId::Javlibrary => {
                 Self::javlibrary(enabled, JavlibraryProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::Airav => Self::airav(
+                enabled,
+                AiravProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_AIRAV_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_AIRAV_TIMEOUT_MS",
+                    "https://www.airav.wiki",
+                ),
+            ),
+            ProviderId::Avsox => Self::avsox(
+                enabled,
+                AvsoxProviderConfig::from_env_lookup(
+                    |_| None,
+                    "NAKO_METADATA_SCRAPER_AVSOX_BASE_URL",
+                    "NAKO_METADATA_SCRAPER_AVSOX_TIMEOUT_MS",
+                    "https://avsox.click",
+                ),
+            ),
             ProviderId::Mgstage => {
                 Self::mgstage(enabled, MgstageProviderConfig::from_env_lookup(|_| None))
             }
@@ -590,6 +686,7 @@ pub enum ProviderConfigKind {
     Douban(DoubanProviderConfig),
     Javdb(JavdbProviderConfig),
     Dmm(DmmProviderConfig),
+    Xcity(XcityProviderConfig),
     Fc2(Fc2ProviderConfig),
     Fc2ppvdb(Fc2ppvdbProviderConfig),
     Caribbean(CaribbeanProviderConfig),
@@ -597,6 +694,8 @@ pub enum ProviderConfigKind {
     TenMusume(TenMusumeProviderConfig),
     Javbus(JavbusProviderConfig),
     Javlibrary(JavlibraryProviderConfig),
+    Airav(AiravProviderConfig),
+    Avsox(AvsoxProviderConfig),
     Mgstage(MgstageProviderConfig),
     Prestige(PrestigeProviderConfig),
 }
@@ -695,6 +794,7 @@ impl ProviderConfig {
             ProviderConfigKind::Douban(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Javdb(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Dmm(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Xcity(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Caribbean(config) => {
@@ -708,6 +808,8 @@ impl ProviderConfig {
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.proxy_policy_configured()
             }
+            ProviderConfigKind::Airav(config) => config.rendered_pages.proxy_policy_configured(),
+            ProviderConfigKind::Avsox(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Prestige(_) => false,
             ProviderConfigKind::Fixture
@@ -724,6 +826,7 @@ impl ProviderConfig {
             ProviderConfigKind::Douban(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Javdb(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Dmm(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Xcity(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Fc2(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Caribbean(config) => config.rendered_pages.session_key_configured(),
@@ -733,6 +836,8 @@ impl ProviderConfig {
             ProviderConfigKind::Javlibrary(config) => {
                 config.rendered_pages.session_key_configured()
             }
+            ProviderConfigKind::Airav(config) => config.rendered_pages.session_key_configured(),
+            ProviderConfigKind::Avsox(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Prestige(_) => false,
             ProviderConfigKind::Fixture
@@ -873,9 +978,19 @@ mod tests {
         );
         assert_eq!(dmm.render_path, "/render");
         assert_eq!(dmm.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[7].id, ProviderId::Fc2);
-        assert!(!config.providers[7].enabled);
-        let fc2 = config.providers[7].fc2_config().unwrap();
+        let xcity_provider = config.provider_config(ProviderId::Xcity).unwrap();
+        assert!(!xcity_provider.enabled);
+        let xcity = xcity_provider.xcity_config().unwrap();
+        assert_eq!(xcity.base_url, "https://xcity.jp");
+        assert_eq!(
+            xcity.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(xcity.render_path, "/render");
+        assert_eq!(xcity.rendered_pages.timeout_ms, 10_000);
+        let fc2_provider = config.provider_config(ProviderId::Fc2).unwrap();
+        assert!(!fc2_provider.enabled);
+        let fc2 = fc2_provider.fc2_config().unwrap();
         assert_eq!(fc2.base_url, "https://adult.contents.fc2.com");
         assert_eq!(
             fc2.rendered_pages.base_url,
@@ -883,9 +998,9 @@ mod tests {
         );
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[8].id, ProviderId::Fc2ppvdb);
-        assert!(!config.providers[8].enabled);
-        let fc2ppvdb = config.providers[8].fc2ppvdb_config().unwrap();
+        let fc2ppvdb_provider = config.provider_config(ProviderId::Fc2ppvdb).unwrap();
+        assert!(!fc2ppvdb_provider.enabled);
+        let fc2ppvdb = fc2ppvdb_provider.fc2ppvdb_config().unwrap();
         assert_eq!(fc2ppvdb.base_url, "https://fc2ppvdb.com");
         assert_eq!(
             fc2ppvdb.rendered_pages.base_url,
@@ -893,9 +1008,9 @@ mod tests {
         );
         assert_eq!(fc2ppvdb.render_path, "/render");
         assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[9].id, ProviderId::Caribbean);
-        assert!(!config.providers[9].enabled);
-        let caribbean = config.providers[9].caribbean_config().unwrap();
+        let caribbean_provider = config.provider_config(ProviderId::Caribbean).unwrap();
+        assert!(!caribbean_provider.enabled);
+        let caribbean = caribbean_provider.caribbean_config().unwrap();
         assert_eq!(caribbean.base_url, "https://www.caribbeancom.com");
         assert_eq!(
             caribbean.rendered_pages.base_url,
@@ -903,9 +1018,9 @@ mod tests {
         );
         assert_eq!(caribbean.render_path, "/render");
         assert_eq!(caribbean.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[10].id, ProviderId::OnePondo);
-        assert!(!config.providers[10].enabled);
-        let onepondo = config.providers[10].onepondo_config().unwrap();
+        let onepondo_provider = config.provider_config(ProviderId::OnePondo).unwrap();
+        assert!(!onepondo_provider.enabled);
+        let onepondo = onepondo_provider.onepondo_config().unwrap();
         assert_eq!(onepondo.base_url, "https://www.1pondo.tv");
         assert_eq!(
             onepondo.rendered_pages.base_url,
@@ -913,9 +1028,9 @@ mod tests {
         );
         assert_eq!(onepondo.render_path, "/render");
         assert_eq!(onepondo.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[11].id, ProviderId::TenMusume);
-        assert!(!config.providers[11].enabled);
-        let tenmusume = config.providers[11].tenmusume_config().unwrap();
+        let tenmusume_provider = config.provider_config(ProviderId::TenMusume).unwrap();
+        assert!(!tenmusume_provider.enabled);
+        let tenmusume = tenmusume_provider.tenmusume_config().unwrap();
         assert_eq!(tenmusume.base_url, "https://www.10musume.com");
         assert_eq!(
             tenmusume.rendered_pages.base_url,
@@ -923,9 +1038,9 @@ mod tests {
         );
         assert_eq!(tenmusume.render_path, "/render");
         assert_eq!(tenmusume.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[12].id, ProviderId::Javbus);
-        assert!(!config.providers[12].enabled);
-        let javbus = config.providers[12].javbus_config().unwrap();
+        let javbus_provider = config.provider_config(ProviderId::Javbus).unwrap();
+        assert!(!javbus_provider.enabled);
+        let javbus = javbus_provider.javbus_config().unwrap();
         assert_eq!(javbus.base_url, "https://www.javbus.com");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -933,9 +1048,9 @@ mod tests {
         );
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[13].id, ProviderId::Javlibrary);
-        assert!(!config.providers[13].enabled);
-        let javlibrary = config.providers[13].javlibrary_config().unwrap();
+        let javlibrary_provider = config.provider_config(ProviderId::Javlibrary).unwrap();
+        assert!(!javlibrary_provider.enabled);
+        let javlibrary = javlibrary_provider.javlibrary_config().unwrap();
         assert_eq!(javlibrary.base_url, "https://www.javlibrary.com");
         assert_eq!(javlibrary.language_path, "cn");
         assert_eq!(
@@ -944,9 +1059,29 @@ mod tests {
         );
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[14].id, ProviderId::Mgstage);
-        assert!(!config.providers[14].enabled);
-        let mgstage = config.providers[14].mgstage_config().unwrap();
+        let airav_provider = config.provider_config(ProviderId::Airav).unwrap();
+        assert!(!airav_provider.enabled);
+        let airav = airav_provider.airav_config().unwrap();
+        assert_eq!(airav.base_url, "https://www.airav.wiki");
+        assert_eq!(
+            airav.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(airav.render_path, "/render");
+        assert_eq!(airav.rendered_pages.timeout_ms, 10_000);
+        let avsox_provider = config.provider_config(ProviderId::Avsox).unwrap();
+        assert!(!avsox_provider.enabled);
+        let avsox = avsox_provider.avsox_config().unwrap();
+        assert_eq!(avsox.base_url, "https://avsox.click");
+        assert_eq!(
+            avsox.rendered_pages.base_url,
+            "http://nako-browser-worker:3000"
+        );
+        assert_eq!(avsox.render_path, "/render");
+        assert_eq!(avsox.rendered_pages.timeout_ms, 10_000);
+        let mgstage_provider = config.provider_config(ProviderId::Mgstage).unwrap();
+        assert!(!mgstage_provider.enabled);
+        let mgstage = mgstage_provider.mgstage_config().unwrap();
         assert_eq!(mgstage.base_url, "https://www.mgstage.com");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -954,9 +1089,9 @@ mod tests {
         );
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10_000);
-        assert_eq!(config.providers[15].id, ProviderId::Prestige);
-        assert!(!config.providers[15].enabled);
-        let prestige = config.providers[15].prestige_config().unwrap();
+        let prestige_provider = config.provider_config(ProviderId::Prestige).unwrap();
+        assert!(!prestige_provider.enabled);
+        let prestige = prestige_provider.prestige_config().unwrap();
         assert_eq!(prestige.base_url, "https://www.prestige-av.com");
         assert_eq!(prestige.timeout_ms, 10_000);
         assert!(prestige.proxy_url.is_none());
@@ -967,6 +1102,7 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Douban));
         assert!(!config.provider_enabled(ProviderId::Javdb));
         assert!(!config.provider_enabled(ProviderId::Dmm));
+        assert!(!config.provider_enabled(ProviderId::Xcity));
         assert!(!config.provider_enabled(ProviderId::Fc2));
         assert!(!config.provider_enabled(ProviderId::Fc2ppvdb));
         assert!(!config.provider_enabled(ProviderId::Caribbean));
@@ -974,6 +1110,8 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::TenMusume));
         assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_enabled(ProviderId::Javlibrary));
+        assert!(!config.provider_enabled(ProviderId::Airav));
+        assert!(!config.provider_enabled(ProviderId::Avsox));
         assert!(!config.provider_enabled(ProviderId::Mgstage));
         assert!(!config.provider_enabled(ProviderId::Prestige));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
@@ -1005,6 +1143,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_XCITY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
@@ -1012,6 +1151,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AIRAV_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AVSOX_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
@@ -1049,6 +1190,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_JAVDB_TIMEOUT_MS" => Some("5500".to_owned()),
             "NAKO_METADATA_SCRAPER_DMM_BASE_URL" => Some("https://dmm.example".to_owned()),
             "NAKO_METADATA_SCRAPER_DMM_TIMEOUT_MS" => Some("3500".to_owned()),
+            "NAKO_METADATA_SCRAPER_XCITY_BASE_URL" => Some("https://xcity.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_XCITY_TIMEOUT_MS" => Some("3600".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_TIMEOUT_MS" => Some("4500".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2PPVDB_BASE_URL" => {
@@ -1072,6 +1215,10 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_LANGUAGE" => Some("ja".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_TIMEOUT_MS" => Some("9500".to_owned()),
+            "NAKO_METADATA_SCRAPER_AIRAV_BASE_URL" => Some("https://airav.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_AIRAV_TIMEOUT_MS" => Some("9600".to_owned()),
+            "NAKO_METADATA_SCRAPER_AVSOX_BASE_URL" => Some("https://avsox.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_AVSOX_TIMEOUT_MS" => Some("9700".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
             "NAKO_METADATA_SCRAPER_MGSTAGE_TIMEOUT_MS" => Some("10500".to_owned()),
             "NAKO_METADATA_SCRAPER_PRESTIGE_BASE_URL" => {
@@ -1117,6 +1264,9 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Javdb));
         assert!(config.provider_enabled(ProviderId::Javbus));
         assert!(config.provider_enabled(ProviderId::Javlibrary));
+        assert!(config.provider_enabled(ProviderId::Airav));
+        assert!(config.provider_enabled(ProviderId::Avsox));
+        assert!(config.provider_enabled(ProviderId::Xcity));
         assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
         let tmdb = config.providers[1].tmdb_config().unwrap();
         assert_eq!(tmdb.read_access_token.as_deref(), Some("tmdb-token"));
@@ -1174,8 +1324,25 @@ mod tests {
         );
         assert_eq!(dmm.render_path, "/render");
         assert_eq!(dmm.rendered_pages.timeout_ms, 3500);
+        assert!(config.provider_enabled(ProviderId::Xcity));
+        let xcity = config
+            .provider_config(ProviderId::Xcity)
+            .unwrap()
+            .xcity_config()
+            .unwrap();
+        assert_eq!(xcity.base_url, "https://xcity.example");
+        assert_eq!(
+            xcity.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(xcity.render_path, "/render");
+        assert_eq!(xcity.rendered_pages.timeout_ms, 3600);
         assert!(config.provider_enabled(ProviderId::Fc2));
-        let fc2 = config.providers[7].fc2_config().unwrap();
+        let fc2 = config
+            .provider_config(ProviderId::Fc2)
+            .unwrap()
+            .fc2_config()
+            .unwrap();
         assert_eq!(fc2.base_url, "https://fc2.example");
         assert_eq!(
             fc2.rendered_pages.base_url,
@@ -1184,7 +1351,11 @@ mod tests {
         assert_eq!(fc2.render_path, "/render");
         assert_eq!(fc2.rendered_pages.timeout_ms, 4500);
         assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
-        let fc2ppvdb = config.providers[8].fc2ppvdb_config().unwrap();
+        let fc2ppvdb = config
+            .provider_config(ProviderId::Fc2ppvdb)
+            .unwrap()
+            .fc2ppvdb_config()
+            .unwrap();
         assert_eq!(fc2ppvdb.base_url, "https://fc2ppvdb.example");
         assert_eq!(
             fc2ppvdb.rendered_pages.base_url,
@@ -1193,7 +1364,11 @@ mod tests {
         assert_eq!(fc2ppvdb.render_path, "/render");
         assert_eq!(fc2ppvdb.rendered_pages.timeout_ms, 4700);
         assert!(config.provider_enabled(ProviderId::Caribbean));
-        let caribbean = config.providers[9].caribbean_config().unwrap();
+        let caribbean = config
+            .provider_config(ProviderId::Caribbean)
+            .unwrap()
+            .caribbean_config()
+            .unwrap();
         assert_eq!(caribbean.base_url, "https://caribbean.example");
         assert_eq!(
             caribbean.rendered_pages.base_url,
@@ -1202,7 +1377,11 @@ mod tests {
         assert_eq!(caribbean.render_path, "/render");
         assert_eq!(caribbean.rendered_pages.timeout_ms, 4800);
         assert!(config.provider_enabled(ProviderId::OnePondo));
-        let onepondo = config.providers[10].onepondo_config().unwrap();
+        let onepondo = config
+            .provider_config(ProviderId::OnePondo)
+            .unwrap()
+            .onepondo_config()
+            .unwrap();
         assert_eq!(onepondo.base_url, "https://1pondo.example");
         assert_eq!(
             onepondo.rendered_pages.base_url,
@@ -1211,7 +1390,11 @@ mod tests {
         assert_eq!(onepondo.render_path, "/render");
         assert_eq!(onepondo.rendered_pages.timeout_ms, 4900);
         assert!(config.provider_enabled(ProviderId::TenMusume));
-        let tenmusume = config.providers[11].tenmusume_config().unwrap();
+        let tenmusume = config
+            .provider_config(ProviderId::TenMusume)
+            .unwrap()
+            .tenmusume_config()
+            .unwrap();
         assert_eq!(tenmusume.base_url, "https://10musume.example");
         assert_eq!(
             tenmusume.rendered_pages.base_url,
@@ -1220,7 +1403,11 @@ mod tests {
         assert_eq!(tenmusume.render_path, "/render");
         assert_eq!(tenmusume.rendered_pages.timeout_ms, 5100);
         assert!(config.provider_enabled(ProviderId::Javbus));
-        let javbus = config.providers[12].javbus_config().unwrap();
+        let javbus = config
+            .provider_config(ProviderId::Javbus)
+            .unwrap()
+            .javbus_config()
+            .unwrap();
         assert_eq!(javbus.base_url, "https://javbus.example");
         assert_eq!(
             javbus.rendered_pages.base_url,
@@ -1229,7 +1416,11 @@ mod tests {
         assert_eq!(javbus.render_path, "/render");
         assert_eq!(javbus.rendered_pages.timeout_ms, 8500);
         assert!(config.provider_enabled(ProviderId::Javlibrary));
-        let javlibrary = config.providers[13].javlibrary_config().unwrap();
+        let javlibrary = config
+            .provider_config(ProviderId::Javlibrary)
+            .unwrap()
+            .javlibrary_config()
+            .unwrap();
         assert_eq!(javlibrary.base_url, "https://javlibrary.example");
         assert_eq!(javlibrary.language_path, "ja");
         assert_eq!(
@@ -1238,8 +1429,36 @@ mod tests {
         );
         assert_eq!(javlibrary.render_path, "/render");
         assert_eq!(javlibrary.rendered_pages.timeout_ms, 9500);
+        let airav = config
+            .provider_config(ProviderId::Airav)
+            .unwrap()
+            .airav_config()
+            .unwrap();
+        assert_eq!(airav.base_url, "https://airav.example");
+        assert_eq!(
+            airav.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(airav.render_path, "/render");
+        assert_eq!(airav.rendered_pages.timeout_ms, 9600);
+        let avsox = config
+            .provider_config(ProviderId::Avsox)
+            .unwrap()
+            .avsox_config()
+            .unwrap();
+        assert_eq!(avsox.base_url, "https://avsox.example");
+        assert_eq!(
+            avsox.rendered_pages.base_url,
+            "http://browser-worker.example:3000"
+        );
+        assert_eq!(avsox.render_path, "/render");
+        assert_eq!(avsox.rendered_pages.timeout_ms, 9700);
         assert!(config.provider_enabled(ProviderId::Mgstage));
-        let mgstage = config.providers[14].mgstage_config().unwrap();
+        let mgstage = config
+            .provider_config(ProviderId::Mgstage)
+            .unwrap()
+            .mgstage_config()
+            .unwrap();
         assert_eq!(mgstage.base_url, "https://mgstage.example");
         assert_eq!(
             mgstage.rendered_pages.base_url,
@@ -1248,7 +1467,11 @@ mod tests {
         assert_eq!(mgstage.render_path, "/render");
         assert_eq!(mgstage.rendered_pages.timeout_ms, 10500);
         assert!(config.provider_enabled(ProviderId::Prestige));
-        let prestige = config.providers[15].prestige_config().unwrap();
+        let prestige = config
+            .provider_config(ProviderId::Prestige)
+            .unwrap()
+            .prestige_config()
+            .unwrap();
         assert_eq!(prestige.base_url, "https://prestige.example");
         assert_eq!(prestige.timeout_ms, 11500);
         assert_eq!(

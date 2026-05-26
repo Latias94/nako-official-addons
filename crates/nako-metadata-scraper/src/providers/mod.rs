@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use crate::config::ProviderId;
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate, av::AvNumberRoute};
 
+pub mod airav;
+pub mod avsox;
 pub mod bangumi;
 pub mod browser_worker;
 pub mod caribbean;
@@ -24,9 +26,11 @@ mod rendered_av;
 #[cfg(test)]
 pub(crate) mod rendered_av_fixture;
 mod rendered_page;
+mod rendered_search_av;
 mod search_policy;
 pub mod tenmusume;
 pub mod tmdb;
+pub mod xcity;
 
 pub use registry::{
     ProviderAssembly, ProviderBuildStatus, ProviderDescriptor, ProviderDiagnostics,
@@ -44,6 +48,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         douban::catalog_entry(),
         javdb::catalog_entry(),
         dmm::catalog_entry(),
+        xcity::catalog_entry(),
         fc2::catalog_entry(),
         fc2ppvdb::catalog_entry(),
         caribbean::catalog_entry(),
@@ -51,6 +56,8 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         tenmusume::catalog_entry(),
         javbus::catalog_entry(),
         javlibrary::catalog_entry(),
+        airav::catalog_entry(),
+        avsox::catalog_entry(),
         mgstage::catalog_entry(),
         prestige::catalog_entry(),
     ]

@@ -79,6 +79,8 @@ Provider defaults:
   `manual`, `fast_safe`, `official_only`, `community_first`, `fc2_enhanced`,
   and `uncensored_official`; explicit
   `NAKO_METADATA_SCRAPER_PROVIDER_*_ENABLED` values override the preset.
+  The broader community presets include browser-rendered MDCx-inspired
+  fallbacks such as `airav`, `avsox`, and `xcity`.
   Manual live AV drift checks use
   `NAKO_METADATA_SCRAPER_LIVE_AV_PROVIDER_DRIFT_CASES` and report only
   redaction-safe field health.

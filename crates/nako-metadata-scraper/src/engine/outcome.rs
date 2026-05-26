@@ -12,6 +12,7 @@ pub enum ProviderOutcome {
     DoubanRenderedHtmlParsed,
     JavdbRenderedHtmlParsed,
     DmmRenderedHtmlParsed,
+    XcityRenderedHtmlParsed,
     Fc2RenderedHtmlParsed,
     Fc2ppvdbRenderedHtmlParsed,
     CaribbeanRenderedHtmlParsed,
@@ -19,6 +20,8 @@ pub enum ProviderOutcome {
     TenMusumeRenderedHtmlParsed,
     JavbusRenderedHtmlParsed,
     JavlibraryRenderedHtmlParsed,
+    AiravRenderedHtmlParsed,
+    AvsoxRenderedHtmlParsed,
     MgstageRenderedHtmlParsed,
     PrestigeOfficialApiParsed,
 }
@@ -79,6 +82,9 @@ impl ProviderOutcome {
             Self::DmmRenderedHtmlParsed => {
                 "DMM AV candidate parsed from browser-worker rendered HTML."
             }
+            Self::XcityRenderedHtmlParsed => {
+                "XCity AV candidate parsed from browser-worker rendered HTML."
+            }
             Self::Fc2RenderedHtmlParsed => {
                 "FC2 AV candidate parsed from browser-worker rendered HTML."
             }
@@ -99,6 +105,12 @@ impl ProviderOutcome {
             }
             Self::JavlibraryRenderedHtmlParsed => {
                 "JavLibrary AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::AiravRenderedHtmlParsed => {
+                "AirAV AV candidate parsed from browser-worker rendered HTML."
+            }
+            Self::AvsoxRenderedHtmlParsed => {
+                "AVSox AV candidate parsed from browser-worker rendered HTML."
             }
             Self::MgstageRenderedHtmlParsed => {
                 "MGStage AV candidate parsed from browser-worker rendered HTML."

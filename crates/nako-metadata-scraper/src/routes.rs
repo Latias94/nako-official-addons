@@ -544,6 +544,7 @@ mod tests {
                 "douban",
                 "javdb",
                 "dmm",
+                "xcity",
                 "fc2",
                 "fc2ppvdb",
                 "caribbean",
@@ -551,6 +552,8 @@ mod tests {
                 "10musume",
                 "javbus",
                 "javlibrary",
+                "airav",
+                "avsox",
                 "mgstage",
                 "prestige"
             ])

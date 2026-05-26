@@ -62,6 +62,7 @@
           "douban": { "type": "boolean", "default": false },
           "javdb": { "type": "boolean", "default": false },
           "dmm": { "type": "boolean", "default": false },
+          "xcity": { "type": "boolean", "default": false },
           "fc2": { "type": "boolean", "default": false },
           "fc2ppvdb": { "type": "boolean", "default": false },
           "caribbean": { "type": "boolean", "default": false },
@@ -69,6 +70,8 @@
           "10musume": { "type": "boolean", "default": false },
           "javbus": { "type": "boolean", "default": false },
           "javlibrary": { "type": "boolean", "default": false },
+          "airav": { "type": "boolean", "default": false },
+          "avsox": { "type": "boolean", "default": false },
           "mgstage": { "type": "boolean", "default": false },
           "prestige": { "type": "boolean", "default": false }
         },

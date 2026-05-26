@@ -135,6 +135,7 @@ mod tests {
         assert_eq!(provider_properties["douban"]["default"], false);
         assert_eq!(provider_properties["javdb"]["default"], false);
         assert_eq!(provider_properties["dmm"]["default"], false);
+        assert_eq!(provider_properties["xcity"]["default"], false);
         assert_eq!(provider_properties["fc2"]["default"], false);
         assert_eq!(provider_properties["fc2ppvdb"]["default"], false);
         assert_eq!(provider_properties["caribbean"]["default"], false);
@@ -142,6 +143,8 @@ mod tests {
         assert_eq!(provider_properties["10musume"]["default"], false);
         assert_eq!(provider_properties["javbus"]["default"], false);
         assert_eq!(provider_properties["javlibrary"]["default"], false);
+        assert_eq!(provider_properties["airav"]["default"], false);
+        assert_eq!(provider_properties["avsox"]["default"], false);
         assert_eq!(provider_properties["mgstage"]["default"], false);
         assert_eq!(provider_properties["prestige"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
@@ -157,6 +160,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_XCITY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
@@ -164,6 +168,8 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AIRAV_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AVSOX_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             _ => None,
@@ -200,6 +206,10 @@ mod tests {
             true
         );
         assert_eq!(
+            schema["properties"]["providers"]["properties"]["xcity"]["default"],
+            true
+        );
+        assert_eq!(
             schema["properties"]["providers"]["properties"]["fc2"]["default"],
             true
         );
@@ -225,6 +235,14 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["javlibrary"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["airav"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["avsox"]["default"],
             true
         );
         assert_eq!(
@@ -265,6 +283,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Douban),
                 ProviderConfig::disabled(ProviderId::Javdb),
                 ProviderConfig::disabled(ProviderId::Dmm),
+                ProviderConfig::disabled(ProviderId::Xcity),
                 ProviderConfig::disabled(ProviderId::Fc2),
                 ProviderConfig::disabled(ProviderId::Fc2ppvdb),
                 ProviderConfig::disabled(ProviderId::Caribbean),
@@ -272,6 +291,8 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::TenMusume),
                 ProviderConfig::disabled(ProviderId::Javbus),
                 ProviderConfig::disabled(ProviderId::Javlibrary),
+                ProviderConfig::disabled(ProviderId::Airav),
+                ProviderConfig::disabled(ProviderId::Avsox),
                 ProviderConfig::disabled(ProviderId::Mgstage),
                 ProviderConfig::disabled(ProviderId::Prestige),
             ],
