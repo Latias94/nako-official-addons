@@ -234,7 +234,8 @@ pub struct ProviderConfigInput<'a> {
 mod tests {
     use super::*;
     use crate::config::{
-        BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig, TmdbProviderConfig,
+        BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig,
+        ThePornDbProviderConfig, TmdbProviderConfig,
     };
     use crate::engine::ExternalIdValueKind;
 
@@ -255,6 +256,7 @@ mod tests {
         assert_eq!(
             policy.providers_for("title"),
             &[
+                "theporndb".to_owned(),
                 "prestige".to_owned(),
                 "caribbean".to_owned(),
                 "1pondo".to_owned(),
@@ -274,6 +276,7 @@ mod tests {
         assert_eq!(
             policy.providers_for("actors"),
             &[
+                "theporndb".to_owned(),
                 "javlibrary".to_owned(),
                 "javdb".to_owned(),
                 "dmm".to_owned(),
@@ -293,6 +296,7 @@ mod tests {
         assert_eq!(
             policy.providers_for("trailer_url"),
             &[
+                "theporndb".to_owned(),
                 "prestige".to_owned(),
                 "caribbean".to_owned(),
                 "1pondo".to_owned(),
@@ -346,7 +350,8 @@ mod tests {
                 "airav",
                 "avsox",
                 "mgstage",
-                "prestige"
+                "prestige",
+                "theporndb"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -626,6 +631,22 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[19],
+            ProviderDescriptor {
+                id: "theporndb",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "theporndb_scene_search",
+                    "theporndb_direct_lookup",
+                    "theporndb_official_api"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -832,6 +853,20 @@ mod tests {
                 && capability.emits
                 && capability.top_level_fields.contains(&"prestige_url")
         }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "theporndb"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"theporndb_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "theporndb_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"theporndb_url")
+        }));
     }
 
     #[test]
@@ -916,6 +951,16 @@ mod tests {
             "prestige_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "theporndb_id",
+            "theporndb",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "theporndb_url",
+            "theporndb_url",
+            false
+        )));
     }
 
     #[test]
@@ -949,7 +994,8 @@ mod tests {
                 "airav",
                 "avsox",
                 "mgstage",
-                "prestige"
+                "prestige",
+                "theporndb"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -1010,11 +1056,33 @@ mod tests {
                 "airav",
                 "avsox",
                 "mgstage",
-                "prestige"
+                "prestige",
+                "theporndb"
             ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
         assert_eq!(diagnostics.supported[1].status, ProviderStatus::Unavailable);
+    }
+
+    #[test]
+    fn registry_reports_enabled_theporndb_without_token_as_unavailable() {
+        let registry = ProviderRegistry::from_config(Config {
+            providers: vec![
+                ProviderConfig::disabled(ProviderId::Fixture),
+                ProviderConfig::theporndb(true, ThePornDbProviderConfig::from_env_lookup(|_| None)),
+            ],
+            ..Config::default()
+        });
+
+        let diagnostics = registry.diagnostics();
+
+        assert!(registry.providers().is_empty());
+        assert!(diagnostics.enabled.is_empty());
+        assert_eq!(diagnostics.unavailable, vec!["theporndb"]);
+        assert_eq!(
+            diagnostics.supported.last().unwrap().status,
+            ProviderStatus::Unavailable
+        );
     }
 
     #[test]

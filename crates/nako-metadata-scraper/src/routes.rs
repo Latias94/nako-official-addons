@@ -555,7 +555,8 @@ mod tests {
                 "airav",
                 "avsox",
                 "mgstage",
-                "prestige"
+                "prestige",
+                "theporndb"
             ])
         );
         assert_eq!(
@@ -572,6 +573,10 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["network_policy"]["prestige_proxy_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["theporndb_proxy_configured"],
             false
         );
     }

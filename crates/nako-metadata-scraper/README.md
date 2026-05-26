@@ -66,14 +66,20 @@ Current alpha provider defaults:
   censored AV search/detail lookup. It emits `prestige`, `prestige_url`, and
   `av_number` external IDs, and accepts `NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL`
   for proxied API access.
+- `theporndb`: disabled by default; calls the ThePornDB JSON API for AV scene
+  search/detail lookup and requires `NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN`
+  when enabled. It emits `theporndb`, `theporndb_url`, and `av_number` external
+  IDs, and accepts `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL` for proxied API
+  access.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
 `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
 `javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`,
-`mgstage_url`, `prestige_id`, `prestige_url`, and `av_number`. These aliases
-are derived from provider-owned external ID capabilities.
+`mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
+`theporndb_url`, and `av_number`. These aliases are derived from provider-owned
+external ID capabilities.
 
 AV-oriented requests may also provide `number`, `file_name`, `filename`, or
 `path`. The scraper normalizes common AV number shapes such as `SSNI-00644` and
@@ -85,11 +91,11 @@ are not echoed.
 When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`,
 `fc2ppvdb_url`, `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`,
 `10musume_id`, `10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, or
-`prestige_url` is supplied, the matching provider performs direct detail lookup
-before falling back to inferred AV-number search. This is useful for
-appointed-source corrections where a user already knows the authoritative site
-record.
+`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
+`theporndb_id`, or `theporndb_url` is supplied, the matching provider performs
+direct detail lookup before falling back to inferred AV-number search. This is
+useful for appointed-source corrections where a user already knows the
+authoritative site record.
 
 Every metadata response includes `provider_execution`, a redaction-safe summary
 of the provider wave. It records provider IDs that were selected, skipped by AV
@@ -134,31 +140,33 @@ The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
 When no request policy is supplied, AV clusters use a conservative default
 derived from provider quality descriptors inspired by MDCx's field-priority
-behavior: Prestige, Caribbean, 1Pondo, and 10Musume are preferred before DMM,
-MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for official title,
+behavior: ThePornDB is preferred for western/community scene facts when
+enabled, then Prestige, Caribbean, 1Pondo, and 10Musume are preferred before
+DMM, MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for official title,
 overview, release/runtime, and studio-like facts. Community actor and
-wanted-count fields prefer JavLibrary/JavDB first, with FC2PPVDB and the
-official uncensored sites above the official FC2 source when they have actor
+wanted-count fields prefer ThePornDB/JavLibrary/JavDB first, with FC2PPVDB and
+the official uncensored sites above the official FC2 source when they have actor
 labels. Trailer and image fields prefer providers that usually carry media
-URLs, starting with Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/JavDB/
-FC2PPVDB. Passing an explicit `provider_field_policy` object replaces that
-descriptor-derived default for the request.
+URLs, starting with ThePornDB/Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/
+JavDB/FC2PPVDB. Passing an explicit `provider_field_policy` object replaces
+that descriptor-derived default for the request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
-FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM/JavBus
-and Prestige providers. Official uncensored date-style IDs fan out only to
-enabled Caribbean/1Pondo/10Musume and uncensored-capable fallback providers.
+FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM/JavBus,
+Prestige, and ThePornDB providers. Official uncensored date-style IDs fan out
+only to enabled Caribbean/1Pondo/10Musume and uncensored-capable fallback
+providers. Western-style AV numbers can fan out to ThePornDB when configured.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 
-The `/health` diagnostics report whether TMDB/Bangumi/Prestige proxy policy and
-browser render proxy/session policy are configured without exposing proxy URLs,
-credentials, or session key values. Browser-rendered AV providers use proxy
-configuration from the companion browser worker, for example
+The `/health` diagnostics report whether TMDB/Bangumi/Prestige/ThePornDB proxy
+policy and browser render proxy/session policy are configured without exposing
+proxy URLs, credentials, or session key values. Browser-rendered AV providers
+use proxy configuration from the companion browser worker, for example
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust
 providers send a typed render intent to the worker; operators can set
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_STATE` (`load`, `domcontentloaded`,
@@ -167,6 +175,15 @@ or `networkidle`), `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY` (`default`, `direct`, or
 `required`), and `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` to shape all
 rendered-page requests without changing provider code.
+
+ThePornDB API access is configured directly on the Rust sidecar:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN=<ThePornDB bearer token>`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_API_BASE_URL=https://api.theporndb.net`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_PUBLIC_BASE_URL=https://theporndb.net`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL=http://127.0.0.1:10809`
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side

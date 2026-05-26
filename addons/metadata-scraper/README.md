@@ -304,9 +304,9 @@ Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 
 The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB,
-Bangumi, Prestige, and browser-render proxy/session policy is configured. They
-intentionally expose only boolean policy state, not proxy URLs, credentials, or
-session key values.
+Bangumi, Prestige, ThePornDB, and browser-render proxy/session policy is
+configured. They intentionally expose only boolean policy state, not proxy URLs,
+credentials, or session key values.
 Browser-rendered providers use the companion browser worker for proxying; set
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST` on that
 worker. The Rust sidecar can require, bypass, or default that worker proxy via
@@ -323,11 +323,13 @@ one of:
 
 - `manual`: catalog defaults only; this preserves the default fixture-only
   local smoke behavior.
-- `fast_safe`: `javdb`, `dmm`, `fc2`, `mgstage`, and `prestige`.
+- `fast_safe`: `javdb`, `dmm`, `fc2`, `mgstage`, `prestige`, and
+  `theporndb`.
 - `official_only`: `dmm`, `fc2`, `mgstage`, `prestige`, `caribbean`,
   `1pondo`, and `10musume`.
 - `community_first`: `javdb`, `javbus`, `javlibrary`, `airav`, `avsox`,
-  `dmm`, `xcity`, `fc2`, `fc2ppvdb`, `mgstage`, and `prestige`.
+  `dmm`, `xcity`, `fc2`, `fc2ppvdb`, `mgstage`, `prestige`, and
+  `theporndb`.
 - `fc2_enhanced`: `fc2`, `fc2ppvdb`, `airav`, and `avsox`.
 - `uncensored_official`: `caribbean`, `1pondo`, and `10musume`.
 
@@ -359,8 +361,9 @@ Metadata requests may provide explicit `external_ids` or top-level aliases:
 `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`,
 `10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
 `javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`, `avsox_url`,
-`mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, and `av_number`.
-These aliases are derived from provider-owned external ID capabilities.
+`mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
+`theporndb_url`, and `av_number`. These aliases are derived from provider-owned
+external ID capabilities.
 
 Douban metadata is available when
 `NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED=true` and the browser-worker
@@ -372,11 +375,15 @@ provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
 JavDB, DMM, FC2, FC2PPVDB, Caribbean, 1Pondo, 10Musume, JavBus, JavLibrary,
-MGStage, and Prestige metadata are available when their providers are enabled.
+MGStage, Prestige, and ThePornDB metadata are available when their providers
+are enabled.
 JavDB, DMM, FC2, FC2PPVDB, Caribbean, 1Pondo, 10Musume, JavBus, JavLibrary, and
 MGStage use the browser-worker companion service for rendered HTML. Prestige
 uses the official JSON API and can use
 `NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL` directly from the Rust sidecar.
+ThePornDB uses the ThePornDB JSON API, requires
+`NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN`, and can use
+`NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL` directly from the Rust sidecar.
 JavDB searches by normalized non-FC2 AV numbers and supports explicit
 `javdb_id` direct lookup. DMM is an official censored-release tracer that
 searches by normalized AV number and supports explicit `dmm_id` or `dmm_url`
@@ -394,9 +401,21 @@ actors, score, and wanted count, and supports `javlibrary_id` or
 `javlibrary_url` direct lookup. MGStage is a route-specific official source for
 amateur/MGS numbers such as `300MIUM-382`, and supports `mgstage_id` or
 `mgstage_url` direct lookup. Prestige is a censored-route official source and
-supports `prestige_id` or `prestige_url` direct lookup. These AV providers emit
+supports `prestige_id` or `prestige_url` direct lookup. ThePornDB supports
+scene search and explicit `theporndb_id` or `theporndb_url` scene detail lookup,
+and maps performers, directors, site/network, tags, poster/backdrop artwork,
+trailer URL, rating, runtime, and source links. These AV providers emit
 `av_number` external IDs so the resolver can merge compatible AV facts across
 sources.
+
+ThePornDB environment knobs:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN=<ThePornDB bearer token>`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_API_BASE_URL=https://api.theporndb.net`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_PUBLIC_BASE_URL=https://theporndb.net`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL=http://127.0.0.1:10809`
 
 AV candidates also expose a response-side `av` object for MDCx-style evidence:
 actors, all actors, directors, series, studio, publisher, maker, label, wanted
@@ -457,13 +476,14 @@ after providers have emitted compatible external IDs such as the same
 default derived from provider quality descriptors inspired by MDCx's
 field-priority behavior: Prestige, Caribbean, 1Pondo, and 10Musume are
 preferred before DMM, MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for
-official title, overview, release/runtime, and studio-like facts. Community
-actor and wanted-count fields prefer JavLibrary/JavDB first, with FC2PPVDB and
-the official uncensored sites above the official FC2 source when they have
-actor labels. Trailer and image fields prefer providers that usually carry
-media URLs, starting with Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/JavDB/
-FC2PPVDB. Passing an explicit `provider_field_policy` object replaces that
-descriptor-derived default for the request.
+official title, overview, release/runtime, and studio-like facts. ThePornDB is
+preferred for western/community scene facts when enabled. Community actor and
+wanted-count fields prefer ThePornDB/JavLibrary/JavDB first, with FC2PPVDB and
+the official uncensored sites above the official FC2 source when they have actor
+labels. Trailer and image fields prefer providers that usually carry media
+URLs, starting with ThePornDB/Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/
+JavDB/FC2PPVDB. Passing an explicit `provider_field_policy` object replaces
+that descriptor-derived default for the request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

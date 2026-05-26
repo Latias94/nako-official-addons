@@ -29,6 +29,7 @@ mod rendered_page;
 mod rendered_search_av;
 mod search_policy;
 pub mod tenmusume;
+pub mod theporndb;
 pub mod tmdb;
 pub mod xcity;
 
@@ -60,6 +61,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         avsox::catalog_entry(),
         mgstage::catalog_entry(),
         prestige::catalog_entry(),
+        theporndb::catalog_entry(),
     ]
 }
 

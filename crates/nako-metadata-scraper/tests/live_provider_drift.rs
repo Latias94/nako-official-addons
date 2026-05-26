@@ -105,6 +105,10 @@ const AV_PROVIDER_ENABLED_ENV_VARS: &[(&str, &str)] = &[
         "prestige",
         "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED",
     ),
+    (
+        "theporndb",
+        "NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED",
+    ),
 ];
 
 fn parse_av_drift_cases(value: &str) -> Result<Vec<AvDriftCase>> {

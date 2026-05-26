@@ -24,6 +24,7 @@ pub enum ProviderOutcome {
     AvsoxRenderedHtmlParsed,
     MgstageRenderedHtmlParsed,
     PrestigeOfficialApiParsed,
+    ThePornDbOfficialApiParsed,
 }
 
 #[must_use]
@@ -117,6 +118,9 @@ impl ProviderOutcome {
             }
             Self::PrestigeOfficialApiParsed => {
                 "Prestige AV candidate parsed from the official JSON API."
+            }
+            Self::ThePornDbOfficialApiParsed => {
+                "ThePornDB AV candidate parsed from the official JSON API."
             }
         }
     }

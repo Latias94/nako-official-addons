@@ -6,7 +6,8 @@ pub use crate::providers::{
     fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig, javdb::JavdbProviderConfig,
     javlibrary::JavlibraryProviderConfig, mgstage::MgstageProviderConfig,
     onepondo::OnePondoProviderConfig, prestige::PrestigeProviderConfig,
-    tenmusume::TenMusumeProviderConfig, tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
+    tenmusume::TenMusumeProviderConfig, theporndb::ThePornDbProviderConfig,
+    tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -89,6 +90,7 @@ pub enum ProviderId {
     Avsox,
     Mgstage,
     Prestige,
+    ThePornDb,
 }
 
 impl ProviderId {
@@ -114,6 +116,7 @@ impl ProviderId {
             Self::Avsox => "avsox",
             Self::Mgstage => "mgstage",
             Self::Prestige => "prestige",
+            Self::ThePornDb => "theporndb",
         }
     }
 
@@ -135,6 +138,7 @@ impl ProviderId {
                 | Self::Avsox
                 | Self::Mgstage
                 | Self::Prestige
+                | Self::ThePornDb
         )
     }
 }
@@ -147,6 +151,7 @@ const FAST_SAFE_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Fc2,
     ProviderId::Mgstage,
     ProviderId::Prestige,
+    ProviderId::ThePornDb,
 ];
 const OFFICIAL_ONLY_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Dmm,
@@ -169,6 +174,7 @@ const COMMUNITY_FIRST_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Fc2ppvdb,
     ProviderId::Mgstage,
     ProviderId::Prestige,
+    ProviderId::ThePornDb,
 ];
 const FC2_ENHANCED_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Fc2,
@@ -442,6 +448,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn theporndb(enabled: bool, config: ThePornDbProviderConfig) -> Self {
+        Self {
+            id: ProviderId::ThePornDb,
+            enabled,
+            kind: ProviderConfigKind::ThePornDb(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -585,6 +600,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn theporndb_config(&self) -> Option<&ThePornDbProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::ThePornDb(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -673,6 +696,9 @@ impl ProviderConfig {
             ProviderId::Prestige => {
                 Self::prestige(enabled, PrestigeProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::ThePornDb => {
+                Self::theporndb(enabled, ThePornDbProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -698,6 +724,7 @@ pub enum ProviderConfigKind {
     Avsox(AvsoxProviderConfig),
     Mgstage(MgstageProviderConfig),
     Prestige(PrestigeProviderConfig),
+    ThePornDb(ThePornDbProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -811,7 +838,7 @@ impl ProviderConfig {
             ProviderConfigKind::Airav(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Avsox(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Prestige(_) => false,
+            ProviderConfigKind::Prestige(_) | ProviderConfigKind::ThePornDb(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -839,7 +866,7 @@ impl ProviderConfig {
             ProviderConfigKind::Airav(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Avsox(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Prestige(_) => false,
+            ProviderConfigKind::Prestige(_) | ProviderConfigKind::ThePornDb(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -1095,6 +1122,14 @@ mod tests {
         assert_eq!(prestige.base_url, "https://www.prestige-av.com");
         assert_eq!(prestige.timeout_ms, 10_000);
         assert!(prestige.proxy_url.is_none());
+        let theporndb_provider = config.provider_config(ProviderId::ThePornDb).unwrap();
+        assert!(!theporndb_provider.enabled);
+        let theporndb = theporndb_provider.theporndb_config().unwrap();
+        assert!(theporndb.api_token.is_none());
+        assert_eq!(theporndb.api_base_url, "https://api.theporndb.net");
+        assert_eq!(theporndb.public_base_url, "https://theporndb.net");
+        assert_eq!(theporndb.timeout_ms, 10_000);
+        assert!(theporndb.proxy_url.is_none());
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -1114,9 +1149,11 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Avsox));
         assert!(!config.provider_enabled(ProviderId::Mgstage));
         assert!(!config.provider_enabled(ProviderId::Prestige));
+        assert!(!config.provider_enabled(ProviderId::ThePornDb));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
         assert!(!config.provider_proxy_configured(ProviderId::Prestige));
+        assert!(!config.provider_proxy_configured(ProviderId::ThePornDb));
         assert_eq!(
             config.provider_execution,
             ProviderExecutionConfig::default()
@@ -1155,6 +1192,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_AVSOX_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -1227,6 +1265,17 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PRESTIGE_TIMEOUT_MS" => Some("11500".to_owned()),
             "NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL" => {
                 Some(" http://prestige-proxy.example:8080 ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_THEPORNDB_API_TOKEN" => Some(" theporndb-token ".to_owned()),
+            "NAKO_METADATA_SCRAPER_THEPORNDB_API_BASE_URL" => {
+                Some(" https://api.theporndb.example ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_THEPORNDB_PUBLIC_BASE_URL" => {
+                Some(" https://theporndb.example ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS" => Some("12500".to_owned()),
+            "NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL" => {
+                Some(" http://theporndb-proxy.example:8080 ".to_owned())
             }
             "NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST" => Some("2".to_owned()),
             _ => None,
@@ -1479,6 +1528,21 @@ mod tests {
             Some("http://prestige-proxy.example:8080")
         );
         assert!(config.provider_proxy_configured(ProviderId::Prestige));
+        assert!(config.provider_enabled(ProviderId::ThePornDb));
+        let theporndb = config
+            .provider_config(ProviderId::ThePornDb)
+            .unwrap()
+            .theporndb_config()
+            .unwrap();
+        assert_eq!(theporndb.api_token.as_deref(), Some("theporndb-token"));
+        assert_eq!(theporndb.api_base_url, "https://api.theporndb.example");
+        assert_eq!(theporndb.public_base_url, "https://theporndb.example");
+        assert_eq!(theporndb.timeout_ms, 12500);
+        assert_eq!(
+            theporndb.proxy_url.as_deref(),
+            Some("http://theporndb-proxy.example:8080")
+        );
+        assert!(config.provider_proxy_configured(ProviderId::ThePornDb));
     }
 
     #[test]
@@ -1493,6 +1557,7 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
         assert!(!config.provider_enabled(ProviderId::Javdb));
         assert!(!config.provider_enabled(ProviderId::Prestige));
+        assert!(!config.provider_enabled(ProviderId::ThePornDb));
     }
 
     #[test]
@@ -1509,6 +1574,7 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Javdb));
         assert!(config.provider_enabled(ProviderId::Fc2));
         assert!(config.provider_enabled(ProviderId::Caribbean));
+        assert!(!config.provider_enabled(ProviderId::ThePornDb));
     }
 
     #[test]

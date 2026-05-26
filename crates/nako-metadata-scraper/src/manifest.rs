@@ -70,6 +70,7 @@ mod tests {
         AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig,
     };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
+    use crate::providers::theporndb::ThePornDbProviderConfig;
 
     #[test]
     fn addon_manifest_is_valid() {
@@ -147,6 +148,7 @@ mod tests {
         assert_eq!(provider_properties["avsox"]["default"], false);
         assert_eq!(provider_properties["mgstage"]["default"], false);
         assert_eq!(provider_properties["prestige"]["default"], false);
+        assert_eq!(provider_properties["theporndb"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
     }
 
@@ -172,6 +174,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_AVSOX_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -253,7 +256,11 @@ mod tests {
             schema["properties"]["providers"]["properties"]["prestige"]["default"],
             true
         );
-        assert_eq!(manifest.secret_reference_fields.len(), 2);
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["theporndb"]["default"],
+            true
+        );
+        assert_eq!(manifest.secret_reference_fields.len(), 3);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
             TmdbProviderConfig::secret_field_id()
@@ -264,6 +271,11 @@ mod tests {
             BangumiProviderConfig::secret_field_id()
         );
         assert!(!manifest.secret_reference_fields[1].required);
+        assert_eq!(
+            manifest.secret_reference_fields[2].id,
+            ThePornDbProviderConfig::secret_field_id()
+        );
+        assert!(manifest.secret_reference_fields[2].required);
     }
 
     #[test]
@@ -295,6 +307,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Avsox),
                 ProviderConfig::disabled(ProviderId::Mgstage),
                 ProviderConfig::disabled(ProviderId::Prestige),
+                ProviderConfig::disabled(ProviderId::ThePornDb),
             ],
             ..Config::default()
         });
