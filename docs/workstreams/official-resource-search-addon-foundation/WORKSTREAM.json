@@ -1,11 +1,11 @@
 {
   "id": "official-resource-search-addon-foundation",
-  "status": "active",
+  "status": "complete",
   "task_prefix": "ORSAF",
   "created_at": "2026-05-28",
   "updated_at": "2026-05-28",
   "objective": "Build the foundation for a dedicated official resource search addon while deferring Nako core protocol changes to a later host-side lane.",
-  "current_task": "ORSAF-020",
+  "current_task": null,
   "owner": "Codex",
   "docs": {
     "design": "DESIGN.md",

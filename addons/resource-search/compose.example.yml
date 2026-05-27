@@ -1,0 +1,18 @@
+services:
+  nako-resource-search:
+    build:
+      context: ../..
+      dockerfile: addons/resource-search/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
+    image: ghcr.io/latias94/nako-resource-search:0.1.0-alpha.2
+    restart: unless-stopped
+    environment:
+      NAKO_RESOURCE_SEARCH_LISTEN_ADDR: "0.0.0.0:9130"
+      NAKO_RESOURCE_SEARCH_BASE_URL: "http://nako-resource-search:9130"
+      NAKO_RESOURCE_SEARCH_FIXTURE_PROVIDER_ENABLED: "true"
+      NAKO_RESOURCE_SEARCH_DEFAULT_LIMIT: "20"
+      NAKO_RESOURCE_SEARCH_MAX_LIMIT: "100"
+      NAKO_RESOURCE_SEARCH_TIMEOUT_MS: "10000"
+    ports:
+      - "9130:9130"

@@ -20,7 +20,7 @@ Validation:
 
 ## ORSAF-020 - Sidecar crate and alpha search contract
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAF-010
 
@@ -40,7 +40,7 @@ Validation:
 
 ## ORSAF-030 - Search domain, link taxonomy, and fusion
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAF-020
 
@@ -59,7 +59,7 @@ Validation:
 
 ## ORSAF-040 - Deferred Nako protocol proposal
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAF-020
 
@@ -73,10 +73,11 @@ Scope:
 Validation:
 
 - Workstream docs name the exact protocol additions needed in Nako.
+- `PROTOCOL_PROPOSAL.md` exists.
 
 ## ORSAF-050 - Packaging, smoke, and handoff
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAF-030
 
@@ -92,3 +93,4 @@ Validation:
 - `cargo nextest run -p nako-resource-search --no-fail-fast`
 - `cargo fmt -p nako-resource-search -- --check`
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-addon-foundation`
+- `pwsh -File addons/resource-search/smoke.local.ps1`

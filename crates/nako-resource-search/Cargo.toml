@@ -1,0 +1,28 @@
+[package]
+name = "nako-resource-search"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Official Nako resource search Addon Sidecar."
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nako", "addon", "search", "resource", "media"]
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+nako-addon-protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tower = { version = "0.5.2", features = ["util"] }

@@ -3,6 +3,7 @@ members = [
     "crates/nako-chromecast-renderer",
     "crates/nako-metadata-scraper",
     "crates/nako-notification-bridge",
+    "crates/nako-resource-search",
 ]
 resolver = "2"
 

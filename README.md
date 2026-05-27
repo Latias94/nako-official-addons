@@ -20,6 +20,9 @@ as one suite later:
 - users can install `nako-chromecast-renderer` for the first official external
   renderer adapter proof: Chromecast target discovery plus host-owned,
   cast-safe command envelope translation;
+- users can install `nako-resource-search` for the first alpha resource
+  discovery proof: fixture-backed search, link classification, and result
+  fusion while the final Nako `resource_search` protocol surface is deferred;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -50,6 +53,9 @@ as one suite later:
 - `crates/nako-chromecast-renderer`: Rust HTTP sidecar that implements the
   first official Chromecast `renderer_adapter` resource, with optional live LAN
   discovery/control gates and redaction-safe diagnostics.
+- `crates/nako-resource-search`: Rust HTTP sidecar that implements the first
+  alpha resource search proof as a temporary `automation` resource until Nako
+  core adds a dedicated `resource_search` contract.
 
 ## Development
 
@@ -59,6 +65,7 @@ cargo nextest run --workspace --no-fail-fast
 cargo run -p nako-metadata-scraper
 cargo run -p nako-notification-bridge
 cargo run -p nako-chromecast-renderer
+cargo run -p nako-resource-search
 ```
 
 Default listen addresses:
@@ -66,6 +73,7 @@ Default listen addresses:
 - metadata scraper: `127.0.0.1:9100`
 - notification bridge: `127.0.0.1:9110`
 - Chromecast renderer: `127.0.0.1:9120`
+- resource search: `127.0.0.1:9130`
 
 Provider defaults:
 
@@ -126,6 +134,10 @@ Provider defaults:
   LAN discovery or live device control only with
   `NAKO_CHROMECAST_RENDERER_LIVE_DISCOVERY_ENABLED=1` or
   `NAKO_CHROMECAST_RENDERER_LIVE_CONTROL_ENABLED=1`.
+- `resource_search.fixture`: enabled by default. It provides deterministic
+  search results for local smoke while live provider scraping, link checking,
+  downloader hooks, and the Nako `resource_search` protocol are handled in
+  later lanes.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -144,6 +156,9 @@ pwsh -File addons/notification-bridge/smoke.local.ps1 `
 
 pwsh -File addons/chromecast-renderer/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9120
+
+pwsh -File addons/resource-search/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9130
 ```
 
 Optional notification provider live smoke is skipped by default and must be

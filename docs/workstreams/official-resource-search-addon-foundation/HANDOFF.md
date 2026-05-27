@@ -1,20 +1,25 @@
 # Handoff
 
-Status: active. Workstream opened for the official resource search addon
-foundation.
+Status: complete for the first resource search addon foundation slice.
 
 Current state:
 
 - The resource search boundary is documented as a dedicated sidecar.
 - PanSou reference lessons are captured without adopting its implementation.
-- Nako core protocol changes are deferred and must be handled in a separate
-  host-side lane.
+- `nako-resource-search` is a workspace crate with manifest, health, search,
+  diagnostics, fixture provider, link taxonomy, and fusion tests.
+- Packaging files, checked-in example manifest, and local smoke script exist
+  under `addons/resource-search`.
+- Nako core protocol changes are deferred and captured in
+  `PROTOCOL_PROPOSAL.md`.
 
 Next steps:
 
-- Add `nako-resource-search` crate with the alpha-local typed search contract.
-- Add deterministic fixture provider, link taxonomy, and result fusion tests.
-- Write the deferred Nako protocol proposal before touching `../nako`.
+- Open a separate `../nako` host-side lane for the `resource_search` resource
+  only after this plugin-side contract is accepted.
+- Add optional live/search provider adapters behind disabled-by-default
+  configuration.
+- Add link checking and downloader hooks only after host/operator policy exists.
 
 Watch points:
 

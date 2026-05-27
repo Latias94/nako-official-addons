@@ -875,6 +875,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "nako-resource-search"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "nako-addon-protocol",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
