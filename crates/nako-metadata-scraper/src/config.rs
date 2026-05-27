@@ -1042,6 +1042,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(browser_worker.extract_path, "/extract");
+        assert_eq!(browser_worker.render_path, "/render");
         assert_eq!(browser_worker.rendered_pages.timeout_ms, 10_000);
         assert_eq!(config.providers[4].id, ProviderId::Douban);
         assert!(!config.providers[4].enabled);
@@ -1433,6 +1434,7 @@ mod tests {
             "http://browser-worker.example:3000"
         );
         assert_eq!(browser_worker.extract_path, "/extract");
+        assert_eq!(browser_worker.render_path, "/render");
         assert_eq!(browser_worker.rendered_pages.timeout_ms, 7500);
         assert!(config.provider_enabled(ProviderId::Douban));
         let douban = config.providers[4].douban_config().unwrap();

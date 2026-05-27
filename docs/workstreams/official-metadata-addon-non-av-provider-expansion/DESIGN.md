@@ -65,6 +65,9 @@ Keep the pattern that worked for AV and previous provider refactors:
 - New API providers must be implemented as small vertical slices: config + client + parser + mapper
   + registry + focused tests.
 
+The BrowserWorker recipe path intentionally starts with a generic, provider-neutral recipe. Native
+providers can graduate from this path once their selectors and field reliability are proven.
+
 ## Protocol Gap: TV Seasons And Episodes
 
 TMDB season and episode endpoints are stable enough to support native extraction, but the current

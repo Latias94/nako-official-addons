@@ -9,7 +9,7 @@ Last updated: 2026-05-27
 | --- | --- | --- | --- |
 | TMDB provider | `cargo nextest run -p nako-metadata-scraper tmdb --no-fail-fast` | Pass | 2026-05-27: 38 passed, 222 skipped. Movie regression plus TV additions. |
 | Bangumi provider | `cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast` | Pass | 2026-05-27: 28 passed, 233 skipped. Anime enrichment. |
-| BrowserWorker rendered | `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast` | Pending | Recipe layer. |
+| BrowserWorker rendered | `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast` | Pass | 2026-05-27: 23 passed, 240 skipped. Recipe layer. |
 | AniList/config/manifest | `cargo nextest run -p nako-metadata-scraper anilist config registry manifest --no-fail-fast` | Pending | First new provider. |
 | Full package | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | Pending | Regression gate. |
 | Rust fmt | `cargo fmt -p nako-metadata-scraper -- --check` | Pending | Formatting gate. |
@@ -38,3 +38,12 @@ Last updated: 2026-05-27
   direct lookup aliases, subject type labels, and structured infobox-derived credits/studios.
 - 2026-05-27: `cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast` passed: 28
   passed, 233 skipped.
+- 2026-05-27: OMANV-050 added a BrowserWorker rendered-page recipe path using `/render` plus a
+  typed generic metadata selector recipe. It maps title, overview, release date/year, runtime,
+  genres, tags, poster artwork, score/vote facts, canonical URL, provider outcomes, and a
+  `browser_worker_recipe_url` direct lookup alias while preserving the existing text extraction
+  path.
+- 2026-05-27: `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast`
+  passed: 23 passed, 240 skipped.
+- 2026-05-27: `cargo nextest run -p nako-metadata-scraper config registry manifest routes browser_worker rendered --no-fail-fast`
+  passed: 66 passed, 197 skipped.

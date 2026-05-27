@@ -2,6 +2,7 @@
 pub enum ProviderOutcome {
     FixtureStaticCandidate,
     BrowserWorkerRenderedText,
+    BrowserWorkerRenderedRecipe,
     TmdbMovieEnriched,
     TmdbMoviePartiallyEnriched,
     TmdbMovieDegraded,
@@ -56,6 +57,9 @@ impl ProviderOutcome {
             }
             Self::BrowserWorkerRenderedText => {
                 "Browser worker rendered a page and returned normalized text."
+            }
+            Self::BrowserWorkerRenderedRecipe => {
+                "Browser worker rendered a page and mapped it through a metadata extraction recipe."
             }
             Self::TmdbMovieEnriched => {
                 "TMDB movie candidate enriched with search, detail, and external ID responses."

@@ -6,12 +6,13 @@
   "updated": "2026-05-27",
   "scope_kind": "execution",
   "task_prefix": "OMANV",
-  "current_task": "OMANV-050",
+  "current_task": "OMANV-060",
   "completed_tasks": [
     "OMANV-010",
     "OMANV-020",
     "OMANV-030",
-    "OMANV-040"
+    "OMANV-040",
+    "OMANV-050"
   ],
   "problem": "Non-AV metadata coverage is behind AV: TMDB is movie-centric, Bangumi can emit richer anime facts, browser-rendered extraction is not recipe-driven, and new API-backed providers need a maintainable first wave.",
   "authoritative_docs": [

@@ -7,8 +7,9 @@ Last updated: 2026-05-27
 
 OMANV-020 TMDB TV foundation is implemented and passing focused tests. OMANV-030 season/episode
 was reviewed and deferred because the current metadata patch contract cannot represent typed
-series/season/episode hierarchy without lossy tags. OMANV-040 Bangumi enrichment is implemented and
-passing focused tests. Current task is OMANV-050 BrowserWorker recipe layer.
+series/season/episode hierarchy without lossy tags. OMANV-040 Bangumi enrichment and OMANV-050
+BrowserWorker recipe layer are implemented and passing focused tests. Current task is OMANV-060
+AniList first-wave provider.
 
 ## Current Provider Map
 
@@ -25,9 +26,11 @@ passing focused tests. Current task is OMANV-050 BrowserWorker recipe layer.
 - Do not force episode fields into metadata until the protocol has typed hierarchy fields.
 - Bangumi subject relations are available through `/v0/subjects/{subject_id}/subjects`, but native
   relation mapping should wait for typed candidate/protocol relation support.
+- BrowserWorker now has two paths: `browser_worker_url` for text extraction and
+  `browser_worker_recipe_url` for rendered HTML recipe extraction.
 - AniList is the first new provider target; TVDB/MAL/IMDb should be decided after recipe/API
   boundaries are proven.
 
 ## Next Action
 
-Execute OMANV-050 BrowserWorker recipe layer with fake-runtime tests.
+Execute OMANV-060 AniList provider vertical slice.

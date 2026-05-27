@@ -35,15 +35,15 @@ Last updated: 2026-05-27
 
 ## M3 - BrowserWorker Recipe Layer
 
-- [ ] OMANV-050 [owner=codex] [deps=OMANV-040] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs]
+- [x] OMANV-050 [owner=codex] [deps=OMANV-040] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs]
   Goal: Add a typed rendered-page extraction recipe path that can map title, overview, dates, tags, artwork, score, and external IDs from rendered HTML.
   Validation: `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast`
   Review: Recipe execution must remain redaction-safe and bounded; selectors/config do not belong in logs.
-  Evidence: BrowserWorker fake-runtime tests.
+  Evidence: BrowserWorker fake-runtime tests; `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper config registry manifest routes browser_worker rendered --no-fail-fast`.
 
 ## M4 - New Provider First Wave
 
-- [ ] OMANV-060 [owner=codex] [deps=OMANV-040] [scope=crates/nako-metadata-scraper/src/providers/anilist.rs,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/registry.rs]
+- [ ] OMANV-060 [owner=codex] [deps=OMANV-050] [scope=crates/nako-metadata-scraper/src/providers/anilist.rs,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/registry.rs]
   Goal: Add AniList as the first new non-AV provider with GraphQL search/direct lookup, anime fields, artwork, score, external IDs, config, manifest, and docs.
   Validation: `cargo nextest run -p nako-metadata-scraper anilist config registry manifest --no-fail-fast`
   Review: Keep GraphQL queries provider-local and avoid coupling query parsing to provider internals.

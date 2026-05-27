@@ -580,7 +580,11 @@ mod tests {
                 id: "browser_worker",
                 enabled: false,
                 available: false,
-                capabilities: vec!["metadata_suggestion", "rendered_page_extraction"],
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "rendered_page_extraction",
+                    "rendered_page_recipe",
+                ],
                 status: ProviderStatus::Disabled,
             }
         );
@@ -885,6 +889,16 @@ mod tests {
                 && !capability.reject_non_positive_numeric
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "browser_worker_recipe"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability
+                    .top_level_fields
+                    .contains(&"browser_worker_recipe_url")
+                && !capability.reject_non_positive_numeric
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "douban"
                 && capability.value_kind == ExternalIdValueKind::Numeric
                 && !capability.accepts_direct_lookup
@@ -1115,6 +1129,11 @@ mod tests {
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "browser_worker_url",
             "browser_worker",
+            false
+        )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "browser_worker_recipe_url",
+            "browser_worker_recipe",
             false
         )));
         assert!(!aliases.iter().any(|alias| alias.provider == "douban"));

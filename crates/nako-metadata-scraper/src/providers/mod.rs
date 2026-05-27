@@ -27,6 +27,7 @@ mod rendered_av;
 #[cfg(test)]
 pub(crate) mod rendered_av_fixture;
 mod rendered_page;
+mod rendered_recipe;
 mod rendered_search_av;
 mod search_policy;
 pub mod tenmusume;

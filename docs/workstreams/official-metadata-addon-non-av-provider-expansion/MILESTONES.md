@@ -21,11 +21,12 @@ Last updated: 2026-05-27
 
 ## M3 - BrowserWorker
 
-- Active: typed recipe extraction path.
+- Done: typed rendered-page recipe extraction path with generic metadata selectors and direct
+  `browser_worker_recipe_url` input.
 
 ## M4 - New Providers
 
-- Pending: AniList first-wave provider.
+- Active: AniList first-wave provider.
 - Pending: TVDB/MAL/IMDb split decision.
 
 ## M5 - Closeout
