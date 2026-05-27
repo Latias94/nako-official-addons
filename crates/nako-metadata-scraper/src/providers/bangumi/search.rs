@@ -15,6 +15,9 @@ pub(super) fn bangumi_query_subject_ids(query: &MetadataQuery) -> impl Iterator<
             external_id
                 .provider
                 .eq_ignore_ascii_case(BANGUMI_PROVIDER_ID)
+                || external_id.provider.eq_ignore_ascii_case("bangumi_id")
+                || external_id.provider.eq_ignore_ascii_case("bgm")
+                || external_id.provider.eq_ignore_ascii_case("bgm_id")
         })
         .filter_map(|external_id| external_id.value.trim().parse().ok())
         .filter(|subject_id| *subject_id > 0)

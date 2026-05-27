@@ -43,7 +43,7 @@ const BANGUMI_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] =
         ExternalIdValueKind::Numeric,
         true,
         true,
-        &["bangumi_id"],
+        &["bangumi_id", "bgm_id"],
         true,
     )];
 
@@ -204,7 +204,15 @@ mod tests {
                     value: "0".to_owned(),
                 },
                 crate::engine::QueryExternalId {
+                    provider: "bangumi_id".to_owned(),
+                    value: "265".to_owned(),
+                },
+                crate::engine::QueryExternalId {
                     provider: "BANGUMI".to_owned(),
+                    value: "265".to_owned(),
+                },
+                crate::engine::QueryExternalId {
+                    provider: "bgm_id".to_owned(),
                     value: "265".to_owned(),
                 },
                 crate::engine::QueryExternalId {
@@ -254,6 +262,29 @@ mod tests {
 
         assert_eq!(response.data.len(), 1);
         assert_eq!(response.data[0].id, 265);
+    }
+
+    #[test]
+    fn bangumi_search_response_accepts_slim_subject_fields() {
+        let response = BangumiSubjectSearchResponse::from_value(serde_json::json!({
+            "data": [{
+                "id": 265,
+                "type": 2,
+                "name": "新世紀エヴァンゲリオン",
+                "name_cn": "新世纪福音战士",
+                "short_summary": "Slim summary.",
+                "score": 8.7,
+                "rank": 12,
+                "collection_total": 10000
+            }]
+        }))
+        .unwrap();
+
+        let subject = &response.data[0];
+        assert_eq!(subject.summary.as_deref(), Some("Slim summary."));
+        assert_eq!(subject.score, Some(8.7));
+        assert_eq!(subject.rank, Some(12));
+        assert_eq!(subject.collection_total, Some(10000));
     }
 
     #[tokio::test]
@@ -354,14 +385,17 @@ mod tests {
                 "eps": 26,
                 "total_episodes": 26,
                 "rating": {"rank": 10, "total": 12000, "score": 8.8},
-                "infobox": [
-                    {"key": "别名", "value": [
-                        {"v": "EVA"},
-                        {"v": "Neon Genesis Evangelion"},
-                        "NGE"
-                    ]},
-                    {"key": "中文名", "value": "新世纪福音战士"}
-                ],
+                    "infobox": [
+                        {"key": "别名", "value": [
+                            {"v": "EVA"},
+                            {"v": "Neon Genesis Evangelion"},
+                            "NGE"
+                        ]},
+                        {"key": "导演", "value": "庵野秀明"},
+                        {"key": "音乐", "value": [{"v": "鷺巣詩郎"}]},
+                        {"key": "动画制作", "value": "GAINAX"},
+                        {"key": "中文名", "value": "新世纪福音战士"}
+                    ],
                 "meta_tags": ["科幻", "机战"],
                 "tags": [
                     {"name": "庵野秀明", "count": 500},
@@ -465,6 +499,26 @@ mod tests {
         assert_eq!(candidates[0].facts.community_vote_count, Some(12000));
         assert_eq!(candidates[0].facts.external_ids[0].provider, "bangumi");
         assert_eq!(candidates[0].facts.external_ids[0].value, "265");
+        let credits = candidates[0].patch.credits.as_ref().unwrap();
+        assert!(
+            credits
+                .iter()
+                .any(|credit| credit.name == "庵野秀明" && credit.role == "director")
+        );
+        assert!(
+            credits
+                .iter()
+                .any(|credit| credit.name == "鷺巣詩郎" && credit.role == "music")
+        );
+        assert!(
+            candidates[0]
+                .patch
+                .studios
+                .as_ref()
+                .unwrap()
+                .iter()
+                .any(|studio| studio.name == "GAINAX")
+        );
 
         let requests = transport.requests();
         let configs = transport.configs();
@@ -546,11 +600,14 @@ mod tests {
                 eps: Some(26),
                 total_episodes: Some(26),
                 air_weekday: None,
+                rank: None,
+                score: None,
                 rating: Some(BangumiRating {
                     rank: Some(10),
                     total: Some(12000),
                     score: Some(8.8),
                 }),
+                collection_total: None,
                 collection: None,
                 infobox: vec![BangumiInfoboxItem {
                     key: Some(" 别名 ".to_owned()),
@@ -590,11 +647,14 @@ mod tests {
                 eps: Some(26),
                 total_episodes: Some(26),
                 air_weekday: None,
+                rank: None,
+                score: None,
                 rating: Some(BangumiRating {
                     rank: Some(10),
                     total: Some(12000),
                     score: Some(8.8),
                 }),
+                collection_total: None,
                 collection: None,
                 infobox: vec![
                     BangumiInfoboxItem {
@@ -604,6 +664,18 @@ mod tests {
                     BangumiInfoboxItem {
                         key: Some(" 中文名 ".to_owned()),
                         value: serde_json::json!(" 新世纪福音战士 "),
+                    },
+                    BangumiInfoboxItem {
+                        key: Some(" 导演 ".to_owned()),
+                        value: serde_json::json!(" 庵野秀明 "),
+                    },
+                    BangumiInfoboxItem {
+                        key: Some(" 音乐 ".to_owned()),
+                        value: serde_json::json!([{"v": " 鷺巣詩郎 "}]),
+                    },
+                    BangumiInfoboxItem {
+                        key: Some(" 动画制作 ".to_owned()),
+                        value: serde_json::json!([{"v": " GAINAX "}, {"v": "GAINAX"}]),
                     },
                 ],
                 meta_tags: vec![" 科幻 ".to_owned(), " 机战 ".to_owned()],
@@ -654,6 +726,20 @@ mod tests {
             candidate.artwork_candidates[0].facts.source_url,
             "https://lain.bgm.tv/pic/cover/l/detail.jpg"
         );
+        let credits = candidate.patch.credits.as_ref().unwrap();
+        assert!(
+            credits
+                .iter()
+                .any(|credit| credit.name == "庵野秀明" && credit.role == "director")
+        );
+        assert!(
+            credits
+                .iter()
+                .any(|credit| credit.name == "鷺巣詩郎" && credit.role == "music")
+        );
+        let studios = candidate.patch.studios.as_ref().unwrap();
+        assert_eq!(studios.len(), 1);
+        assert_eq!(studios[0].name, "GAINAX");
     }
 
     #[test]
@@ -713,6 +799,7 @@ mod tests {
         assert!(tags.contains(&"bangumi_locked".to_owned()));
         assert!(tags.contains(&"bangumi_series".to_owned()));
         assert!(tags.contains(&"bangumi_subject_type:2".to_owned()));
+        assert!(tags.contains(&"bangumi_subject_type_name:anime".to_owned()));
         assert!(tags.contains(&"bangumi_eps:26".to_owned()));
         assert!(tags.contains(&"bangumi_total_episodes:26".to_owned()));
         assert!(tags.contains(&"bangumi_air_weekday:3".to_owned()));
@@ -730,6 +817,9 @@ mod tests {
                 .count(),
             1
         );
+        let studios = candidate.patch.studios.as_ref().unwrap();
+        assert!(studios.iter().any(|studio| studio.name == "GAINAX"));
+        assert!(studios.iter().any(|studio| studio.name == "タツノコプロ"));
     }
 
     #[tokio::test]

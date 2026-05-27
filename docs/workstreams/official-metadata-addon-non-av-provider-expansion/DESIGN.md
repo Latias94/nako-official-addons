@@ -65,6 +65,26 @@ Keep the pattern that worked for AV and previous provider refactors:
 - New API providers must be implemented as small vertical slices: config + client + parser + mapper
   + registry + focused tests.
 
+## Protocol Gap: TV Seasons And Episodes
+
+TMDB season and episode endpoints are stable enough to support native extraction, but the current
+metadata patch contract cannot preserve that data cleanly. `AddonMetadataPatch` has no typed series,
+season, episode, season number, episode number, or still-image hierarchy, and it denies unknown
+fields. Encoding these facts as tags would make ranking, writeback, and downstream UI behavior
+ambiguous.
+
+The correct follow-up is a narrow protocol extension for non-AV episodic metadata, then a TMDB
+season/episode provider slice using explicit external IDs such as `tmdb_tv`, `tmdb_season`, and
+`tmdb_episode`.
+
+## Protocol Gap: Related Subjects
+
+Bangumi exposes related subjects through `/v0/subjects/{subject_id}/subjects`, and those relations
+are useful for sequels, adaptations, side stories, and franchise navigation. The current addon
+candidate model has no typed relation graph, so this lane does not encode related subjects as
+ambiguous tags. A future relation-capable candidate fact should carry relation label, provider,
+provider ID, subject type, and display titles.
+
 ## Task Strategy
 
 1. Ship TMDB TV as the first executable slice because it has the best stability/reward ratio.

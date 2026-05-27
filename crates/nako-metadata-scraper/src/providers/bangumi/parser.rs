@@ -77,6 +77,7 @@ pub(super) struct BangumiSubject {
     pub(super) name_cn: Option<String>,
     #[serde(alias = "air_date")]
     pub(super) date: Option<String>,
+    #[serde(alias = "short_summary")]
     pub(super) summary: Option<String>,
     pub(super) platform: Option<String>,
     pub(super) images: Option<BangumiImages>,
@@ -87,7 +88,10 @@ pub(super) struct BangumiSubject {
     pub(super) eps: Option<u32>,
     pub(super) total_episodes: Option<u32>,
     pub(super) air_weekday: Option<u8>,
+    pub(super) rank: Option<u32>,
+    pub(super) score: Option<f64>,
     pub(super) rating: Option<BangumiRating>,
+    pub(super) collection_total: Option<u32>,
     pub(super) collection: Option<BangumiSubjectCollection>,
     #[serde(default)]
     pub(super) infobox: Vec<BangumiInfoboxItem>,

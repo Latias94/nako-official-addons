@@ -1,4 +1,6 @@
-use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
+use nako_addon_protocol::{
+    AddonArtworkKind, AddonMetadataCredit, AddonMetadataPatch, AddonMetadataStudio,
+};
 
 use crate::engine::{
     MetadataQuery, ProviderArtworkCandidate, ProviderArtworkCandidateFacts, ProviderCandidateFacts,
@@ -22,6 +24,47 @@ const PRODUCTION_INFOBOX_KEYS: &[&str] = &[
     "制作会社",
 ];
 const INFOBOX_TAG_VALUE_LIMIT: usize = 4;
+const CREDIT_VALUE_LIMIT: usize = 12;
+
+struct BangumiCreditInfoboxMapping {
+    role: &'static str,
+    keys: &'static [&'static str],
+}
+
+const CREDIT_INFOBOX_MAPPINGS: &[BangumiCreditInfoboxMapping] = &[
+    BangumiCreditInfoboxMapping {
+        role: "director",
+        keys: &["导演", "監督", "监督", "ディレクター", "Director"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "original_creator",
+        keys: &["原作", "原作者", "原案", "Original Work"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "series_composition",
+        keys: &["系列构成", "系列構成", "シリーズ構成"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "writer",
+        keys: &["脚本", "劇本", "编剧", "編劇", "Scenario"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "music",
+        keys: &["音乐", "音樂", "音楽", "Music"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "character_design",
+        keys: &["人物设定", "人物設定", "キャラクターデザイン"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "art_director",
+        keys: &["美术监督", "美術監督", "美術監督・美術設定"],
+    },
+    BangumiCreditInfoboxMapping {
+        role: "photography_director",
+        keys: &["摄影监督", "攝影監督", "撮影監督"],
+    },
+];
 
 pub(super) struct BangumiSubjectCandidate {
     pub(super) search: BangumiSubject,
@@ -79,6 +122,17 @@ impl BangumiSubjectCandidate {
         let genres = genre_tags(&self.detail.meta_tags, &self.detail.tags)
             .or_else(|| genre_tags(&self.search.meta_tags, &self.search.tags));
         let rating = self.detail.rating.or(self.search.rating);
+        let rating_rank = rating
+            .as_ref()
+            .and_then(|rating| rating.rank)
+            .or(self.detail.rank)
+            .or(self.search.rank);
+        let rating_score = rating
+            .as_ref()
+            .and_then(|rating| rating.score)
+            .or(self.detail.score)
+            .or(self.search.score);
+        let rating_total = rating.as_ref().and_then(|rating| rating.total);
         let images = self.detail.images.or(self.search.images);
         let nsfw = self.detail.nsfw.or(self.search.nsfw);
         let locked = self.detail.locked.or(self.search.locked);
@@ -87,7 +141,24 @@ impl BangumiSubjectCandidate {
         let eps = self.detail.eps.or(self.search.eps);
         let total_episodes = self.detail.total_episodes.or(self.search.total_episodes);
         let air_weekday = self.detail.air_weekday.or(self.search.air_weekday);
-        let collection = self.detail.collection.or(self.search.collection);
+        let collection_total = self
+            .detail
+            .collection_total
+            .or_else(|| {
+                self.detail
+                    .collection
+                    .as_ref()
+                    .and_then(|collection| collection.total())
+            })
+            .or(self.search.collection_total)
+            .or_else(|| {
+                self.search
+                    .collection
+                    .as_ref()
+                    .and_then(|collection| collection.total())
+            });
+        let credits = infobox_credits(&self.detail.infobox, &self.search.infobox);
+        let studios = infobox_studios(&production_values);
 
         let mut tags = vec!["bangumi".to_owned()];
         if self.degraded {
@@ -104,6 +175,9 @@ impl BangumiSubjectCandidate {
         }
         if let Some(subject_type) = subject_type {
             tags.push(format!("bangumi_subject_type:{subject_type}"));
+            if let Some(label) = subject_type_label(subject_type) {
+                tags.push(format!("bangumi_subject_type_name:{label}"));
+            }
         }
         if let Some(volumes) = volumes.filter(|volumes| *volumes > 0) {
             tags.push(format!("bangumi_volumes:{volumes}"));
@@ -120,21 +194,16 @@ impl BangumiSubjectCandidate {
         if let Some(platform) = &platform {
             push_provider_tag(&mut tags, "platform", platform);
         }
-        if let Some(rating) = &rating {
-            if let Some(rank) = rating.rank {
-                tags.push(format!("bangumi_rank:{rank}"));
-            }
-            if let Some(total) = rating.total {
-                tags.push(format!("bangumi_rating_total:{total}"));
-            }
-            if let Some(score) = rating.score {
-                tags.push(format!("bangumi_score:{score:.1}"));
-            }
+        if let Some(rank) = rating_rank {
+            tags.push(format!("bangumi_rank:{rank}"));
         }
-        if let Some(collection_total) = collection
-            .as_ref()
-            .and_then(|collection| collection.total())
-        {
+        if let Some(total) = rating_total {
+            tags.push(format!("bangumi_rating_total:{total}"));
+        }
+        if let Some(score) = rating_score {
+            tags.push(format!("bangumi_score:{score:.1}"));
+        }
+        if let Some(collection_total) = collection_total {
             tags.push(format!("bangumi_collection_total:{collection_total}"));
         }
         if !official_sites.is_empty() {
@@ -195,6 +264,8 @@ impl BangumiSubjectCandidate {
                 tagline: platform,
                 genres,
                 tags: Some(tags).filter(|tags| !tags.is_empty()),
+                credits,
+                studios,
                 ..AddonMetadataPatch::default()
             },
             facts: ProviderCandidateFacts {
@@ -203,12 +274,9 @@ impl BangumiSubjectCandidate {
                 release_year: release_year.map(i32::from),
                 language: title_language,
                 av: None,
-                community_score_milli: rating.as_ref().and_then(|rating| {
-                    rating
-                        .score
-                        .map(|score| (score * 100.0).round().clamp(0.0, 1000.0) as u16)
-                }),
-                community_vote_count: rating.as_ref().and_then(|rating| rating.total),
+                community_score_milli: rating_score
+                    .map(|score| (score * 100.0).round().clamp(0.0, 1000.0) as u16),
+                community_vote_count: rating_total,
                 external_ids: vec![ProviderExternalId {
                     provider: BANGUMI_PROVIDER_ID.to_owned(),
                     value: subject_id.to_string(),
@@ -325,6 +393,71 @@ fn infobox_values(
         }
     }
     values
+}
+
+fn infobox_credits(
+    detail_infobox: &[BangumiInfoboxItem],
+    search_infobox: &[BangumiInfoboxItem],
+) -> Option<Vec<AddonMetadataCredit>> {
+    let mut credits = Vec::new();
+    for mapping in CREDIT_INFOBOX_MAPPINGS {
+        for name in infobox_values(
+            detail_infobox,
+            search_infobox,
+            mapping.keys,
+            CREDIT_VALUE_LIMIT,
+        ) {
+            push_bangumi_credit(&mut credits, &name, mapping.role);
+            if credits.len() >= CREDIT_VALUE_LIMIT {
+                break;
+            }
+        }
+        if credits.len() >= CREDIT_VALUE_LIMIT {
+            break;
+        }
+    }
+
+    (!credits.is_empty()).then_some(credits)
+}
+
+fn push_bangumi_credit(values: &mut Vec<AddonMetadataCredit>, name: &str, role: &str) {
+    let Some(name) = normalize_non_empty(name) else {
+        return;
+    };
+    if values
+        .iter()
+        .any(|credit| credit.name == name && credit.role == role)
+    {
+        return;
+    }
+    values.push(AddonMetadataCredit {
+        name,
+        role: role.to_owned(),
+        character: None,
+        order: Some(values.len() as u32),
+        external_ids: Vec::new(),
+    });
+}
+
+fn infobox_studios(values: &[String]) -> Option<Vec<AddonMetadataStudio>> {
+    let mut studios = Vec::new();
+    for value in values {
+        push_bangumi_studio(&mut studios, value);
+    }
+    (!studios.is_empty()).then_some(studios)
+}
+
+fn push_bangumi_studio(values: &mut Vec<AddonMetadataStudio>, name: &str) {
+    let Some(name) = normalize_non_empty(name) else {
+        return;
+    };
+    if values.iter().any(|studio| studio.name == name) {
+        return;
+    }
+    values.push(AddonMetadataStudio {
+        name,
+        external_ids: Vec::new(),
+    });
 }
 
 fn push_infobox_item_values(
@@ -501,6 +634,17 @@ fn push_provider_tag(tags: &mut Vec<String>, key: &str, value: &str) {
         return;
     };
     push_unique_non_empty(tags, format!("bangumi_{key}:{value}"));
+}
+
+fn subject_type_label(subject_type: u8) -> Option<&'static str> {
+    match subject_type {
+        1 => Some("book"),
+        2 => Some("anime"),
+        3 => Some("music"),
+        4 => Some("game"),
+        6 => Some("real"),
+        _ => None,
+    }
 }
 
 fn normalize_tag_value(value: &str) -> Option<String> {

@@ -19,23 +19,23 @@ Last updated: 2026-05-27
   Review: Existing movie behavior and `tmdb_id` direct lookup must remain stable; TV gets explicit `tmdb_tv_id`.
   Evidence: TMDB provider tests; `cargo nextest run -p nako-metadata-scraper tmdb --no-fail-fast`; `cargo nextest run -p nako-metadata-scraper config registry manifest routes tmdb --no-fail-fast`.
 
-- [ ] OMANV-030 [owner=codex] [deps=OMANV-020] [scope=crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/tmdb]
+- [x] OMANV-030 [owner=codex] [deps=OMANV-020] [scope=crates/nako-metadata-scraper/src/providers/tmdb.rs,crates/nako-metadata-scraper/src/providers/tmdb]
   Goal: Add TMDB season/episode direct lookup seeds and candidate mapping where the current metadata patch contract can represent them cleanly.
-  Validation: `cargo nextest run -p nako-metadata-scraper tmdb season episode --no-fail-fast`
+  Validation: Protocol review against `AddonMetadataPatch` and `ProviderCandidateFacts`.
   Review: If the Addon Protocol cannot represent an episode field cleanly, split an ADR/follow-up instead of forcing lossy fields.
-  Evidence: TMDB provider tests and any protocol-gap note.
+  Evidence: Protocol gap recorded in `DESIGN.md`; no lossy season/episode mapping was added.
 
 ## M2 - Bangumi Anime Enrichment
 
-- [ ] OMANV-040 [owner=codex] [deps=OMANV-020] [scope=crates/nako-metadata-scraper/src/providers/bangumi.rs,crates/nako-metadata-scraper/src/providers/bangumi]
+- [x] OMANV-040 [owner=codex] [deps=OMANV-020] [scope=crates/nako-metadata-scraper/src/providers/bangumi.rs,crates/nako-metadata-scraper/src/providers/bangumi]
   Goal: Enrich Bangumi anime mapping with stronger aliases, relations/tags, production facts, image variants, score/vote evidence, and subject-type-aware titles.
   Validation: `cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast`
   Review: Avoid leaking raw user/authenticated-sensitive data into evidence or docs.
-  Evidence: Bangumi mapper/parser tests.
+  Evidence: Bangumi mapper/parser tests; `cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast`.
 
 ## M3 - BrowserWorker Recipe Layer
 
-- [ ] OMANV-050 [owner=codex] [deps=OMANV-010] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs]
+- [ ] OMANV-050 [owner=codex] [deps=OMANV-040] [scope=crates/nako-metadata-scraper/src/providers/browser_worker.rs,crates/nako-metadata-scraper/src/providers/rendered_page.rs]
   Goal: Add a typed rendered-page extraction recipe path that can map title, overview, dates, tags, artwork, score, and external IDs from rendered HTML.
   Validation: `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast`
   Review: Recipe execution must remain redaction-safe and bounded; selectors/config do not belong in logs.

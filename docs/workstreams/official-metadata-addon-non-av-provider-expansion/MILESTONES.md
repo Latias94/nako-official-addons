@@ -12,15 +12,16 @@ Last updated: 2026-05-27
 
 - Done: TV series search/direct lookup with `tmdb_tv` direct IDs, TV search fallback, external IDs,
   artwork, aliases, score/vote facts, and provider outcomes.
-- Pending: Season/episode representation decision and implementation or split.
+- Done: Season/episode native mapping deferred as a protocol gap instead of forcing lossy tags.
 
 ## M2 - Bangumi
 
-- Pending: richer anime fields and score/artwork/alias coverage.
+- Done: richer anime fields, SlimSubject compatibility, score/rank/collection facts, direct ID
+  aliases, subject type labels, and structured credits/studios.
 
 ## M3 - BrowserWorker
 
-- Pending: typed recipe extraction path.
+- Active: typed recipe extraction path.
 
 ## M4 - New Providers
 
