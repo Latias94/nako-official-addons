@@ -36,11 +36,7 @@ where
     }
 
     pub(super) fn search_url(&self, av_number: &str) -> String {
-        format!(
-            "{}/search?q={}&locale=zh",
-            self.config.base_url.trim_end_matches('/'),
-            percent_encode_query(av_number)
-        )
+        super::javdb_search_url(&self.config.base_url, av_number)
     }
 
     pub(super) fn detail_url(&self, movie_id: &str) -> String {
@@ -74,7 +70,7 @@ where
     }
 }
 
-fn percent_encode_query(value: &str) -> String {
+pub(super) fn percent_encode_query(value: &str) -> String {
     let mut encoded = String::new();
     for byte in value.as_bytes() {
         match *byte {

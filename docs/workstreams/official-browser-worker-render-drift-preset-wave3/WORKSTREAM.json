@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "slug": "official-browser-worker-render-drift-preset-wave3",
+  "title": "Official Browser Worker Render Drift Preset Wave3",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OBWRDW3",
+  "current_task": null,
+  "completed_tasks": [
+    "OBWRDW3-010",
+    "OBWRDW3-020",
+    "OBWRDW3-030"
+  ],
+  "problem": "Remaining rendered AV providers need provider-owned Browser Worker live drift cases instead of hand-written operator JSON.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave3/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave3/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave3/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper render_drift --no-fail-fast",
+    "generated expanded-provider CLI JSON parses in Browser Worker",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "npm test",
+    "python -m json.tool docs/workstreams/official-browser-worker-render-drift-preset-wave3/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/render_drift.rs",
+    "crates/nako-metadata-scraper/src/providers/javdb.rs",
+    "crates/nako-metadata-scraper/src/providers/fc2.rs",
+    "crates/nako-metadata-scraper/src/providers/fc2ppvdb.rs",
+    "crates/nako-metadata-scraper/src/providers/official_uncensored.rs",
+    "addons/browser-worker/README.md"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Generated Browser Worker cases now cover all existing rendered AV providers."
+  }
+}

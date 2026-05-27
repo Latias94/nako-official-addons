@@ -21,6 +21,7 @@ use crate::{
             ReqwestProviderHttpTransport,
         },
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -146,6 +147,24 @@ fn build_provider(config: &Config) -> ProviderBuildStatus {
     }
 }
 
+#[must_use]
+pub(crate) fn render_drift_case(
+    config: &Fc2ppvdbProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    let article_id = article_id_from_av_number(av_number)
+        .unwrap_or_else(|| av_number.trim().trim_start_matches("FC2-").to_owned());
+    BrowserWorkerRenderDriftCase::new(
+        "fc2ppvdb-detail",
+        fc2ppvdb_detail_url(&config.base_url, &article_id),
+    )
+    .with_selector("article, main, .details, h1, h2")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
+}
+
 #[derive(Clone, Debug)]
 pub struct Fc2ppvdbMetadataProvider<T = ReqwestProviderHttpTransport>
 where
@@ -237,12 +256,12 @@ where
     }
 
     fn detail_url(&self, article_id: &str) -> String {
-        format!(
-            "{}/articles/{}",
-            self.config.base_url.trim_end_matches('/'),
-            article_id
-        )
+        fc2ppvdb_detail_url(&self.config.base_url, article_id)
     }
+}
+
+fn fc2ppvdb_detail_url(base_url: &str, article_id: &str) -> String {
+    format!("{}/articles/{}", base_url.trim_end_matches('/'), article_id)
 }
 
 #[async_trait]

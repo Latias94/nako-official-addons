@@ -17,6 +17,7 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
@@ -45,6 +46,10 @@ const FC2_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         false,
     ),
 ];
+
+fn fc2_detail_url(base_url: &str, article_id: &str) -> String {
+    format!("{}/article/{}/", base_url.trim_end_matches('/'), article_id)
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fc2ProviderConfig {
@@ -134,6 +139,21 @@ fn build_provider(config: &Config) -> ProviderBuildStatus {
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    config: &Fc2ProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    let article_id = parser::article_id_from_av_number(av_number)
+        .unwrap_or_else(|| av_number.trim().trim_start_matches("FC2-").to_owned());
+    BrowserWorkerRenderDriftCase::new("fc2-detail", fc2_detail_url(&config.base_url, &article_id))
+        .with_selector("h1, .items_article_info, .items_article_HeadInfo")
+        .with_rendered_page_defaults(&config.rendered_pages)
+        .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+        .with_min_text_bytes(100)
+        .with_min_html_bytes(500)
 }
 
 #[derive(Clone, Debug)]

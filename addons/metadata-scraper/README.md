@@ -408,9 +408,10 @@ npm --prefix addons/browser-worker run live:render-drift
 
 This avoids hand-writing provider URLs, selectors, and JavBus age-gate actions.
 The generated cases currently cover Douban search, DMM search, JavBus detail,
-JavLibrary search, XCity search, AirAV search, AVSox search, and MGStage
-detail. Safe render defaults such as `proxy_policy` are emitted; session keys,
-cookies, and header values are not.
+JavLibrary search, XCity search, AirAV search, AVSox search, MGStage detail,
+JavDB search, FC2 detail, FC2PPVDB detail, Caribbean detail, 1Pondo detail,
+and 10Musume detail. Safe render defaults such as `proxy_policy` are emitted;
+session keys, cookies, and header values are not.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `tmdb_tv_id`, `imdb_id`, `bangumi_id`, `bgm_id`, `anilist_id`,

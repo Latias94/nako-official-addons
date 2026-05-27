@@ -19,6 +19,7 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpResult, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -194,6 +195,23 @@ pub(crate) fn build_provider(
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    site: &'static OfficialUncensoredSite,
+    config: &OfficialUncensoredProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    BrowserWorkerRenderDriftCase::new(
+        format!("{}-detail", site.provider_id),
+        site.detail_url(config, av_number),
+    )
+    .with_selector("article, main, .movie-info, .detail, .info, h1, h2")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
 }
 
 #[derive(Clone, Debug)]

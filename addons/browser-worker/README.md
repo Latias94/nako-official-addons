@@ -163,8 +163,9 @@ npm --prefix addons/browser-worker run live:render-drift
 ```
 
 Provider-owned cases currently cover Douban search, DMM search, JavBus detail,
-JavLibrary search, XCity search, AirAV search, AVSox search, and MGStage
-detail. Set
+JavLibrary search, XCity search, AirAV search, AVSox search, MGStage detail,
+JavDB search, FC2 detail, FC2PPVDB detail, Caribbean detail, 1Pondo detail,
+and 10Musume detail. Set
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DOUBAN_TITLE`,
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER`, or
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER` to override
@@ -172,7 +173,15 @@ first-wave samples. DMM, XCity, AirAV, and AVSox use
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER` unless their
 provider-specific sample env var is set. MGStage defaults to a known MGStage
 style number and can be overridden with
-`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`. Safe render
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`. JavDB uses the
+global sample unless `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER`
+is set. FC2 and FC2PPVDB use FC2 route samples from
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER` and
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER`; official
+uncensored sites use
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER`,
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER`, and
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER`. Safe render
 defaults such as `proxy_policy` are emitted; session keys, cookies, and header
 values are not.
 

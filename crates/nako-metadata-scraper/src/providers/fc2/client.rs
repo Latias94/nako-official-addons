@@ -36,11 +36,7 @@ where
     }
 
     pub(super) fn detail_url(&self, article_id: &str) -> String {
-        format!(
-            "{}/article/{}/",
-            self.config.base_url.trim_end_matches('/'),
-            article_id
-        )
+        super::fc2_detail_url(&self.config.base_url, article_id)
     }
 
     pub(super) async fn render(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {

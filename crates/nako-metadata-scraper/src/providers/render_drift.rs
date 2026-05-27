@@ -4,9 +4,10 @@ use crate::{
     Config,
     config::ProviderId,
     providers::{
-        airav, avsox, dmm, douban, javbus, javlibrary, mgstage,
+        airav, avsox, caribbean, dmm, douban, fc2, fc2ppvdb, javbus, javdb, javlibrary, mgstage,
+        official_uncensored, onepondo,
         rendered_page::{RenderedPageProxyPolicy, RenderedPageSupportConfig},
-        rendered_search_av, xcity,
+        rendered_search_av, tenmusume, xcity,
     },
 };
 
@@ -28,8 +29,22 @@ pub const RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER_ENV_VAR: &str =
     "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER";
 pub const RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER_ENV_VAR: &str =
     "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER";
 
 const DEFAULT_SAMPLE_AV_NUMBER: &str = "SSNI-644";
+const DEFAULT_SAMPLE_FC2_AV_NUMBER: &str = "FC2-1723984";
+const DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER: &str = "010116-001";
 const DEFAULT_SAMPLE_DOUBAN_TITLE: &str = "千与千寻";
 const DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER: &str = "300MIUM-382";
 
@@ -260,6 +275,36 @@ pub fn browser_worker_render_drift_cases_from_lookup(
         sample_av_number.as_deref(),
         DEFAULT_SAMPLE_AV_NUMBER,
     );
+    let sample_javdb_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
+    );
+    let sample_fc2_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR),
+        None,
+        DEFAULT_SAMPLE_FC2_AV_NUMBER,
+    );
+    let sample_fc2ppvdb_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER_ENV_VAR),
+        Some(&sample_fc2_av_number),
+        DEFAULT_SAMPLE_FC2_AV_NUMBER,
+    );
+    let sample_caribbean_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER_ENV_VAR),
+        None,
+        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+    );
+    let sample_1pondo_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR),
+        Some(&sample_caribbean_av_number),
+        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+    );
+    let sample_10musume_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR),
+        Some(&sample_caribbean_av_number),
+        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+    );
 
     let mut cases = Vec::new();
     if config.provider_enabled(ProviderId::Douban)
@@ -337,6 +382,63 @@ pub fn browser_worker_render_drift_cases_from_lookup(
         cases.push(mgstage::render_drift_case(
             provider,
             &sample_mgstage_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::Javdb)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Javdb)
+            .and_then(|provider| provider.javdb_config())
+    {
+        cases.push(javdb::render_drift_case(provider, &sample_javdb_av_number));
+    }
+    if config.provider_enabled(ProviderId::Fc2)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Fc2)
+            .and_then(|provider| provider.fc2_config())
+    {
+        cases.push(fc2::render_drift_case(provider, &sample_fc2_av_number));
+    }
+    if config.provider_enabled(ProviderId::Fc2ppvdb)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Fc2ppvdb)
+            .and_then(|provider| provider.fc2ppvdb_config())
+    {
+        cases.push(fc2ppvdb::render_drift_case(
+            provider,
+            &sample_fc2ppvdb_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::Caribbean)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Caribbean)
+            .and_then(|provider| provider.caribbean_config())
+    {
+        cases.push(official_uncensored::render_drift_case(
+            &caribbean::CARIBBEAN_SITE,
+            provider,
+            &sample_caribbean_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::OnePondo)
+        && let Some(provider) = config
+            .provider_config(ProviderId::OnePondo)
+            .and_then(|provider| provider.onepondo_config())
+    {
+        cases.push(official_uncensored::render_drift_case(
+            &onepondo::ONEPONDO_SITE,
+            provider,
+            &sample_1pondo_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::TenMusume)
+        && let Some(provider) = config
+            .provider_config(ProviderId::TenMusume)
+            .and_then(|provider| provider.tenmusume_config())
+    {
+        cases.push(official_uncensored::render_drift_case(
+            &tenmusume::TENMUSUME_SITE,
+            provider,
+            &sample_10musume_av_number,
         ));
     }
 
@@ -551,6 +653,146 @@ mod tests {
         assert_eq!(
             cases[0].url,
             "https://mgstage.example/product/product_detail/300MIUM-382/"
+        );
+    }
+
+    #[test]
+    fn render_drift_cases_include_wave3_remaining_rendered_av_presets() {
+        let config = Config::from_env_lookup(|name| match name {
+            AV_PROVIDER_PRESET_ENV_VAR => Some("manual".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAVDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2PPVDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_1PONDO_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAVDB_BASE_URL" => Some("https://javdb.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2PPVDB_BASE_URL" => {
+                Some("https://fc2ppvdb.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_CARIBBEAN_BASE_URL" => {
+                Some("https://caribbean.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_1PONDO_BASE_URL" => Some("https://1pondo.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_10MUSUME_BASE_URL" => {
+                Some("https://10musume.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY" => Some("required".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY" => {
+                Some("session-key-should-not-emit".to_owned())
+            }
+            _ => None,
+        });
+
+        let cases = browser_worker_render_drift_cases_from_lookup(&config, |name| match name {
+            RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER_ENV_VAR => Some("MIDE-900".to_owned()),
+            RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR => Some("FC2-1723984".to_owned()),
+            RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER_ENV_VAR => Some("FC2-2392657".to_owned()),
+            RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER_ENV_VAR => Some("010116-001".to_owned()),
+            RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR => Some("010116-002".to_owned()),
+            RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR => Some("010116-03".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(cases.len(), 6);
+        assert_eq!(
+            serde_json::to_value(&cases).unwrap(),
+            json!([
+                {
+                    "id": "javdb-search",
+                    "url": "https://javdb.example/search?q=MIDE-900&locale=zh",
+                    "selector": "a.box[href], a[href*=\"/v/\"]",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "fc2-detail",
+                    "url": "https://fc2.example/article/1723984/",
+                    "selector": "h1, .items_article_info, .items_article_HeadInfo",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "fc2ppvdb-detail",
+                    "url": "https://fc2ppvdb.example/articles/2392657",
+                    "selector": "article, main, .details, h1, h2",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "caribbean-detail",
+                    "url": "https://caribbean.example/moviepages/010116-001/index.html",
+                    "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "1pondo-detail",
+                    "url": "https://1pondo.example/movies/010116_002/index.html",
+                    "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "10musume-detail",
+                    "url": "https://10musume.example/movies/010116_03/index.html",
+                    "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "proxy_policy": "required",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                }
+            ])
+        );
+        let rendered = serde_json::to_string(&cases).unwrap();
+        assert!(!rendered.contains("session-key-should-not-emit"));
+    }
+
+    #[test]
+    fn render_drift_cases_use_route_specific_wave3_defaults() {
+        let config = Config::from_env_lookup(|name| match name {
+            AV_PROVIDER_PRESET_ENV_VAR => Some("manual".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_FC2_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_1PONDO_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_CARIBBEAN_BASE_URL" => {
+                Some("https://caribbean.example".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_1PONDO_BASE_URL" => Some("https://1pondo.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_10MUSUME_BASE_URL" => {
+                Some("https://10musume.example".to_owned())
+            }
+            _ => None,
+        });
+
+        let cases = browser_worker_render_drift_cases_from_lookup(&config, |_| None);
+
+        assert_eq!(cases.len(), 4);
+        assert_eq!(cases[0].url, "https://fc2.example/article/1723984/");
+        assert_eq!(
+            cases[1].url,
+            "https://caribbean.example/moviepages/010116-001/index.html"
+        );
+        assert_eq!(
+            cases[2].url,
+            "https://1pondo.example/movies/010116_001/index.html"
+        );
+        assert_eq!(
+            cases[3].url,
+            "https://10musume.example/movies/010116_001/index.html"
         );
     }
 

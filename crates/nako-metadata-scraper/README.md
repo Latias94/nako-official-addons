@@ -335,12 +335,14 @@ cargo run -q -p nako-metadata-scraper -- render-drift-cases
 
 The command prints the JSON array expected by Browser Worker
 `NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES`. It currently emits cases for
-enabled Douban, DMM, JavBus, JavLibrary, XCity, AirAV, AVSox, and MGStage
-providers. Override samples with
+enabled Douban, DMM, JavBus, JavLibrary, XCity, AirAV, AVSox, MGStage, JavDB,
+FC2, FC2PPVDB, Caribbean, 1Pondo, and 10Musume providers. Override samples with
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DOUBAN_TITLE`,
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER`, or provider-specific AV
 sample variables such as
-`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`. Safe render
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`,
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER`, or
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER`. Safe render
 defaults such as `proxy_policy` are emitted; session keys, cookies, and header
 values are not.
 
