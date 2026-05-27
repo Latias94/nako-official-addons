@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Evidence And Gates
 
-Status: Blocked on publish approval
+Status: Ready for addon publish approval
 Last updated: 2026-05-24
 Last refreshed: 2026-05-27
 
@@ -24,6 +24,7 @@ cargo nextest run -p nako-addon-protocol protected_write_payload_contracts_keep_
 cargo publish -p nako-addon-protocol --locked --dry-run --allow-dirty
 cargo publish -p nako-addon-client --locked --dry-run --allow-dirty
 cargo publish -p nako-official-addon-catalog --locked --dry-run --allow-dirty
+python scripts/publish_crates.py --mode dry-run --allow-dirty
 ```
 
 Smoke gates:
@@ -64,16 +65,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 | 2026-05-25 | OAR2-030 | `cargo publish -p nako-official-addon-catalog --locked --dry-run --allow-dirty` in `../nako` | Blocked: crates.io has `nako-addon-protocol 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until protocol alpha.2 is published |
 | 2026-05-25 | OAR2-030 | `cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty` | Blocked: crates.io has `nako-addon-protocol 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until protocol alpha.2 is published |
 | 2026-05-25 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty` | Blocked: crates.io has `nako-addon-client 0.1.0-alpha.1` only, so `^0.1.0-alpha.2` cannot resolve until client alpha.2 is published; `nako-official-addon-catalog 0.1.0-alpha.2` will also be required before metadata scraper publish |
+| 2026-05-27 | OAR2-030 | `python scripts/publish_crates.py --mode publish --allow-dirty --registry-settle-seconds 5` in `../nako` | Published `nako-official-addon-catalog 0.1.0-alpha.2`; skipped already published `nako-addon-protocol`, `nako-addon-client`, and `nako`. |
+| 2026-05-27 | OAR2-030 | `python scripts/publish_crates.py --mode dry-run --allow-dirty` in `../nako` | Pass: packaged and verified `nako-addon-protocol`, `nako-addon-client`, `nako-official-addon-catalog`, and `nako` at `0.1.0-alpha.2`; dry-run uploads aborted as expected. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-notification-bridge --locked --dry-run` | Pass. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked --dry-run` | Pass. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-chromecast-renderer --locked --dry-run` | Pass. |
 
 ## Known Constraints
 
-- Do not publish crates or push images without user approval.
+- Do not publish remaining addon crates or push images without user approval.
 - Do not change `ADDON_PROTOCOL_VERSION` unless runtime wire compatibility is
   intentionally changed.
 - Docker live smoke requires a reachable Docker daemon.
 - `../nako` has unrelated dirty files; stage only files touched for this lane.
-- Publish order after approval: `nako-addon-protocol 0.1.0-alpha.2`, then
-  `nako-addon-client 0.1.0-alpha.2` and `nako-official-addon-catalog
-  0.1.0-alpha.2`, then `nako-notification-bridge 0.1.0-alpha.2`,
-  `nako-metadata-scraper 0.1.0-alpha.2`, and
+- Remaining publish order after approval: `nako-notification-bridge
+  0.1.0-alpha.2`, `nako-metadata-scraper 0.1.0-alpha.2`, and
   `nako-chromecast-renderer 0.1.0-alpha.2`.

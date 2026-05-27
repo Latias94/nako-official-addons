@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - TODO
 
-Status: Blocked on publish approval
+Status: Ready for addon publish approval
 Last updated: 2026-05-24
 Last refreshed: 2026-05-27
 
@@ -36,31 +36,33 @@ Task IDs use the `OAR2` prefix.
 
 ## M2 - Package Verification
 
-- [ ] OAR2-030 [owner=codex] [deps=OAR2-020] [scope=crates/nako-metadata-scraper,crates/nako-notification-bridge,crates/nako-chromecast-renderer,../nako/crates/nako-addon-client,../nako/crates/nako-addon-protocol,../nako/crates/nako-official-addon-catalog]
+- [x] OAR2-030 [owner=codex] [deps=OAR2-020] [scope=crates/nako-metadata-scraper,crates/nako-notification-bridge,crates/nako-chromecast-renderer,../nako/crates/nako-addon-client,../nako/crates/nako-addon-protocol,../nako/crates/nako-official-addon-catalog]
   Goal: Prove official addon packaging verifies against registry-shaped SDK and
   official catalog dependencies.
   Validation: `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty`; `cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty`; `cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty`.
   Review: If SDK crates are not yet published, record the exact blocker and
   verify the SDK crate dry-runs separately.
   Evidence: Package dry-run output.
-  Result: BLOCKED 2026-05-24 on publish order approval.
-  Evidence: `nako-addon-protocol 0.1.0-alpha.2` dry-run passed.
-  `nako-addon-client 0.1.0-alpha.2` dry-run is blocked until
-  `nako-addon-protocol 0.1.0-alpha.2` exists on crates.io.
-  `nako-official-addon-catalog 0.1.0-alpha.2` dry-run is also blocked until
-  `nako-addon-protocol 0.1.0-alpha.2` exists on crates.io. The notification
-  bridge dry-run is blocked until `nako-addon-protocol 0.1.0-alpha.2` exists on
-  crates.io. The metadata scraper dry-run is blocked until
-  `nako-addon-client 0.1.0-alpha.2` and `nako-official-addon-catalog
-  0.1.0-alpha.2` exist on crates.io.
+  Result: DONE 2026-05-27 after `nako-official-addon-catalog 0.1.0-alpha.2`
+  was published.
+  Evidence: `nako-addon-protocol`, `nako-addon-client`,
+  `nako-official-addon-catalog`, and `nako` are visible as
+  `0.1.0-alpha.2` crates on crates.io. `python scripts/publish_crates.py
+  --mode dry-run --allow-dirty` now verifies all public Nako crates from the
+  main repository. `cargo publish --dry-run` verifies
+  `nako-notification-bridge`, `nako-metadata-scraper`, and
+  `nako-chromecast-renderer` against the published SDK/catalog dependency
+  boundary.
   Refresh 2026-05-27: publish and dry-run lists now include
   `nako-chromecast-renderer`, which requires `nako-addon-protocol
   0.1.0-alpha.2` and `nako-official-addon-catalog 0.1.0-alpha.2`.
+  Refresh 2026-05-27 after catalog publish: `cargo publish --dry-run` passed
+  for `nako-notification-bridge`, `nako-metadata-scraper`, and
+  `nako-chromecast-renderer`.
   Refresh 2026-05-25: workspace nextest passed 183/183 with 2 skipped;
   metadata/fmt/diff checks passed.
-  Handoff: Publish order is protocol first; then client and official addon
-  catalog; then notification bridge, metadata scraper, and Chromecast renderer
-  after user approval.
+  Handoff: SDK/catalog crates are published. Continue with addon crate publish
+  only after explicit user approval.
 
 ## M3 - Smoke And Closeout
 

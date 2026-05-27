@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness
 
-Status: Blocked on publish approval
+Status: Ready for addon publish approval
 Last updated: 2026-05-27
 
 ## Problem
@@ -9,10 +9,11 @@ The post-alpha.1 official addon refactors moved Addon Task envelopes and
 protected-write runtime helpers into public Nako SDK crates. Notification
 bridge and Chromecast renderer work also added more official addon packages
 that depend on the public Addon Protocol and official catalog crates. Local
-path builds pass, but
-`cargo publish --dry-run` verifies against the already published
-`0.1.0-alpha.1` crates and fails because those crates do not contain the new
-SDK surface.
+path builds passed before the public crate line was complete. On 2026-05-27,
+`nako-addon-protocol`, `nako-addon-client`, `nako`, and
+`nako-official-addon-catalog` `0.1.0-alpha.2` were visible on crates.io, and
+all official addon package dry-runs passed against registry-shaped
+dependencies.
 
 Live Docker/server smoke also remains a release proof, but the current local
 environment has the Docker CLI installed without a reachable Docker daemon.
