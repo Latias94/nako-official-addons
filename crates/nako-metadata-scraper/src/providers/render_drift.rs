@@ -4,12 +4,10 @@ use serde::Serialize;
 
 use crate::{
     Config,
-    config::ProviderId,
+    config::ProviderConfig,
     providers::{
-        airav, avsox, caribbean, dmm, douban, fc2, fc2ppvdb, javbus, javdb, javlibrary, mgstage,
-        official_uncensored, onepondo,
+        ProviderRegistry,
         rendered_page::{RenderedPageProxyPolicy, RenderedPageSupportConfig},
-        rendered_search_av, tenmusume, xcity,
     },
 };
 
@@ -44,15 +42,83 @@ pub const RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR: &str =
 pub const RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR: &str =
     "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER";
 
-const DEFAULT_SAMPLE_AV_NUMBER: &str = "SSNI-644";
-const DEFAULT_SAMPLE_FC2_AV_NUMBER: &str = "FC2-1723984";
-const DEFAULT_SAMPLE_CARIBBEAN_AV_NUMBER: &str = "052226-001";
-const DEFAULT_SAMPLE_1PONDO_AV_NUMBER: &str = "080616_355";
-const DEFAULT_SAMPLE_10MUSUME_AV_NUMBER: &str = "010116_001";
-const DEFAULT_SAMPLE_DOUBAN_TITLE: &str = "千与千寻";
-const DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER: &str = "300MIUM-382";
+pub(crate) const DEFAULT_SAMPLE_AV_NUMBER: &str = "SSNI-644";
+pub(crate) const DEFAULT_SAMPLE_FC2_AV_NUMBER: &str = "FC2-1723984";
+pub(crate) const DEFAULT_SAMPLE_CARIBBEAN_AV_NUMBER: &str = "052226-001";
+pub(crate) const DEFAULT_SAMPLE_1PONDO_AV_NUMBER: &str = "080616_355";
+pub(crate) const DEFAULT_SAMPLE_10MUSUME_AV_NUMBER: &str = "010116_001";
+pub(crate) const DEFAULT_SAMPLE_DOUBAN_TITLE: &str = "千与千寻";
+pub(crate) const DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER: &str = "300MIUM-382";
 pub(crate) const SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS: u64 = 30_000;
 pub(crate) const SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS: u64 = 15_000;
+
+#[derive(Clone, Copy)]
+pub(crate) struct ProviderRenderDriftCaseDescriptor {
+    order: u16,
+    sample_env_var: &'static str,
+    fallback_env_var: Option<&'static str>,
+    generic_env_var: Option<&'static str>,
+    fallback: &'static str,
+    build: fn(&ProviderConfig, &str) -> Option<BrowserWorkerRenderDriftCase>,
+}
+
+impl ProviderRenderDriftCaseDescriptor {
+    #[must_use]
+    pub(crate) const fn new(
+        order: u16,
+        sample_env_var: &'static str,
+        fallback: &'static str,
+        build: fn(&ProviderConfig, &str) -> Option<BrowserWorkerRenderDriftCase>,
+    ) -> Self {
+        Self {
+            order,
+            sample_env_var,
+            fallback_env_var: None,
+            generic_env_var: None,
+            fallback,
+            build,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn with_fallback_env_var(mut self, env_var: &'static str) -> Self {
+        self.fallback_env_var = Some(env_var);
+        self
+    }
+
+    #[must_use]
+    pub(crate) const fn with_generic_av_sample(mut self) -> Self {
+        self.generic_env_var = Some(RENDER_DRIFT_SAMPLE_AV_NUMBER_ENV_VAR);
+        self
+    }
+
+    #[must_use]
+    fn order(self) -> u16 {
+        self.order
+    }
+
+    #[must_use]
+    fn sample(self, lookup: &mut impl FnMut(&str) -> Option<String>) -> String {
+        non_empty(lookup(self.sample_env_var))
+            .or_else(|| {
+                self.fallback_env_var
+                    .and_then(|env_var| non_empty(lookup(env_var)))
+            })
+            .or_else(|| {
+                self.generic_env_var
+                    .and_then(|env_var| non_empty(lookup(env_var)))
+            })
+            .unwrap_or_else(|| self.fallback.to_owned())
+    }
+
+    fn build(
+        self,
+        provider_config: &ProviderConfig,
+        sample: &str,
+    ) -> Option<BrowserWorkerRenderDriftCase> {
+        (self.build)(provider_config, sample)
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BrowserWorkerRenderDriftCase {
@@ -270,234 +336,26 @@ pub fn browser_worker_render_drift_cases_from_lookup(
     config: &Config,
     mut lookup: impl FnMut(&str) -> Option<String>,
 ) -> Vec<BrowserWorkerRenderDriftCase> {
-    let sample_av_number = non_empty(lookup(RENDER_DRIFT_SAMPLE_AV_NUMBER_ENV_VAR));
-    let sample_douban_title = first_non_empty(
-        lookup(RENDER_DRIFT_SAMPLE_DOUBAN_TITLE_ENV_VAR),
-        DEFAULT_SAMPLE_DOUBAN_TITLE,
-    );
-    let sample_javbus_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_javlibrary_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_dmm_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_DMM_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_mgstage_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER,
-    );
-    let sample_xcity_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_XCITY_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_airav_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_avsox_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_javdb_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER_ENV_VAR),
-        sample_av_number.as_deref(),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
-    let sample_fc2_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR),
-        None,
-        DEFAULT_SAMPLE_FC2_AV_NUMBER,
-    );
-    let sample_fc2ppvdb_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_FC2PPVDB_AV_NUMBER_ENV_VAR),
-        Some(&sample_fc2_av_number),
-        DEFAULT_SAMPLE_FC2_AV_NUMBER,
-    );
-    let sample_caribbean_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER_ENV_VAR),
-        None,
-        DEFAULT_SAMPLE_CARIBBEAN_AV_NUMBER,
-    );
-    let sample_1pondo_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR),
-        None,
-        DEFAULT_SAMPLE_1PONDO_AV_NUMBER,
-    );
-    let sample_10musume_av_number = sample_av_number_with_default(
-        lookup(RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR),
-        None,
-        DEFAULT_SAMPLE_10MUSUME_AV_NUMBER,
-    );
-
-    let mut cases = Vec::new();
-    if config.provider_enabled(ProviderId::Douban)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Douban)
-            .and_then(|provider| provider.douban_config())
-    {
-        cases.push(douban::render_drift_case(provider, &sample_douban_title));
-    }
-    if config.provider_enabled(ProviderId::Dmm)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Dmm)
-            .and_then(|provider| provider.dmm_config())
-    {
-        cases.push(dmm::render_drift_case(provider, &sample_dmm_av_number));
-    }
-    if config.provider_enabled(ProviderId::Javbus)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Javbus)
-            .and_then(|provider| provider.javbus_config())
-    {
-        cases.push(javbus::render_drift_case(
-            provider,
-            &sample_javbus_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Javlibrary)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Javlibrary)
-            .and_then(|provider| provider.javlibrary_config())
-    {
-        cases.push(javlibrary::render_drift_case(
-            provider,
-            &sample_javlibrary_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Xcity)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Xcity)
-            .and_then(|provider| provider.xcity_config())
-    {
-        cases.push(rendered_search_av::render_drift_case(
-            &xcity::XCITY_SITE,
-            provider,
-            &sample_xcity_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Airav)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Airav)
-            .and_then(|provider| provider.airav_config())
-    {
-        cases.push(rendered_search_av::render_drift_case(
-            &airav::AIRAV_SITE,
-            provider,
-            &sample_airav_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Avsox)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Avsox)
-            .and_then(|provider| provider.avsox_config())
-    {
-        cases.push(rendered_search_av::render_drift_case(
-            &avsox::AVSOX_SITE,
-            provider,
-            &sample_avsox_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Mgstage)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Mgstage)
-            .and_then(|provider| provider.mgstage_config())
-    {
-        cases.push(mgstage::render_drift_case(
-            provider,
-            &sample_mgstage_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Javdb)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Javdb)
-            .and_then(|provider| provider.javdb_config())
-    {
-        cases.push(javdb::render_drift_case(provider, &sample_javdb_av_number));
-    }
-    if config.provider_enabled(ProviderId::Fc2)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Fc2)
-            .and_then(|provider| provider.fc2_config())
-    {
-        cases.push(fc2::render_drift_case(provider, &sample_fc2_av_number));
-    }
-    if config.provider_enabled(ProviderId::Fc2ppvdb)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Fc2ppvdb)
-            .and_then(|provider| provider.fc2ppvdb_config())
-    {
-        cases.push(fc2ppvdb::render_drift_case(
-            provider,
-            &sample_fc2ppvdb_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::Caribbean)
-        && let Some(provider) = config
-            .provider_config(ProviderId::Caribbean)
-            .and_then(|provider| provider.caribbean_config())
-    {
-        cases.push(official_uncensored::render_drift_case(
-            &caribbean::CARIBBEAN_SITE,
-            provider,
-            &sample_caribbean_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::OnePondo)
-        && let Some(provider) = config
-            .provider_config(ProviderId::OnePondo)
-            .and_then(|provider| provider.onepondo_config())
-    {
-        cases.push(official_uncensored::render_drift_case(
-            &onepondo::ONEPONDO_SITE,
-            provider,
-            &sample_1pondo_av_number,
-        ));
-    }
-    if config.provider_enabled(ProviderId::TenMusume)
-        && let Some(provider) = config
-            .provider_config(ProviderId::TenMusume)
-            .and_then(|provider| provider.tenmusume_config())
-    {
-        cases.push(official_uncensored::render_drift_case(
-            &tenmusume::TENMUSUME_SITE,
-            provider,
-            &sample_10musume_av_number,
-        ));
-    }
-
-    cases
-}
-
-fn sample_av_number_with_default(
-    provider_value: Option<String>,
-    generic_value: Option<&str>,
-    fallback: &str,
-) -> String {
-    non_empty(provider_value)
-        .or_else(|| generic_value.map(str::to_owned))
-        .unwrap_or_else(|| fallback.to_owned())
+    let mut cases = ProviderRegistry::catalog()
+        .into_iter()
+        .filter(|entry| config.provider_enabled(entry.id))
+        .filter_map(|entry| {
+            let descriptor = entry.render_drift_case?;
+            let provider_config = config.provider_config(entry.id)?;
+            let sample = descriptor.sample(&mut lookup);
+            descriptor
+                .build(provider_config, &sample)
+                .map(|case| (descriptor.order(), case))
+        })
+        .collect::<Vec<_>>();
+    cases.sort_by_key(|(order, _)| *order);
+    cases.into_iter().map(|(_, case)| case).collect()
 }
 
 fn non_empty(value: Option<String>) -> Option<String> {
     value
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty())
-}
-
-fn first_non_empty(value: Option<String>, fallback: &str) -> String {
-    non_empty(value).unwrap_or_else(|| fallback.to_owned())
 }
 
 fn is_false(value: &bool) -> bool {

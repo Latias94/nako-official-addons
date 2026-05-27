@@ -16,10 +16,11 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::ProviderCatalogEntry,
+        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
         render_drift::{
-            BrowserWorkerRenderDriftCase, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
-            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
+            BrowserWorkerRenderDriftCase, DEFAULT_SAMPLE_FC2_AV_NUMBER,
+            ProviderRenderDriftCaseDescriptor, RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR,
+            SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS, SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
         },
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -119,8 +120,28 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,
+        rendered_page_support: Some(ProviderRenderedPageSupport::new(rendered_page_config)),
+        render_drift_case: Some(ProviderRenderDriftCaseDescriptor::new(
+            100,
+            RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER_ENV_VAR,
+            DEFAULT_SAMPLE_FC2_AV_NUMBER,
+            render_drift_case_from_config,
+        )),
         build: build_provider,
     }
+}
+
+fn rendered_page_config(provider: &ProviderConfig) -> Option<&RenderedPageSupportConfig> {
+    provider.fc2_config().map(|config| &config.rendered_pages)
+}
+
+fn render_drift_case_from_config(
+    provider: &ProviderConfig,
+    sample: &str,
+) -> Option<BrowserWorkerRenderDriftCase> {
+    provider
+        .fc2_config()
+        .map(|config| render_drift_case(config, sample))
 }
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {

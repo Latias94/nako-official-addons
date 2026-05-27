@@ -70,6 +70,31 @@ impl ProviderRunPolicy {
     }
 
     #[must_use]
+    pub(crate) fn with_disabled_provider_ids<I, S>(mut self, provider_ids: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for provider_id in provider_ids {
+            if let Some(provider_id) = normalize_provider_id(provider_id.as_ref()) {
+                push_unique(&mut self.disabled_provider_ids, &provider_id);
+            }
+        }
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_max_selected_providers(
+        mut self,
+        max_selected_providers: Option<usize>,
+    ) -> Self {
+        if let Some(max_selected_providers) = normalize_positive_usize(max_selected_providers) {
+            self.max_selected_providers = Some(max_selected_providers);
+        }
+        self
+    }
+
+    #[must_use]
     pub(crate) fn from_payload_or_default(payload: &Value, default_policy: &Self) -> Self {
         let mut disabled_provider_ids = default_policy.disabled_provider_ids.clone();
         let mut max_selected_providers = default_policy.max_selected_providers;
@@ -300,6 +325,33 @@ mod tests {
             ProviderExecutionPolicyReport {
                 disabled_provider_ids: vec!["javdb".to_owned(), "dmm".to_owned()],
                 max_selected_providers: Some(2),
+            }
+        );
+    }
+
+    #[test]
+    fn provider_execution_policy_merges_typed_overlays_without_json_mutation() {
+        let policy = ProviderRunPolicy::from_payload_or_default(
+            &serde_json::json!({
+                "provider_execution_policy": {
+                    "disabled_provider_ids": ["javdb"],
+                    "max_selected_providers": 3
+                }
+            }),
+            &ProviderRunPolicy::default(),
+        )
+        .with_disabled_provider_ids([" DMM ", "javdb"])
+        .with_max_selected_providers(Some(1));
+
+        assert!(policy.disables("javdb"));
+        assert!(policy.disables("dmm"));
+        assert!(policy.can_select_more(0));
+        assert!(!policy.can_select_more(1));
+        assert_eq!(
+            ProviderExecutionSummary::for_policy(&policy).applied_policy,
+            ProviderExecutionPolicyReport {
+                disabled_provider_ids: vec!["javdb".to_owned(), "dmm".to_owned()],
+                max_selected_providers: Some(1),
             }
         );
     }

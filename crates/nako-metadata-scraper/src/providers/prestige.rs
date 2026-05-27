@@ -99,6 +99,8 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         load_config: load_config,
         proxy_configured: prestige_proxy_configured,
         network_policy_key: Some("prestige_proxy_configured"),
+        rendered_page_support: None,
+        render_drift_case: None,
         build: build_provider,
     }
 }

@@ -9,6 +9,9 @@ use crate::engine::{
     ProviderExternalIdCapability, ProviderFieldPolicy, ProviderFieldQualityDescriptor,
     QueryExternalIdAlias,
 };
+use crate::providers::{
+    render_drift::ProviderRenderDriftCaseDescriptor, rendered_page::RenderedPageSupportConfig,
+};
 use crate::{Config, providers::MetadataProvider};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -45,6 +48,32 @@ pub struct ProviderRegistry {
 pub struct ProviderAssembly {
     pub providers: Vec<Box<dyn MetadataProvider>>,
     pub diagnostics: ProviderDiagnostics,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct ProviderRenderedPageSupport {
+    config: for<'a> fn(&'a ProviderConfig) -> Option<&'a RenderedPageSupportConfig>,
+}
+
+impl ProviderRenderedPageSupport {
+    #[must_use]
+    pub(crate) const fn new(
+        config: for<'a> fn(&'a ProviderConfig) -> Option<&'a RenderedPageSupportConfig>,
+    ) -> Self {
+        Self { config }
+    }
+
+    #[must_use]
+    fn proxy_policy_configured(self, provider_config: &ProviderConfig) -> bool {
+        (self.config)(provider_config)
+            .is_some_and(RenderedPageSupportConfig::proxy_policy_configured)
+    }
+
+    #[must_use]
+    fn session_key_configured(self, provider_config: &ProviderConfig) -> bool {
+        (self.config)(provider_config)
+            .is_some_and(RenderedPageSupportConfig::session_key_configured)
+    }
 }
 
 const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] = &[
@@ -152,6 +181,30 @@ impl ProviderRegistry {
             .filter(|entry| config.provider_enabled(entry.id))
             .filter_map(|entry| entry.secret_reference)
             .collect()
+    }
+
+    #[must_use]
+    pub fn rendered_page_proxy_policy_configured(config: &Config) -> bool {
+        Self::catalog().into_iter().any(|entry| {
+            let Some(support) = entry.rendered_page_support else {
+                return false;
+            };
+            config
+                .provider_config(entry.id)
+                .is_some_and(|provider_config| support.proxy_policy_configured(provider_config))
+        })
+    }
+
+    #[must_use]
+    pub fn rendered_page_session_key_configured(config: &Config) -> bool {
+        Self::catalog().into_iter().any(|entry| {
+            let Some(support) = entry.rendered_page_support else {
+                return false;
+            };
+            config
+                .provider_config(entry.id)
+                .is_some_and(|provider_config| support.session_key_configured(provider_config))
+        })
     }
 
     #[must_use]
@@ -298,6 +351,8 @@ pub struct ProviderCatalogEntry {
     pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
     pub(crate) proxy_configured: fn(&ProviderConfig) -> bool,
     pub(crate) network_policy_key: Option<&'static str>,
+    pub(crate) rendered_page_support: Option<ProviderRenderedPageSupport>,
+    pub(crate) render_drift_case: Option<ProviderRenderDriftCaseDescriptor>,
     pub(crate) build: fn(&Config) -> ProviderBuildStatus,
 }
 

@@ -18,10 +18,10 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpResult, ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::ProviderCatalogEntry,
+        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
         render_drift::{
-            BrowserWorkerRenderDriftCase, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
-            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
+            BrowserWorkerRenderDriftCase, ProviderRenderDriftCaseDescriptor,
+            SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS, SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
         },
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
@@ -156,6 +156,8 @@ pub(crate) fn catalog_entry(
     site: &'static OfficialUncensoredSite,
     external_id_capabilities: &'static [crate::engine::ProviderExternalIdCapability],
     load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
+    rendered_page_config: for<'a> fn(&'a ProviderConfig) -> Option<&'a RenderedPageSupportConfig>,
+    render_drift_case: ProviderRenderDriftCaseDescriptor,
     build: fn(&Config) -> ProviderBuildStatus,
 ) -> ProviderCatalogEntry {
     ProviderCatalogEntry {
@@ -169,6 +171,8 @@ pub(crate) fn catalog_entry(
         load_config,
         proxy_configured: |_| false,
         network_policy_key: None,
+        rendered_page_support: Some(ProviderRenderedPageSupport::new(rendered_page_config)),
+        render_drift_case: Some(render_drift_case),
         build,
     }
 }

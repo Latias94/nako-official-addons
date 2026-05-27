@@ -328,12 +328,17 @@ where
             }
 
             let disabled_provider_ids = provider_states.disabled_provider_ids();
-            let payload = payload_with_provider_execution_policy(
-                payload,
-                &disabled_provider_ids,
-                &provider_policy,
-            );
-            let item_outcome = self.scrape_outcome(&item_request_id, &payload).await;
+            let provider_run_policy = self
+                .provider_run_policy_from_payload(&payload)
+                .with_disabled_provider_ids(disabled_provider_ids.iter().map(String::as_str))
+                .with_max_selected_providers(provider_policy.max_selected_providers_per_item);
+            let item_outcome = self
+                .scrape_outcome_with_provider_run_policy(
+                    &item_request_id,
+                    &payload,
+                    provider_run_policy,
+                )
+                .await;
             let item_payload = response::metadata_payload(&item_outcome);
             let item_av = planned_av.or_else(|| item_outcome.av_value());
             let safe_failure_reason = item_outcome
@@ -757,80 +762,6 @@ fn reused_item_payload(payload: &Value, av: Option<&Value>) -> Value {
         payload["query"]["av"] = av.clone();
     }
     payload
-}
-
-fn payload_with_provider_execution_policy(
-    mut payload: Value,
-    provider_ids: &[String],
-    provider_policy: &BulkProviderPolicy,
-) -> Value {
-    let max_selected_providers = provider_policy.max_selected_providers_per_item;
-    if provider_ids.is_empty() && max_selected_providers.is_none() {
-        return payload;
-    }
-
-    let mut disabled_provider_ids =
-        existing_provider_ids(&payload, "provider_execution_policy.disabled_provider_ids");
-    if disabled_provider_ids.is_empty() {
-        disabled_provider_ids = existing_provider_ids(
-            &payload,
-            "provider_execution_policy.suppressed_provider_ids",
-        );
-    }
-    if disabled_provider_ids.is_empty() {
-        disabled_provider_ids = existing_provider_ids(&payload, "disabled_provider_ids");
-    }
-    if disabled_provider_ids.is_empty() {
-        disabled_provider_ids = existing_provider_ids(&payload, "suppressed_provider_ids");
-    }
-    for provider_id in provider_ids {
-        if let Some(provider_id) = normalize_provider_id(provider_id) {
-            push_unique_string(&mut disabled_provider_ids, provider_id);
-        }
-    }
-
-    let mut execution_policy = payload
-        .get("provider_execution_policy")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
-    if !disabled_provider_ids.is_empty() {
-        execution_policy.insert(
-            "disabled_provider_ids".to_owned(),
-            Value::Array(
-                disabled_provider_ids
-                    .into_iter()
-                    .map(Value::String)
-                    .collect::<Vec<_>>(),
-            ),
-        );
-    }
-    if let Some(max_selected_providers) = max_selected_providers {
-        execution_policy.insert(
-            "max_selected_providers".to_owned(),
-            Value::Number((max_selected_providers as u64).into()),
-        );
-    }
-    payload["provider_execution_policy"] = Value::Object(execution_policy);
-    payload
-}
-
-fn existing_provider_ids(payload: &Value, key: &str) -> Vec<String> {
-    value_at_path(payload, key)
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .filter_map(normalize_provider_id)
-        .fold(Vec::new(), |mut provider_ids, provider_id| {
-            push_unique_string(&mut provider_ids, provider_id);
-            provider_ids
-        })
-}
-
-fn value_at_path<'a>(payload: &'a Value, path: &str) -> Option<&'a Value> {
-    path.split('.')
-        .try_fold(payload, |value, segment| value.get(segment))
 }
 
 fn retry_class_for_failure_reason(reason: &str) -> Option<&'static str> {

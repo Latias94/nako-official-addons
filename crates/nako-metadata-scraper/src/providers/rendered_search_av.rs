@@ -19,8 +19,8 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpResult, ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::ProviderCatalogEntry,
-        render_drift::BrowserWorkerRenderDriftCase,
+        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        render_drift::{BrowserWorkerRenderDriftCase, ProviderRenderDriftCaseDescriptor},
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -152,6 +152,8 @@ pub(crate) fn catalog_entry(
     site: &'static RenderedSearchAvSite,
     external_id_capabilities: &'static [ProviderExternalIdCapability],
     load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,
+    rendered_page_config: for<'a> fn(&'a ProviderConfig) -> Option<&'a RenderedPageSupportConfig>,
+    render_drift_case: ProviderRenderDriftCaseDescriptor,
     build: fn(&Config) -> ProviderBuildStatus,
 ) -> ProviderCatalogEntry {
     ProviderCatalogEntry {
@@ -165,6 +167,8 @@ pub(crate) fn catalog_entry(
         load_config,
         proxy_configured: |_| false,
         network_policy_key: None,
+        rendered_page_support: Some(ProviderRenderedPageSupport::new(rendered_page_config)),
+        render_drift_case: Some(render_drift_case),
         build,
     }
 }

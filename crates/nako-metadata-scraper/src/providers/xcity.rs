@@ -76,8 +76,31 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         &XCITY_SITE,
         XCITY_EXTERNAL_ID_CAPABILITIES,
         load_config,
+        rendered_page_config,
+        crate::providers::render_drift::ProviderRenderDriftCaseDescriptor::new(
+            50,
+            crate::providers::render_drift::RENDER_DRIFT_SAMPLE_XCITY_AV_NUMBER_ENV_VAR,
+            crate::providers::render_drift::DEFAULT_SAMPLE_AV_NUMBER,
+            render_drift_case_from_config,
+        )
+        .with_generic_av_sample(),
         build_provider,
     )
+}
+
+fn rendered_page_config(
+    provider: &ProviderConfig,
+) -> Option<&crate::providers::rendered_page::RenderedPageSupportConfig> {
+    provider.xcity_config().map(|config| &config.rendered_pages)
+}
+
+fn render_drift_case_from_config(
+    provider: &ProviderConfig,
+    sample: &str,
+) -> Option<crate::providers::render_drift::BrowserWorkerRenderDriftCase> {
+    provider.xcity_config().map(|config| {
+        crate::providers::rendered_search_av::render_drift_case(&XCITY_SITE, config, sample)
+    })
 }
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {

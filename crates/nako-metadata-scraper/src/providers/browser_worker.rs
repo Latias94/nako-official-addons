@@ -15,7 +15,7 @@ use crate::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
             ReqwestProviderHttpTransport,
         },
-        registry::ProviderCatalogEntry,
+        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig, RenderedTextPage},
         rendered_recipe::{RenderedMetadataExtraction, RenderedMetadataRecipe},
     },
@@ -112,8 +112,16 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,
+        rendered_page_support: Some(ProviderRenderedPageSupport::new(rendered_page_config)),
+        render_drift_case: None,
         build: build_provider,
     }
+}
+
+fn rendered_page_config(provider: &ProviderConfig) -> Option<&RenderedPageSupportConfig> {
+    provider
+        .browser_worker_config()
+        .map(|config| &config.rendered_pages)
 }
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {

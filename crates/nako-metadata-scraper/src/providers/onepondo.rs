@@ -69,8 +69,32 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         &ONEPONDO_SITE,
         ONEPONDO_EXTERNAL_ID_CAPABILITIES,
         load_config,
+        rendered_page_config,
+        crate::providers::render_drift::ProviderRenderDriftCaseDescriptor::new(
+            130,
+            crate::providers::render_drift::RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR,
+            crate::providers::render_drift::DEFAULT_SAMPLE_1PONDO_AV_NUMBER,
+            render_drift_case_from_config,
+        ),
         build_provider,
     )
+}
+
+fn rendered_page_config(
+    provider: &ProviderConfig,
+) -> Option<&crate::providers::rendered_page::RenderedPageSupportConfig> {
+    provider
+        .onepondo_config()
+        .map(|config| &config.rendered_pages)
+}
+
+fn render_drift_case_from_config(
+    provider: &ProviderConfig,
+    sample: &str,
+) -> Option<crate::providers::render_drift::BrowserWorkerRenderDriftCase> {
+    provider.onepondo_config().map(|config| {
+        crate::providers::official_uncensored::render_drift_case(&ONEPONDO_SITE, config, sample)
+    })
 }
 
 fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {

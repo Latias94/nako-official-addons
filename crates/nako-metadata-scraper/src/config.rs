@@ -887,84 +887,12 @@ impl Config {
 
     #[must_use]
     pub fn rendered_page_proxy_policy_configured(&self) -> bool {
-        self.providers
-            .iter()
-            .any(ProviderConfig::rendered_page_proxy_policy_configured)
+        ProviderRegistry::rendered_page_proxy_policy_configured(self)
     }
 
     #[must_use]
     pub fn rendered_page_session_key_configured(&self) -> bool {
-        self.providers
-            .iter()
-            .any(ProviderConfig::rendered_page_session_key_configured)
-    }
-}
-
-impl ProviderConfig {
-    fn rendered_page_proxy_policy_configured(&self) -> bool {
-        match &self.kind {
-            ProviderConfigKind::BrowserWorker(config) => {
-                config.rendered_pages.proxy_policy_configured()
-            }
-            ProviderConfigKind::Douban(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Javdb(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Dmm(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Xcity(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Fc2(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Caribbean(config) => {
-                config.rendered_pages.proxy_policy_configured()
-            }
-            ProviderConfigKind::OnePondo(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::TenMusume(config) => {
-                config.rendered_pages.proxy_policy_configured()
-            }
-            ProviderConfigKind::Javbus(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Javlibrary(config) => {
-                config.rendered_pages.proxy_policy_configured()
-            }
-            ProviderConfigKind::Airav(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Avsox(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Jav321(_)
-            | ProviderConfigKind::Prestige(_)
-            | ProviderConfigKind::ThePornDb(_)
-            | ProviderConfigKind::AniList(_) => false,
-            ProviderConfigKind::Fixture
-            | ProviderConfigKind::Tmdb(_)
-            | ProviderConfigKind::Bangumi(_) => false,
-        }
-    }
-
-    fn rendered_page_session_key_configured(&self) -> bool {
-        match &self.kind {
-            ProviderConfigKind::BrowserWorker(config) => {
-                config.rendered_pages.session_key_configured()
-            }
-            ProviderConfigKind::Douban(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Javdb(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Dmm(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Xcity(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Fc2(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Fc2ppvdb(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Caribbean(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::OnePondo(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::TenMusume(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Javbus(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Javlibrary(config) => {
-                config.rendered_pages.session_key_configured()
-            }
-            ProviderConfigKind::Airav(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Avsox(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Jav321(_)
-            | ProviderConfigKind::Prestige(_)
-            | ProviderConfigKind::ThePornDb(_)
-            | ProviderConfigKind::AniList(_) => false,
-            ProviderConfigKind::Fixture
-            | ProviderConfigKind::Tmdb(_)
-            | ProviderConfigKind::Bangumi(_) => false,
-        }
+        ProviderRegistry::rendered_page_session_key_configured(self)
     }
 }
 

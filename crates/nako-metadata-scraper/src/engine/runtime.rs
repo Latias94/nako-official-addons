@@ -140,6 +140,27 @@ where
         request_id: &str,
         payload: &serde_json::Value,
     ) -> MetadataScrapeOutcome {
+        let provider_run_policy = self.provider_run_policy_from_payload(payload);
+        self.scrape_outcome_with_provider_run_policy(request_id, payload, provider_run_policy)
+            .await
+    }
+
+    pub(crate) fn provider_run_policy_from_payload(
+        &self,
+        payload: &serde_json::Value,
+    ) -> ProviderRunPolicy {
+        ProviderRunPolicy::from_payload_or_default(
+            payload,
+            self.default_provider_run_policy.as_ref(),
+        )
+    }
+
+    pub(crate) async fn scrape_outcome_with_provider_run_policy(
+        &self,
+        request_id: &str,
+        payload: &serde_json::Value,
+        provider_run_policy: ProviderRunPolicy,
+    ) -> MetadataScrapeOutcome {
         let query = if self.external_id_capabilities.is_empty() {
             MetadataQuery::from_payload_with_external_id_aliases(
                 payload,
@@ -158,10 +179,6 @@ where
         let provider_field_policy = ProviderFieldPolicy::from_payload_or_default(
             payload,
             self.default_provider_field_policy.as_ref(),
-        );
-        let provider_run_policy = ProviderRunPolicy::from_payload_or_default(
-            payload,
-            self.default_provider_run_policy.as_ref(),
         );
         let suggestions = orchestration::suggest_candidates(
             self.providers.as_ref().as_slice(),

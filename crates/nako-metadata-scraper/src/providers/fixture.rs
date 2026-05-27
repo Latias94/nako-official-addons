@@ -23,6 +23,8 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         load_config: load_config,
         proxy_configured: |_| false,
         network_policy_key: None,
+        rendered_page_support: None,
+        render_drift_case: None,
         build: build_provider,
     }
 }
