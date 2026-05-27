@@ -340,6 +340,23 @@ The preset is only the default AV enablement policy. Any explicit
 operator can disable one unstable site or add a specialty provider while
 keeping the named base strategy.
 
+AV field fusion also has a sidecar-wide preset. Set
+`NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET` to one of:
+
+- `default`: uses the field source order adapted to this project: title from
+  ThePornDB/MGStage/DMM/JavBus/JavLibrary; actors from
+  ThePornDB/JavBus/JavLibrary/JavDB; thumbnail and poster art from
+  ThePornDB/JavBus; extra fanart from JavBus/ThePornDB; release/runtime,
+  directors, series, studio, publisher, maker, and label from
+  JavBus-first supported sources.
+- `quality_scores`: the previous descriptor-derived policy based on provider
+  official/community/artwork/trailer quality scores.
+- `none`: base candidate fields only unless the request supplies
+  `provider_field_policy`.
+
+Request payload `provider_field_policy` remains the narrowest override and
+replaces the configured preset for that one scrape.
+
 Manual AV provider drift checks are opt-in and ignored by default. They report
 only provider IDs, field names, missing-field lists, and counts; raw titles,
 actors, source URLs, artwork URLs, provider IDs, and AV numbers are not printed.
@@ -436,7 +453,7 @@ JavBus environment knobs:
 - `NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS=10000`
 - `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE=<cookie header value>`
 
-AV candidates also expose a response-side `av` object for MDCx-style evidence:
+AV candidates also expose a response-side `av` object for AV-specific evidence:
 actors, all actors, directors, series, studio, publisher, maker, label, wanted
 count, thumbnail URL, trailer URL, and extra fanart URLs. For writeback, the
 selected AV facts are materialized into the native metadata patch: actors and
@@ -491,18 +508,10 @@ priority inside an already-merged candidate cluster:
 
 The policy does not merge unrelated candidates by itself; it only chooses fields
 after providers have emitted compatible external IDs such as the same
-`av_number`. When no request policy is supplied, AV clusters use a conservative
-default derived from provider quality descriptors inspired by MDCx's
-field-priority behavior: Prestige, Caribbean, 1Pondo, and 10Musume are
-preferred before DMM, MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for
-official title, overview, release/runtime, and studio-like facts. ThePornDB is
-preferred for western/community scene facts when enabled. Community actor and
-wanted-count fields prefer ThePornDB/JavLibrary/JavDB first, with FC2PPVDB and
-the official uncensored sites above the official FC2 source when they have actor
-labels. Trailer and image fields prefer providers that usually carry media
-URLs, starting with ThePornDB/Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/
-JavDB/FC2PPVDB. Passing an explicit `provider_field_policy` object replaces
-that descriptor-derived default for the request.
+`av_number`. When no request policy is supplied, AV clusters use
+`NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET` and default to `default`. Passing
+an explicit `provider_field_policy` object replaces that configured default for the
+request.
 
 Future provider breadth will come through the runtime seam, not by turning each
 provider into its own addon. The browser-worker companion service now owns the

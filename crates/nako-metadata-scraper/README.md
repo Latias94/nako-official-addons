@@ -128,6 +128,13 @@ Operators may also set
 `NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST` as a default provider
 budget for all metadata requests served by the sidecar.
 
+AV field fusion has a sidecar-wide preset through
+`NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET`:
+
+- `default`: uses the default field source order adapted to supported providers.
+- `quality_scores`: descriptor-derived provider quality order.
+- `none`: base candidate fields only unless a request override is supplied.
+
 Requests may optionally include `provider_field_policy` to choose field-level
 source priority within a merged candidate cluster. For example, a request can
 prefer JavDB for `title` while using another provider for `overview` and
@@ -146,18 +153,10 @@ prefer JavDB for `title` while using another provider for `overview` and
 
 The policy only mixes fields inside candidates that already share an identity
 such as `av_number`; unrelated candidates are not merged by policy alone.
-When no request policy is supplied, AV clusters use a conservative default
-derived from provider quality descriptors inspired by MDCx's field-priority
-behavior: ThePornDB is preferred for western/community scene facts when
-enabled, then Prestige, Caribbean, 1Pondo, and 10Musume are preferred before
-DMM, MGStage, JavDB, FC2, FC2PPVDB, JavBus, and JavLibrary for official title,
-overview, release/runtime, and studio-like facts. Community actor and
-wanted-count fields prefer ThePornDB/JavLibrary/JavDB first, with FC2PPVDB and
-the official uncensored sites above the official FC2 source when they have actor
-labels. Trailer and image fields prefer providers that usually carry media
-URLs, starting with ThePornDB/Prestige/Caribbean/1Pondo/10Musume/MGStage/DMM/
-JavDB/FC2PPVDB. Passing an explicit `provider_field_policy` object replaces
-that descriptor-derived default for the request.
+When no request policy is supplied, AV clusters use the configured
+`NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET` and default to `default`. Passing
+an explicit `provider_field_policy` object replaces that configured default for the
+request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,

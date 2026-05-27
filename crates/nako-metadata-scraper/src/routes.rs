@@ -35,7 +35,8 @@ pub struct AppState {
 pub fn router(config: Config) -> Router {
     let registry = ProviderRegistry::from_config(config.clone());
     let external_id_capabilities = registry.external_id_capabilities();
-    let default_provider_field_policy = ProviderRegistry::default_provider_field_policy();
+    let default_provider_field_policy =
+        ProviderRegistry::provider_field_policy(config.av_field_policy_preset);
     let provider_assembly = registry.assemble();
     let provider_diagnostics = provider_assembly.diagnostics;
     let providers = provider_assembly.providers;
@@ -112,7 +113,9 @@ async fn health(
             "network_policy": network_policy,
             "provider_execution_policy": {
                 "max_selected_providers": state.config.provider_execution.max_selected_providers
-            }
+            },
+            "av_provider_preset": state.config.av_provider_preset.as_str(),
+            "av_field_policy_preset": state.config.av_field_policy_preset.as_str()
         }),
     })
 }
@@ -206,6 +209,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         .provider_execution
         .max_selected_providers
         .map_or_else(|| "(none)".to_owned(), |value| value.to_string());
+    let av_provider_preset = state.config.av_provider_preset.as_str();
+    let av_field_policy_preset = state.config.av_field_policy_preset.as_str();
     Html(format!(
         r#"<!doctype html>
 <html lang="en">
@@ -220,6 +225,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Prestige proxy configured: {prestige_proxy_configured}</p>
   <p>Browser render proxy policy configured: {render_proxy_policy_configured}</p>
   <p>Browser render session key configured: {render_session_key_configured}</p>
+  <p>AV provider preset: {av_provider_preset}</p>
+  <p>AV field policy preset: {av_field_policy_preset}</p>
   <p>Provider max selected per request: {max_selected_providers}</p>
   <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
 </body>
@@ -579,6 +586,8 @@ mod tests {
             payload.diagnostics["network_policy"]["theporndb_proxy_configured"],
             false
         );
+        assert_eq!(payload.diagnostics["av_provider_preset"], "manual");
+        assert_eq!(payload.diagnostics["av_field_policy_preset"], "default");
     }
 
     #[tokio::test]

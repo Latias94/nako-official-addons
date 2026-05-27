@@ -57,6 +57,33 @@ impl ProviderFieldQualityDescriptor {
 
 impl ProviderFieldPolicy {
     #[must_use]
+    pub fn from_field_provider_preferences(
+        preferences: impl IntoIterator<Item = (&'static str, &'static [&'static str])>,
+    ) -> Self {
+        let preferences = preferences
+            .into_iter()
+            .filter_map(|(field, providers)| {
+                let field = normalize_policy_field(field);
+                if field.is_empty() {
+                    return None;
+                }
+                let providers = providers
+                    .iter()
+                    .filter_map(|provider| normalize_policy_provider(provider))
+                    .fold(Vec::new(), |mut values, provider| {
+                        if !values.contains(&provider) {
+                            values.push(provider);
+                        }
+                        values
+                    });
+                (!providers.is_empty()).then_some((field, providers))
+            })
+            .collect();
+
+        Self { preferences }
+    }
+
+    #[must_use]
     pub fn from_provider_field_quality_descriptors(
         descriptors: impl IntoIterator<Item = (&'static str, ProviderFieldQualityDescriptor)>,
     ) -> Self {

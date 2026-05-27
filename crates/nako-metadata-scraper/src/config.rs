@@ -144,6 +144,7 @@ impl ProviderId {
 }
 
 pub const AV_PROVIDER_PRESET_ENV_VAR: &str = "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET";
+pub const AV_FIELD_POLICY_PRESET_ENV_VAR: &str = "NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET";
 
 const FAST_SAFE_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Javdb,
@@ -255,6 +256,39 @@ impl AvProviderPreset {
         }
 
         Some(self.enabled_provider_ids().contains(&provider_id))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum AvFieldPolicyPreset {
+    #[default]
+    Default,
+    QualityScores,
+    None,
+}
+
+impl AvFieldPolicyPreset {
+    pub const SCHEMA_VALUES: &[&str] = &["default", "quality_scores", "none"];
+
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::QualityScores => "quality_scores",
+            Self::None => "none",
+        }
+    }
+
+    #[must_use]
+    pub fn from_env_value(value: &str) -> Option<Self> {
+        let normalized = value.trim().to_ascii_lowercase().replace('-', "_");
+        let normalized = normalized.replace(' ', "_");
+        match normalized.as_str() {
+            "default" | "balanced" | "recommended" => Some(Self::Default),
+            "quality_scores" | "quality_score" | "provider_quality" => Some(Self::QualityScores),
+            "none" | "empty" | "base_only" => Some(Self::None),
+            _ => None,
+        }
     }
 }
 
@@ -733,6 +767,7 @@ pub struct Config {
     pub base_url: String,
     pub preferred_language: String,
     pub av_provider_preset: AvProviderPreset,
+    pub av_field_policy_preset: AvFieldPolicyPreset,
     pub providers: Vec<ProviderConfig>,
     pub provider_execution: ProviderExecutionConfig,
     pub nako_runtime: NakoRuntimeConfig,
@@ -756,6 +791,10 @@ impl Config {
             .as_deref()
             .and_then(AvProviderPreset::from_env_value)
             .unwrap_or_default();
+        let av_field_policy_preset = lookup(AV_FIELD_POLICY_PRESET_ENV_VAR)
+            .as_deref()
+            .and_then(AvFieldPolicyPreset::from_env_value)
+            .unwrap_or_default();
         let providers = provider_configs_from_catalog(|name| lookup(name), av_provider_preset);
         let provider_execution = ProviderExecutionConfig::from_env_lookup(|name| lookup(name));
         let nako_runtime = NakoRuntimeConfig::from_env_lookup(|name| lookup(name));
@@ -765,6 +804,7 @@ impl Config {
             base_url,
             preferred_language,
             av_provider_preset,
+            av_field_policy_preset,
             providers,
             provider_execution,
             nako_runtime,
@@ -881,6 +921,7 @@ impl Default for Config {
             base_url: "http://127.0.0.1:9100".to_owned(),
             preferred_language: "en-US".to_owned(),
             av_provider_preset: AvProviderPreset::default(),
+            av_field_policy_preset: AvFieldPolicyPreset::default(),
             providers: provider_configs_from_catalog(|_| None, AvProviderPreset::default()),
             provider_execution: ProviderExecutionConfig::default(),
             nako_runtime: NakoRuntimeConfig::disabled(),
@@ -939,6 +980,7 @@ mod tests {
         let config = Config::default();
 
         assert_eq!(config.av_provider_preset, AvProviderPreset::Manual);
+        assert_eq!(config.av_field_policy_preset, AvFieldPolicyPreset::Default);
         assert_eq!(
             config.providers[0],
             ProviderConfig::enabled(ProviderId::Fixture)
@@ -1169,6 +1211,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_BASE_URL" => Some("https://addon.example".to_owned()),
             "NAKO_METADATA_SCRAPER_LANGUAGE" => Some("zh-CN".to_owned()),
             "NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET" => Some("community-first".to_owned()),
+            "NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET" => Some("quality-scores".to_owned()),
             "NAKO_METADATA_SCRAPER_NAKO_BASE_URL" => Some("https://nako.example".to_owned()),
             "NAKO_METADATA_SCRAPER_ADDON_TOKEN" => Some(" addon-token ".to_owned()),
             "NAKO_METADATA_SCRAPER_SIDE_EFFECTS_ENABLED" => Some("yes".to_owned()),
@@ -1285,6 +1328,10 @@ mod tests {
         assert_eq!(config.base_url, "https://addon.example");
         assert_eq!(config.preferred_language, "zh-CN");
         assert_eq!(config.av_provider_preset, AvProviderPreset::CommunityFirst);
+        assert_eq!(
+            config.av_field_policy_preset,
+            AvFieldPolicyPreset::QualityScores
+        );
         assert_eq!(
             config.nako_runtime,
             NakoRuntimeConfig {
@@ -1575,6 +1622,16 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Fc2));
         assert!(config.provider_enabled(ProviderId::Caribbean));
         assert!(!config.provider_enabled(ProviderId::ThePornDb));
+    }
+
+    #[test]
+    fn av_field_policy_preset_parses_env_aliases() {
+        let config = Config::from_env_lookup(|name| match name {
+            "NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET" => Some("base only".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(config.av_field_policy_preset, AvFieldPolicyPreset::None);
     }
 
     #[test]

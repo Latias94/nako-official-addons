@@ -51,7 +51,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        config::ProviderId,
+        config::{AvFieldPolicyPreset, ProviderId},
         nako_runtime::{
             NakoRuntimeClient, NakoRuntimeClientConfig, NakoRuntimeError, NakoRuntimeHttpRequest,
             NakoRuntimeHttpResponse, NakoRuntimeResult, NakoRuntimeTransport,
@@ -689,7 +689,7 @@ mod tests {
         let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities_and_provider_field_policy(
             "zh-CN",
             TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
-            ProviderRegistry::default_provider_field_policy(),
+            ProviderRegistry::quality_score_provider_field_policy(),
             vec![
                 Box::new(ExternalIdCandidateProvider {
                     candidate_provider: "javdb",
@@ -746,11 +746,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn runtime_applies_default_av_provider_field_policy_within_merged_cluster() {
+    async fn runtime_applies_quality_score_av_provider_field_policy_within_merged_cluster() {
         let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities_and_provider_field_policy(
             "zh-CN",
             TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
-            ProviderRegistry::default_provider_field_policy(),
+            ProviderRegistry::quality_score_provider_field_policy(),
             vec![
                 Box::new(PolicyCandidateProvider {
                     candidate_provider: "javdb",
@@ -833,6 +833,94 @@ mod tests {
                 .unwrap()
                 .iter()
                 .all(|artwork| artwork["provider"] == "dmm")
+        );
+    }
+
+    #[tokio::test]
+    async fn runtime_applies_default_av_provider_field_policy_within_merged_cluster() {
+        let runtime = MetadataScrapeRuntime::<FakeTransport>::with_external_id_capabilities_and_provider_field_policy(
+            "zh-CN",
+            TEST_EXTERNAL_ID_CAPABILITIES.to_vec(),
+            ProviderRegistry::provider_field_policy(AvFieldPolicyPreset::Default),
+            vec![
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "dmm",
+                    provider_id: "dmm:cid:ssni00644",
+                    title: "DMM Official Title",
+                    overview: Some("DMM overview"),
+                    tags: &["dmm-tag"],
+                    av_actors: &["DMM Actor"],
+                    av_studio: Some("DMM Studio"),
+                    av_wanted_count: None,
+                    artwork: &[("poster", "https://img.example/dmm-poster.jpg")],
+                    external_ids: &[("av_number", "ssni-644")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "javbus",
+                    provider_id: "javbus:ssni-644",
+                    title: "JavBus Title",
+                    overview: None,
+                    tags: &[],
+                    av_actors: &["JavBus Actor"],
+                    av_studio: Some("JavBus Studio"),
+                    av_wanted_count: None,
+                    artwork: &[("poster", "https://img.example/javbus-poster.jpg")],
+                    external_ids: &[("av_number", "SSNI-644"), ("javbus", "SSNI-644")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "theporndb",
+                    provider_id: "theporndb:scene:abc123",
+                    title: "ThePornDB Title",
+                    overview: Some("ThePornDB overview"),
+                    tags: &["theporndb-tag"],
+                    av_actors: &[],
+                    av_studio: None,
+                    av_wanted_count: None,
+                    artwork: &[("poster", "https://img.example/theporndb-poster.jpg")],
+                    external_ids: &[("av_number", "SSNI-644"), ("theporndb", "abc123")],
+                }),
+            ],
+            None,
+        );
+
+        let response = runtime
+            .scrape(AddonResourceRequest {
+                protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+                addon_id: "addon-1".to_owned(),
+                resource: AddonResource::Metadata,
+                request_id: "request-1".to_owned(),
+                payload: serde_json::json!({"av_number": "SSNI-644"}),
+            })
+            .await;
+
+        let candidate = &response.payload["candidates"][0];
+        assert_eq!(candidate["patch"]["title"], "ThePornDB Title");
+        assert_eq!(candidate["patch"]["overview"], "ThePornDB overview");
+        assert_eq!(
+            candidate["av"]["actors"],
+            serde_json::json!(["JavBus Actor"])
+        );
+        assert_eq!(candidate["av"]["studio"], "JavBus Studio");
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "title" && source["provider"] == "theporndb")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "actors" && source["provider"] == "javbus")
+        );
+        assert!(
+            candidate["artwork_candidates"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|artwork| artwork["provider"] == "theporndb")
         );
     }
 

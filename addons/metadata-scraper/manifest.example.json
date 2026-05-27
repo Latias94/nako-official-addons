@@ -52,6 +52,15 @@
           ],
           "default": "manual"
         },
+        "av_field_policy_preset": {
+          "type": "string",
+          "enum": [
+            "default",
+            "quality_scores",
+            "none"
+          ],
+          "default": "default"
+        },
         "providers": {
           "type": "object",
         "properties": {

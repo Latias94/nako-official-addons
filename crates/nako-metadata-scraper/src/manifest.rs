@@ -3,7 +3,7 @@ use nako_official_addon_catalog::metadata_scraper;
 
 use crate::{
     Config,
-    config::{AvProviderPreset, ProviderConfig},
+    config::{AvFieldPolicyPreset, AvProviderPreset, ProviderConfig},
     providers::ProviderRegistry,
 };
 
@@ -21,6 +21,7 @@ pub fn addon_manifest(config: &Config) -> AddonManifest {
         secret_reference_fields(config),
     );
     add_av_provider_preset_schema(&mut manifest, config.av_provider_preset);
+    add_av_field_policy_preset_schema(&mut manifest, config.av_field_policy_preset);
     manifest
 }
 
@@ -40,6 +41,29 @@ fn provider_toggle(provider: &ProviderConfig) -> metadata_scraper::ProviderToggl
 }
 
 fn add_av_provider_preset_schema(manifest: &mut AddonManifest, preset: AvProviderPreset) {
+    add_string_enum_schema(
+        manifest,
+        "av_provider_preset",
+        AvProviderPreset::SCHEMA_VALUES,
+        preset.as_str(),
+    );
+}
+
+fn add_av_field_policy_preset_schema(manifest: &mut AddonManifest, preset: AvFieldPolicyPreset) {
+    add_string_enum_schema(
+        manifest,
+        "av_field_policy_preset",
+        AvFieldPolicyPreset::SCHEMA_VALUES,
+        preset.as_str(),
+    );
+}
+
+fn add_string_enum_schema(
+    manifest: &mut AddonManifest,
+    field: &str,
+    values: &[&str],
+    default: &str,
+) {
     let Some(configuration_schema) = manifest.configuration_schema.as_mut() else {
         return;
     };
@@ -52,11 +76,11 @@ fn add_av_provider_preset_schema(manifest: &mut AddonManifest, preset: AvProvide
     };
 
     properties.insert(
-        "av_provider_preset".to_owned(),
+        field.to_owned(),
         serde_json::json!({
             "type": "string",
-            "enum": AvProviderPreset::SCHEMA_VALUES,
-            "default": preset.as_str(),
+            "enum": values,
+            "default": default,
         }),
     );
 }
@@ -67,7 +91,8 @@ mod tests {
 
     use super::*;
     use crate::config::{
-        AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId, TmdbProviderConfig,
+        AvFieldPolicyPreset, AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId,
+        TmdbProviderConfig,
     };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
     use crate::providers::{javbus::JavbusProviderConfig, theporndb::ThePornDbProviderConfig};
@@ -84,6 +109,7 @@ mod tests {
             Vec::new(),
         );
         add_av_provider_preset_schema(&mut expected_manifest, AvProviderPreset::default());
+        add_av_field_policy_preset_schema(&mut expected_manifest, AvFieldPolicyPreset::default());
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
@@ -128,6 +154,14 @@ mod tests {
                 "fc2_enhanced",
                 "uncensored_official"
             ])
+        );
+        assert_eq!(
+            schema["properties"]["av_field_policy_preset"]["default"],
+            "default"
+        );
+        assert_eq!(
+            schema["properties"]["av_field_policy_preset"]["enum"],
+            serde_json::json!(["default", "quality_scores", "none"])
         );
         assert_eq!(provider_properties["fixture"]["default"], true);
         assert_eq!(provider_properties["tmdb"]["default"], false);

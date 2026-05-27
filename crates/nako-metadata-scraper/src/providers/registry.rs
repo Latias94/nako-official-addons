@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
-use crate::config::{ProviderConfig, ProviderId};
+use crate::config::{AvFieldPolicyPreset, ProviderConfig, ProviderId};
 use crate::engine::{
     ProviderExternalIdCapability, ProviderFieldPolicy, ProviderFieldQualityDescriptor,
     QueryExternalIdAlias,
@@ -46,6 +46,60 @@ pub struct ProviderAssembly {
     pub providers: Vec<Box<dyn MetadataProvider>>,
     pub diagnostics: ProviderDiagnostics,
 }
+
+const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] =
+    &["theporndb", "mgstage", "dmm", "javbus", "javlibrary"];
+const DEFAULT_ACTOR_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus", "javlibrary", "javdb"];
+const DEFAULT_TEXT_PROVIDER_ORDER: &[&str] = &["theporndb", "javdb", "dmm", "javlibrary", "javbus"];
+const DEFAULT_FACT_PROVIDER_ORDER: &[&str] = &[
+    "javbus",
+    "dmm",
+    "mgstage",
+    "prestige",
+    "javlibrary",
+    "javdb",
+];
+const DEFAULT_COMMUNITY_PROVIDER_ORDER: &[&str] = &["javdb", "javlibrary", "javbus"];
+const DEFAULT_THUMB_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
+const DEFAULT_POSTER_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
+const DEFAULT_EXTRAFANART_PROVIDER_ORDER: &[&str] = &["javbus", "theporndb"];
+const DEFAULT_TRAILER_PROVIDER_ORDER: &[&str] = &[
+    "theporndb",
+    "prestige",
+    "mgstage",
+    "dmm",
+    "javdb",
+    "fc2ppvdb",
+    "fc2",
+    "javbus",
+];
+
+const DEFAULT_FIELD_PROVIDER_PREFERENCES: &[(&str, &[&str])] = &[
+    ("title", DEFAULT_TITLE_PROVIDER_ORDER),
+    ("original_title", DEFAULT_TITLE_PROVIDER_ORDER),
+    ("sort_title", DEFAULT_TITLE_PROVIDER_ORDER),
+    ("overview", DEFAULT_TEXT_PROVIDER_ORDER),
+    ("tagline", DEFAULT_TEXT_PROVIDER_ORDER),
+    ("genres", DEFAULT_TEXT_PROVIDER_ORDER),
+    ("tags", DEFAULT_TEXT_PROVIDER_ORDER),
+    ("release_date", DEFAULT_FACT_PROVIDER_ORDER),
+    ("runtime_minutes", DEFAULT_FACT_PROVIDER_ORDER),
+    ("directors", DEFAULT_FACT_PROVIDER_ORDER),
+    ("series", DEFAULT_FACT_PROVIDER_ORDER),
+    ("studio", DEFAULT_FACT_PROVIDER_ORDER),
+    ("publisher", DEFAULT_FACT_PROVIDER_ORDER),
+    ("maker", DEFAULT_FACT_PROVIDER_ORDER),
+    ("label", DEFAULT_FACT_PROVIDER_ORDER),
+    ("actors", DEFAULT_ACTOR_PROVIDER_ORDER),
+    ("all_actors", DEFAULT_ACTOR_PROVIDER_ORDER),
+    ("wanted_count", DEFAULT_COMMUNITY_PROVIDER_ORDER),
+    ("thumb_url", DEFAULT_THUMB_PROVIDER_ORDER),
+    ("poster", DEFAULT_POSTER_PROVIDER_ORDER),
+    ("backdrop", DEFAULT_POSTER_PROVIDER_ORDER),
+    ("artwork", DEFAULT_POSTER_PROVIDER_ORDER),
+    ("extrafanart_urls", DEFAULT_EXTRAFANART_PROVIDER_ORDER),
+    ("trailer_url", DEFAULT_TRAILER_PROVIDER_ORDER),
+];
 
 impl ProviderRegistry {
     #[must_use]
@@ -119,11 +173,27 @@ impl ProviderRegistry {
     }
 
     #[must_use]
-    pub fn default_provider_field_policy() -> ProviderFieldPolicy {
+    pub fn provider_field_policy(preset: AvFieldPolicyPreset) -> ProviderFieldPolicy {
+        match preset {
+            AvFieldPolicyPreset::Default => Self::default_av_provider_field_policy(),
+            AvFieldPolicyPreset::QualityScores => Self::quality_score_provider_field_policy(),
+            AvFieldPolicyPreset::None => ProviderFieldPolicy::default(),
+        }
+    }
+
+    #[must_use]
+    pub fn quality_score_provider_field_policy() -> ProviderFieldPolicy {
         ProviderFieldPolicy::from_provider_field_quality_descriptors(
             Self::catalog()
                 .into_iter()
                 .map(|entry| (entry.id.as_str(), entry.field_quality)),
+        )
+    }
+
+    #[must_use]
+    fn default_av_provider_field_policy() -> ProviderFieldPolicy {
+        ProviderFieldPolicy::from_field_provider_preferences(
+            DEFAULT_FIELD_PROVIDER_PREFERENCES.iter().copied(),
         )
     }
 
@@ -234,7 +304,7 @@ pub struct ProviderConfigInput<'a> {
 mod tests {
     use super::*;
     use crate::config::{
-        BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig,
+        AvFieldPolicyPreset, BangumiProviderConfig, BrowserWorkerProviderConfig, ProviderConfig,
         ThePornDbProviderConfig, TmdbProviderConfig,
     };
     use crate::engine::ExternalIdValueKind;
@@ -250,8 +320,8 @@ mod tests {
     }
 
     #[test]
-    fn registry_builds_default_av_field_policy_from_provider_quality_descriptors() {
-        let policy = ProviderRegistry::default_provider_field_policy();
+    fn registry_builds_quality_score_av_field_policy_from_provider_quality_descriptors() {
+        let policy = ProviderRegistry::provider_field_policy(AvFieldPolicyPreset::QualityScores);
 
         assert_eq!(
             policy.providers_for("title"),
@@ -309,6 +379,54 @@ mod tests {
                 "xcity".to_owned(),
                 "javbus".to_owned(),
                 "airav".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn registry_builds_default_av_field_policy_from_supported_provider_preferences() {
+        let policy = ProviderRegistry::provider_field_policy(AvFieldPolicyPreset::Default);
+
+        assert_eq!(
+            policy.providers_for("title"),
+            &[
+                "theporndb".to_owned(),
+                "mgstage".to_owned(),
+                "dmm".to_owned(),
+                "javbus".to_owned(),
+                "javlibrary".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("actors"),
+            &[
+                "theporndb".to_owned(),
+                "javbus".to_owned(),
+                "javlibrary".to_owned(),
+                "javdb".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("thumb_url"),
+            &["theporndb".to_owned(), "javbus".to_owned()]
+        );
+        assert_eq!(
+            policy.providers_for("poster"),
+            &["theporndb".to_owned(), "javbus".to_owned()]
+        );
+        assert_eq!(
+            policy.providers_for("extrafanart_urls"),
+            &["javbus".to_owned(), "theporndb".to_owned()]
+        );
+        assert_eq!(
+            policy.providers_for("release_date"),
+            &[
+                "javbus".to_owned(),
+                "dmm".to_owned(),
+                "mgstage".to_owned(),
+                "prestige".to_owned(),
+                "javlibrary".to_owned(),
+                "javdb".to_owned(),
             ]
         );
     }
