@@ -28,16 +28,18 @@ use mapper::{TmdbMovieCandidate, TmdbMovieSearchResult, release_year};
 use nako_addon_protocol::AddonArtworkKind;
 #[cfg(test)]
 use parser::{
-    TmdbAlternativeTitle, TmdbFindMovieResult, TmdbFindResponse, TmdbGenre,
+    TmdbAlternativeTitle, TmdbFindMovieResult, TmdbFindResponse, TmdbFindTvResult, TmdbGenre,
     TmdbMovieAlternativeTitles, TmdbMovieDetail, TmdbMovieExternalIds, TmdbSearchResponse,
+    TmdbTvSearchResponse,
 };
 #[cfg(test)]
-use search::tmdb_query_movie_ids;
+use search::{tmdb_query_movie_ids, tmdb_query_tv_ids};
 
 #[cfg(test)]
 use test_support::FakeTransport;
 
 pub const TMDB_PROVIDER_ID: &str = "tmdb";
+pub const TMDB_TV_EXTERNAL_ID_PROVIDER_ID: &str = "tmdb_tv";
 const TMDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
     ProviderExternalIdCapability::new(
         "tmdb",
@@ -45,6 +47,14 @@ const TMDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         true,
         true,
         &["tmdb_id"],
+        true,
+    ),
+    ProviderExternalIdCapability::new(
+        "tmdb_tv",
+        ExternalIdValueKind::Numeric,
+        true,
+        true,
+        &["tmdb_tv_id"],
         true,
     ),
     ProviderExternalIdCapability::new(
@@ -97,7 +107,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         id: ProviderId::Tmdb,
         default_enabled: false,
         enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED",
-        capabilities: &["metadata_suggestion", "movie_search"],
+        capabilities: &["metadata_suggestion", "movie_search", "tv_search"],
         field_quality: Default::default(),
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             TmdbProviderConfig::secret_field_id(),
@@ -211,15 +221,57 @@ mod tests {
     }
 
     #[test]
+    fn tmdb_query_tv_ids_ignores_zero_and_invalid_values() {
+        let query = MetadataQuery {
+            title: "Breaking Bad".to_owned(),
+            year: Some(2008),
+            language: "en-US".to_owned(),
+            external_ids: vec![
+                crate::engine::QueryExternalId {
+                    provider: "tmdb_tv".to_owned(),
+                    value: "0".to_owned(),
+                },
+                crate::engine::QueryExternalId {
+                    provider: "TMDB_TV".to_owned(),
+                    value: "1396".to_owned(),
+                },
+                crate::engine::QueryExternalId {
+                    provider: "tmdb_tv_id".to_owned(),
+                    value: "1396".to_owned(),
+                },
+                crate::engine::QueryExternalId {
+                    provider: "tmdb_tv".to_owned(),
+                    value: "not-a-number".to_owned(),
+                },
+            ],
+        };
+
+        let tv_ids = tmdb_query_tv_ids(&query).collect::<Vec<_>>();
+
+        assert_eq!(tv_ids, vec![1396]);
+    }
+
+    #[test]
     fn tmdb_find_response_ignores_zero_movie_ids() {
         let response = TmdbFindResponse {
             movie_results: vec![
                 TmdbFindMovieResult { id: 0 },
                 TmdbFindMovieResult { id: 603 },
             ],
+            tv_results: Vec::new(),
         };
 
         assert_eq!(response.first_movie_id(), Some(603));
+    }
+
+    #[test]
+    fn tmdb_find_response_ignores_zero_tv_ids() {
+        let response = TmdbFindResponse {
+            movie_results: Vec::new(),
+            tv_results: vec![TmdbFindTvResult { id: 0 }, TmdbFindTvResult { id: 1396 }],
+        };
+
+        assert_eq!(response.first_tv_id(), Some(1396));
     }
 
     #[test]
@@ -296,6 +348,20 @@ mod tests {
 
         assert_eq!(response.results.len(), 1);
         assert_eq!(response.results[0].id, 603);
+    }
+
+    #[test]
+    fn tmdb_tv_search_response_skips_zero_id_items() {
+        let response = TmdbTvSearchResponse::from_value(serde_json::json!({
+            "results": [
+                {"id": 0},
+                {"id": 1396, "name": "Breaking Bad"}
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].id, 1396);
     }
 
     #[tokio::test]
@@ -753,6 +819,234 @@ mod tests {
                 .iter()
                 .all(|request| request.url != "https://tmdb.example/3/search/movie")
         );
+    }
+
+    #[tokio::test]
+    async fn tmdb_provider_uses_query_external_id_for_direct_tv_lookup() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: r#"{
+                "id": 1396,
+                "name": "Breaking Bad",
+                "original_name": "Breaking Bad",
+                "overview": "A chemistry teacher turns to crime.",
+                "first_air_date": "2008-01-20",
+                "episode_run_time": [47],
+                "tagline": "Change the equation.",
+                "original_language": "en",
+                "poster_path": "/bb-poster.jpg",
+                "backdrop_path": "/bb-backdrop.jpg",
+                "genres": [{"id": 18, "name": "Drama"}],
+                "networks": [{"id": 174, "name": "AMC"}],
+                "origin_country": ["US"],
+                "number_of_episodes": 62,
+                "number_of_seasons": 5,
+                "status": "Ended",
+                "vote_average": 8.9,
+                "vote_count": 15000,
+                "external_ids": {
+                    "imdb_id": "tt0903747",
+                    "tvdb_id": 81189,
+                    "wikidata_id": "Q109630"
+                },
+                "alternative_titles": {
+                    "results": [{"title": "絕命毒師"}]
+                }
+            }"#
+            .as_bytes()
+            .to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = TmdbMetadataProvider::with_runtime(
+            TmdbProviderConfig {
+                read_access_token: None,
+                api_base_url: "https://tmdb.example/3".to_owned(),
+                language: "en-US".to_owned(),
+                include_adult: false,
+                proxy_url: None,
+            },
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Wrong Local Title".to_owned(),
+                year: Some(2008),
+                language: "zh-CN".to_owned(),
+                external_ids: vec![crate::engine::QueryExternalId {
+                    provider: "tmdb_tv".to_owned(),
+                    value: "1396".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "tmdb:tv:1396");
+        assert_eq!(candidates[0].patch.title.as_deref(), Some("Breaking Bad"));
+        assert_eq!(
+            candidates[0].patch.overview.as_deref(),
+            Some("A chemistry teacher turns to crime.")
+        );
+        assert_eq!(
+            candidates[0].patch.release_date.as_deref(),
+            Some("2008-01-20")
+        );
+        assert_eq!(candidates[0].patch.runtime_minutes, Some(47));
+        assert_eq!(
+            candidates[0].patch.tagline.as_deref(),
+            Some("Change the equation.")
+        );
+        assert_eq!(candidates[0].facts.release_year, Some(2008));
+        assert_eq!(candidates[0].facts.community_score_milli, Some(890));
+        assert_eq!(candidates[0].facts.community_vote_count, Some(15000));
+        assert!(
+            candidates[0]
+                .facts
+                .external_ids
+                .iter()
+                .any(|id| id.provider == "tmdb_tv" && id.value == "1396")
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .external_ids
+                .iter()
+                .any(|id| id.provider == "tvdb" && id.value == "81189")
+        );
+        assert!(
+            candidates[0]
+                .facts
+                .alternate_titles
+                .iter()
+                .any(|title| title == "絕命毒師")
+        );
+        assert!(
+            candidates[0]
+                .patch
+                .tags
+                .as_ref()
+                .unwrap()
+                .contains(&"tmdb_network:AMC".to_owned())
+        );
+        assert!(
+            candidates[0]
+                .artwork_candidates
+                .iter()
+                .any(|candidate| candidate.provider_id == "tmdb:tv:1396"
+                    && candidate.facts.kind == AddonArtworkKind::Poster
+                    && candidate.facts.source_url
+                        == "https://image.tmdb.org/t/p/original/bb-poster.jpg")
+        );
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].url, "https://tmdb.example/3/tv/1396");
+    }
+
+    #[tokio::test]
+    async fn tmdb_provider_searches_tv_when_movie_search_has_no_candidates() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: br#"{"results": []}"#.to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: br#"{
+                "results": [{
+                    "id": 1396,
+                    "name": "Breaking Bad",
+                    "original_name": "Breaking Bad",
+                    "overview": "Search TV result.",
+                    "first_air_date": "2008-01-20",
+                    "genre_ids": [18],
+                    "vote_average": 8.9,
+                    "vote_count": 15000
+                }]
+            }"#
+            .to_vec(),
+        }));
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: br#"{
+                "id": 1396,
+                "name": "Breaking Bad",
+                "original_name": "Breaking Bad",
+                "overview": "Detail TV result.",
+                "first_air_date": "2008-01-20",
+                "episode_run_time": [47],
+                "tagline": null,
+                "original_language": "en",
+                "poster_path": null,
+                "backdrop_path": null,
+                "genres": [{"id": 18, "name": "Drama"}],
+                "vote_average": 8.9,
+                "vote_count": 15000,
+                "external_ids": {
+                    "imdb_id": "tt0903747",
+                    "tvdb_id": 81189
+                },
+                "alternative_titles": {
+                    "results": []
+                }
+            }"#
+            .to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let provider = TmdbMetadataProvider::with_runtime(
+            TmdbProviderConfig {
+                read_access_token: None,
+                api_base_url: "https://tmdb.example/3".to_owned(),
+                language: "en-US".to_owned(),
+                include_adult: false,
+                proxy_url: None,
+            },
+            runtime,
+        );
+
+        let candidates = provider
+            .suggest(&MetadataQuery {
+                title: "Breaking Bad".to_owned(),
+                year: Some(2008),
+                language: "en-US".to_owned(),
+                external_ids: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].provider_id, "tmdb:tv:1396");
+        assert_eq!(candidates[0].patch.title.as_deref(), Some("Breaking Bad"));
+        assert_eq!(
+            candidates[0].patch.overview.as_deref(),
+            Some("Detail TV result.")
+        );
+        assert_eq!(candidates[0].patch.runtime_minutes, Some(47));
+
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 3);
+        assert_eq!(requests[0].url, "https://tmdb.example/3/search/movie");
+        assert_eq!(requests[1].url, "https://tmdb.example/3/search/tv");
+        assert!(
+            requests[1]
+                .query
+                .contains(&("first_air_date_year".to_owned(), "2008".to_owned()))
+        );
+        assert_eq!(requests[2].url, "https://tmdb.example/3/tv/1396");
     }
 
     #[tokio::test]

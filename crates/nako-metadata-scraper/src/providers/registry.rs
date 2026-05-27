@@ -560,7 +560,7 @@ mod tests {
                 id: "tmdb",
                 enabled: false,
                 available: false,
-                capabilities: vec!["metadata_suggestion", "movie_search"],
+                capabilities: vec!["metadata_suggestion", "movie_search", "tv_search"],
                 status: ProviderStatus::Disabled,
             }
         );

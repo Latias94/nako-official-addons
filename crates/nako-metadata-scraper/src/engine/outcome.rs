@@ -5,6 +5,9 @@ pub enum ProviderOutcome {
     TmdbMovieEnriched,
     TmdbMoviePartiallyEnriched,
     TmdbMovieDegraded,
+    TmdbTvEnriched,
+    TmdbTvPartiallyEnriched,
+    TmdbTvDegraded,
     TmdbPartialTitleVariantSearchFailure,
     BangumiSubjectEnriched,
     BangumiSubjectDegraded,
@@ -62,6 +65,15 @@ impl ProviderOutcome {
             }
             Self::TmdbMovieDegraded => {
                 "TMDB movie candidate degraded from search response after enrichment failure."
+            }
+            Self::TmdbTvEnriched => {
+                "TMDB TV candidate enriched with search, detail, and external ID responses."
+            }
+            Self::TmdbTvPartiallyEnriched => {
+                "TMDB TV candidate partially enriched with search and detail responses after secondary enrichment failure."
+            }
+            Self::TmdbTvDegraded => {
+                "TMDB TV candidate degraded from search response after enrichment failure."
             }
             Self::TmdbPartialTitleVariantSearchFailure => {
                 "TMDB provider preserved candidates after partial title-variant search failure."

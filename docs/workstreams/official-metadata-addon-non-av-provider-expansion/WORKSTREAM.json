@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-non-av-provider-expansion",
+  "title": "Official Metadata Addon Non-AV Provider Expansion",
+  "status": "active",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OMANV",
+  "current_task": "OMANV-030",
+  "completed_tasks": [
+    "OMANV-010",
+    "OMANV-020"
+  ],
+  "problem": "Non-AV metadata coverage is behind AV: TMDB is movie-centric, Bangumi can emit richer anime facts, browser-rendered extraction is not recipe-driven, and new API-backed providers need a maintainable first wave.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-non-av-provider-expansion/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-non-av-provider-expansion/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-non-av-provider-expansion/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper tmdb --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper anilist config registry manifest --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "docs/workstreams/official-metadata-addon-non-av-provider-expansion/DESIGN.md",
+    "crates/nako-metadata-scraper/src/providers/tmdb",
+    "crates/nako-metadata-scraper/src/providers/bangumi",
+    "crates/nako-metadata-scraper/src/providers/browser_worker.rs",
+    "crates/nako-metadata-scraper/src/providers/rendered_page.rs"
+  ],
+  "references": [
+    "https://developer.themoviedb.org/reference/search-tv",
+    "https://docs.anilist.co/",
+    "https://api4.thetvdb.com/",
+    "https://myanimelist.net/apiconfig/references/api/v2"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "continue_current_task",
+    "notes": "Start with OMANV-020 TMDB TV foundation. Split TVDB/MAL/IMDb follow-ups if the lane grows too broad."
+  }
+}
