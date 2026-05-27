@@ -882,6 +882,7 @@ dependencies = [
  "async-trait",
  "axum",
  "nako-addon-protocol",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror",

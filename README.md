@@ -138,6 +138,10 @@ Provider defaults:
   search results for local smoke while live provider scraping, link checking,
   downloader hooks, and the Nako `resource_search` protocol are handled in
   later lanes.
+- `resource_search.pansou_compatible`: disabled by default. Configure
+  `NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED=1` plus
+  `NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL` to query an externally managed
+  PanSou-compatible `/api/search` service.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now

@@ -90,6 +90,45 @@ fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
                         "fixture": {
                             "type": "boolean",
                             "default": config.fixture_provider_enabled
+                        },
+                        "pansou_compatible": {
+                            "type": "boolean",
+                            "default": config.pansou.enabled
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "pansou": {
+                    "type": "object",
+                    "properties": {
+                        "base_url": {
+                            "type": "string",
+                            "default": config.pansou.base_url.clone().unwrap_or_default()
+                        },
+                        "source_type": {
+                            "type": "string",
+                            "default": config.pansou.source_type
+                        },
+                        "plugins": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "default": config.pansou.plugins
+                        },
+                        "cloud_types": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "default": config.pansou.cloud_types.iter().map(|link_type| link_type.as_str()).collect::<Vec<_>>()
+                        },
+                        "concurrency": {
+                            "type": ["integer", "null"],
+                            "default": config.pansou.concurrency,
+                            "minimum": 1
+                        },
+                        "timeout_ms": {
+                            "type": "integer",
+                            "default": config.pansou.timeout_ms,
+                            "minimum": 250,
+                            "maximum": 60000
                         }
                     },
                     "additionalProperties": false
@@ -146,6 +185,16 @@ mod tests {
         assert_eq!(manifest.scopes, vec![AddonScope::AutomationRun]);
         assert_eq!(manifest.hosted_pages.len(), 1);
         assert_eq!(manifest.entry_points.len(), 1);
+        let schema = &manifest.configuration_schema.as_ref().unwrap().schema;
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["fixture"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["pansou_compatible"]["default"],
+            false
+        );
+        assert_eq!(schema["properties"]["pansou"]["type"], "object");
         assert!(manifest.tasks.is_empty());
         assert!(manifest.event_subscriptions.is_empty());
         assert!(manifest.secret_reference_fields.is_empty());

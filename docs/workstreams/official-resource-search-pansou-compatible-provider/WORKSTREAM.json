@@ -1,11 +1,11 @@
 {
   "id": "official-resource-search-pansou-compatible-provider",
-  "status": "active",
+  "status": "complete",
   "task_prefix": "ORSPC",
   "created_at": "2026-05-28",
   "updated_at": "2026-05-28",
   "objective": "Add a disabled-by-default PanSou-compatible HTTP provider adapter for the resource search sidecar without copying PanSou code or requiring live service CI.",
-  "current_task": "ORSPC-020",
+  "current_task": null,
   "owner": "Codex",
   "docs": {
     "design": "DESIGN.md",

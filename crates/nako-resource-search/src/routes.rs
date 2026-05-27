@@ -107,6 +107,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Configured provider count: {}</p>
   <p>Runtime provider count: {}</p>
   <p>Providers: {}</p>
+  <p>PanSou-compatible provider active: {}</p>
+  <p>PanSou-compatible base URL configured: {}</p>
   <p>Default limit: {}</p>
   <p>Max limit: {}</p>
   <p>Search timeout ms: {}</p>
@@ -117,6 +119,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         state.config.enabled_provider_count(),
         state.runtime.provider_count(),
         state.runtime.provider_ids().join(", "),
+        yes_no_label(state.config.pansou.is_active()),
+        yes_no_label(state.config.pansou.base_url.is_some()),
         state.config.default_limit,
         state.config.max_limit,
         state.config.search_timeout_ms,
@@ -153,10 +157,24 @@ fn diagnostics_payload(state: &AppState) -> serde_json::Value {
         "configured_provider_count": state.config.enabled_provider_count(),
         "runtime_provider_count": state.runtime.provider_count(),
         "providers": state.runtime.provider_ids(),
+        "pansou": {
+            "enabled": state.config.pansou.enabled,
+            "active": state.config.pansou.is_active(),
+            "base_url_configured": state.config.pansou.base_url.is_some(),
+            "bearer_token_configured": state.config.pansou.bearer_token_configured(),
+            "source_type": state.config.pansou.source_type,
+            "plugin_count": state.config.pansou.plugins.len(),
+            "cloud_type_count": state.config.pansou.cloud_types.len(),
+            "timeout_ms": state.config.pansou.timeout_ms
+        },
         "default_limit": state.config.default_limit,
         "max_limit": state.config.max_limit,
         "search_timeout_ms": state.config.search_timeout_ms
     })
+}
+
+const fn yes_no_label(value: bool) -> &'static str {
+    if value { "yes" } else { "no" }
 }
 
 fn safe_bad_request(safe_error_code: &str) -> (StatusCode, Json<serde_json::Value>) {

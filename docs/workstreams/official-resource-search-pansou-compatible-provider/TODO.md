@@ -17,7 +17,7 @@ Validation:
 
 ## ORSPC-020 - Config and manifest provider toggle
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSPC-010
 
@@ -35,7 +35,7 @@ Validation:
 
 ## ORSPC-030 - Provider adapter and mapping
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSPC-020
 
@@ -52,7 +52,7 @@ Validation:
 
 ## ORSPC-040 - Verify, docs, and commit
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSPC-030
 

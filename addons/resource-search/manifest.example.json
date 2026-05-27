@@ -45,6 +45,45 @@
             "fixture": {
               "type": "boolean",
               "default": true
+            },
+            "pansou_compatible": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "pansou": {
+          "type": "object",
+          "properties": {
+            "base_url": {
+              "type": "string",
+              "default": ""
+            },
+            "source_type": {
+              "type": "string",
+              "default": "all"
+            },
+            "plugins": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "cloud_types": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "concurrency": {
+              "type": ["integer", "null"],
+              "default": null,
+              "minimum": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "default": 10000,
+              "minimum": 250,
+              "maximum": 60000
             }
           },
           "additionalProperties": false

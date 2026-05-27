@@ -19,7 +19,8 @@ The workstream proposal for the correct host contract is tracked in
 
 - Listens on `127.0.0.1:9130`.
 - Fixture provider is enabled by default for local smoke and CI.
-- Live provider scraping is not implemented in this slice.
+- The PanSou-compatible HTTP provider is disabled by default and only runs when
+  explicitly enabled with a valid HTTP(S) base URL.
 - Downloader or BitTorrent client invocation is not part of the search path.
 
 ## Run Locally
@@ -27,6 +28,16 @@ The workstream proposal for the correct host contract is tracked in
 ```powershell
 cargo run -p nako-resource-search
 pwsh -File addons/resource-search/smoke.local.ps1
+```
+
+Optional PanSou-compatible provider:
+
+```powershell
+$env:NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED = '1'
+$env:NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL = 'http://127.0.0.1:8888'
+$env:NAKO_RESOURCE_SEARCH_PANSOU_PLUGINS = 'jikepan,pansearch'
+$env:NAKO_RESOURCE_SEARCH_PANSOU_CLOUD_TYPES = 'quark,aliyun,magnet'
+cargo run -p nako-resource-search
 ```
 
 Disable the fixture provider to verify degraded health:

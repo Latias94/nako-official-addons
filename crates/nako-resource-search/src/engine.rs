@@ -13,7 +13,7 @@ use crate::{
         ResourceLinkType, ResourceSearchProviderExecution, ResourceSearchQuery,
         ResourceSearchRequest, ResourceSearchResponse, ResourceSearchResult,
     },
-    providers::FixtureResourceSearchProvider,
+    providers::{FixtureResourceSearchProvider, PansouCompatibleProvider},
 };
 
 #[async_trait]
@@ -42,6 +42,11 @@ impl ResourceSearchRuntime {
         let mut providers = Vec::<Arc<dyn ResourceSearchProvider>>::new();
         if config.fixture_provider_enabled {
             providers.push(Arc::new(FixtureResourceSearchProvider));
+        }
+        if config.pansou.is_active() {
+            providers.push(Arc::new(PansouCompatibleProvider::new(
+                config.pansou.clone(),
+            )));
         }
         providers.sort_by_key(|provider| std::cmp::Reverse(provider.priority()));
 
@@ -73,6 +78,7 @@ impl ResourceSearchRuntime {
             sources: request.sources.clone(),
             link_types: request.link_types.clone(),
             refresh: request.refresh,
+            ext: request.ext.clone(),
         };
 
         let mut results = Vec::new();
@@ -226,6 +232,24 @@ mod tests {
         assert_eq!(
             response.provider_executions[0].status,
             ProviderExecutionStatus::Skipped
+        );
+    }
+
+    #[test]
+    fn runtime_registers_pansou_provider_only_when_active() {
+        let mut inactive_config = Config::default();
+        inactive_config.pansou.enabled = true;
+        assert_eq!(
+            ResourceSearchRuntime::new(inactive_config).provider_ids(),
+            vec!["fixture"]
+        );
+
+        let mut active_config = Config::default();
+        active_config.pansou.enabled = true;
+        active_config.pansou.base_url = Some("http://127.0.0.1:8888".to_owned());
+        assert_eq!(
+            ResourceSearchRuntime::new(active_config).provider_ids(),
+            vec!["fixture", "pansou_compatible"]
         );
     }
 

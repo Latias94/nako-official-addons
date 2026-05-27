@@ -96,6 +96,7 @@ mod tests {
                 sources: Vec::new(),
                 link_types: Vec::new(),
                 refresh: false,
+                ext: serde_json::Value::Null,
             })
             .await
             .unwrap();

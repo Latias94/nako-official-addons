@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +50,30 @@ impl ResourceLinkType {
     }
 }
 
+impl FromStr for ResourceLinkType {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "aliyun" | "ali" => Ok(Self::Aliyun),
+            "baidu" => Ok(Self::Baidu),
+            "quark" => Ok(Self::Quark),
+            "tianyi" | "189" => Ok(Self::Tianyi),
+            "uc" => Ok(Self::Uc),
+            "mobile" | "139" => Ok(Self::Mobile),
+            "115" => Ok(Self::OneOneFive),
+            "pikpak" => Ok(Self::Pikpak),
+            "xunlei" => Ok(Self::Xunlei),
+            "123" | "123pan" => Ok(Self::OneTwoThree),
+            "magnet" => Ok(Self::Magnet),
+            "ed2k" => Ok(Self::Ed2k),
+            "web" => Ok(Self::Web),
+            "other" | "others" => Ok(Self::Other),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct ResourceSearchRequest {
     pub query: String,
@@ -82,13 +106,14 @@ impl ResourceSearchRequest {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ResourceSearchQuery {
     pub query: String,
     pub limit: usize,
     pub sources: Vec<String>,
     pub link_types: Vec<ResourceLinkType>,
     pub refresh: bool,
+    pub ext: serde_json::Value,
 }
 
 impl ResourceSearchQuery {

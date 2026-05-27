@@ -38,5 +38,6 @@ COPY --from=builder /src/nako-official-addons/target/release/nako-resource-searc
 ENV NAKO_RESOURCE_SEARCH_LISTEN_ADDR=0.0.0.0:9130
 ENV NAKO_RESOURCE_SEARCH_BASE_URL=http://nako-resource-search:9130
 ENV NAKO_RESOURCE_SEARCH_FIXTURE_PROVIDER_ENABLED=true
+ENV NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED=false
 EXPOSE 9130
 ENTRYPOINT ["/usr/local/bin/nako-resource-search"]

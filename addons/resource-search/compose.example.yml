@@ -11,6 +11,12 @@ services:
       NAKO_RESOURCE_SEARCH_LISTEN_ADDR: "0.0.0.0:9130"
       NAKO_RESOURCE_SEARCH_BASE_URL: "http://nako-resource-search:9130"
       NAKO_RESOURCE_SEARCH_FIXTURE_PROVIDER_ENABLED: "true"
+      NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED: "false"
+      # Optional external PanSou-compatible service.
+      # NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL: "http://pansou:8888"
+      # NAKO_RESOURCE_SEARCH_PANSOU_TOKEN: "secret-ref-managed-outside-compose"
+      # NAKO_RESOURCE_SEARCH_PANSOU_PLUGINS: "jikepan,pansearch"
+      # NAKO_RESOURCE_SEARCH_PANSOU_CLOUD_TYPES: "quark,aliyun,magnet"
       NAKO_RESOURCE_SEARCH_DEFAULT_LIMIT: "20"
       NAKO_RESOURCE_SEARCH_MAX_LIMIT: "100"
       NAKO_RESOURCE_SEARCH_TIMEOUT_MS: "10000"
