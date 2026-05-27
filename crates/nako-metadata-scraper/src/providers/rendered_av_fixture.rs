@@ -140,6 +140,7 @@ mod tests {
                         .to_string()
                         .into_bytes(),
                     ),
+                    form_body: Vec::new(),
                 },
                 ProviderHttpRuntimeConfig::default(),
             )

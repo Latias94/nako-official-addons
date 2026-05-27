@@ -47,10 +47,23 @@ pub struct ProviderAssembly {
     pub diagnostics: ProviderDiagnostics,
 }
 
-const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] =
-    &["theporndb", "mgstage", "dmm", "javbus", "javlibrary"];
+const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] = &[
+    "theporndb",
+    "mgstage",
+    "dmm",
+    "javbus",
+    "jav321",
+    "javlibrary",
+];
 const DEFAULT_ACTOR_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus", "javlibrary", "javdb"];
-const DEFAULT_TEXT_PROVIDER_ORDER: &[&str] = &["theporndb", "javdb", "dmm", "javlibrary", "javbus"];
+const DEFAULT_TEXT_PROVIDER_ORDER: &[&str] = &[
+    "theporndb",
+    "dmm",
+    "jav321",
+    "javdb",
+    "javlibrary",
+    "javbus",
+];
 const DEFAULT_FACT_PROVIDER_ORDER: &[&str] = &[
     "javbus",
     "dmm",
@@ -336,6 +349,7 @@ mod tests {
                 "mgstage".to_owned(),
                 "javdb".to_owned(),
                 "fc2".to_owned(),
+                "jav321".to_owned(),
                 "fc2ppvdb".to_owned(),
                 "airav".to_owned(),
                 "javbus".to_owned(),
@@ -349,6 +363,7 @@ mod tests {
                 "theporndb".to_owned(),
                 "javlibrary".to_owned(),
                 "javdb".to_owned(),
+                "jav321".to_owned(),
                 "dmm".to_owned(),
                 "fc2ppvdb".to_owned(),
                 "mgstage".to_owned(),
@@ -376,6 +391,7 @@ mod tests {
                 "javdb".to_owned(),
                 "fc2ppvdb".to_owned(),
                 "fc2".to_owned(),
+                "jav321".to_owned(),
                 "xcity".to_owned(),
                 "javbus".to_owned(),
                 "airav".to_owned(),
@@ -394,7 +410,19 @@ mod tests {
                 "mgstage".to_owned(),
                 "dmm".to_owned(),
                 "javbus".to_owned(),
+                "jav321".to_owned(),
                 "javlibrary".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("overview"),
+            &[
+                "theporndb".to_owned(),
+                "dmm".to_owned(),
+                "jav321".to_owned(),
+                "javdb".to_owned(),
+                "javlibrary".to_owned(),
+                "javbus".to_owned(),
             ]
         );
         assert_eq!(
@@ -463,6 +491,7 @@ mod tests {
                 "caribbean",
                 "1pondo",
                 "10musume",
+                "jav321",
                 "javbus",
                 "javlibrary",
                 "airav",
@@ -656,6 +685,22 @@ mod tests {
         assert_eq!(
             diagnostics.supported[13],
             ProviderDescriptor {
+                id: "jav321",
+                enabled: false,
+                available: false,
+                capabilities: vec![
+                    "metadata_suggestion",
+                    "av_number_search",
+                    "jav321_direct_lookup",
+                    "jav321_post_form_search",
+                    "raw_html_parse"
+                ],
+                status: ProviderStatus::Disabled,
+            }
+        );
+        assert_eq!(
+            diagnostics.supported[14],
+            ProviderDescriptor {
                 id: "javbus",
                 enabled: false,
                 available: false,
@@ -670,7 +715,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[14],
+            diagnostics.supported[15],
             ProviderDescriptor {
                 id: "javlibrary",
                 enabled: false,
@@ -686,7 +731,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[15],
+            diagnostics.supported[16],
             ProviderDescriptor {
                 id: "airav",
                 enabled: false,
@@ -702,7 +747,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[16],
+            diagnostics.supported[17],
             ProviderDescriptor {
                 id: "avsox",
                 enabled: false,
@@ -718,7 +763,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[17],
+            diagnostics.supported[18],
             ProviderDescriptor {
                 id: "mgstage",
                 enabled: false,
@@ -734,7 +779,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[18],
+            diagnostics.supported[19],
             ProviderDescriptor {
                 id: "prestige",
                 enabled: false,
@@ -750,7 +795,7 @@ mod tests {
             }
         );
         assert_eq!(
-            diagnostics.supported[19],
+            diagnostics.supported[20],
             ProviderDescriptor {
                 id: "theporndb",
                 enabled: false,
@@ -903,6 +948,20 @@ mod tests {
                 && capability.top_level_fields.contains(&"10musume_url")
         }));
         assert!(capabilities.iter().any(|capability| {
+            capability.provider == "jav321"
+                && capability.value_kind == ExternalIdValueKind::Opaque
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"jav321_id")
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "jav321_url"
+                && capability.value_kind == ExternalIdValueKind::Url
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"jav321_url")
+        }));
+        assert!(capabilities.iter().any(|capability| {
             capability.provider == "javbus"
                 && capability.value_kind == ExternalIdValueKind::Opaque
                 && capability.accepts_direct_lookup
@@ -1052,6 +1111,12 @@ mod tests {
             "10musume_url",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("jav321_id", "jav321", false)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new(
+            "jav321_url",
+            "jav321_url",
+            false
+        )));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javbus_id", "javbus", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new(
             "javbus_url",
@@ -1132,6 +1197,7 @@ mod tests {
                 "caribbean",
                 "1pondo",
                 "10musume",
+                "jav321",
                 "javbus",
                 "javlibrary",
                 "airav",
@@ -1194,6 +1260,7 @@ mod tests {
                 "caribbean",
                 "1pondo",
                 "10musume",
+                "jav321",
                 "javbus",
                 "javlibrary",
                 "airav",

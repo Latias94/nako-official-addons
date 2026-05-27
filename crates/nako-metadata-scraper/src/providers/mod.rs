@@ -14,6 +14,7 @@ pub mod fc2;
 pub mod fc2ppvdb;
 pub mod fixture;
 pub mod http_runtime;
+pub mod jav321;
 pub mod javbus;
 pub mod javdb;
 pub mod javlibrary;
@@ -55,6 +56,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         caribbean::catalog_entry(),
         onepondo::catalog_entry(),
         tenmusume::catalog_entry(),
+        jav321::catalog_entry(),
         javbus::catalog_entry(),
         javlibrary::catalog_entry(),
         airav::catalog_entry(),

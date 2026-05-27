@@ -93,6 +93,7 @@ const AV_PROVIDER_ENABLED_ENV_VARS: &[(&str, &str)] = &[
         "10musume",
         "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED",
     ),
+    ("jav321", "NAKO_METADATA_SCRAPER_PROVIDER_JAV321_ENABLED"),
     ("javbus", "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED"),
     (
         "javlibrary",

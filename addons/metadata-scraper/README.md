@@ -304,7 +304,7 @@ Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 
 The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB,
-Bangumi, Prestige, ThePornDB, and browser-render proxy/session policy is
+Bangumi, Jav321, Prestige, ThePornDB, and browser-render proxy/session policy is
 configured. They intentionally expose only boolean policy state, not proxy URLs,
 credentials, or session key values.
 Browser-rendered providers use the companion browser worker for proxying; set
@@ -329,8 +329,8 @@ one of:
   `theporndb`.
 - `official_only`: `dmm`, `fc2`, `mgstage`, `prestige`, `caribbean`,
   `1pondo`, and `10musume`.
-- `community_first`: `javdb`, `javbus`, `javlibrary`, `airav`, `avsox`,
-  `dmm`, `xcity`, `fc2`, `fc2ppvdb`, `mgstage`, `prestige`, and
+- `community_first`: `javdb`, `jav321`, `javbus`, `javlibrary`, `airav`,
+  `avsox`, `dmm`, `xcity`, `fc2`, `fc2ppvdb`, `mgstage`, `prestige`, and
   `theporndb`.
 - `fc2_enhanced`: `fc2`, `fc2ppvdb`, `airav`, and `avsox`.
 - `uncensored_official`: `caribbean`, `1pondo`, and `10musume`.
@@ -344,7 +344,8 @@ AV field fusion also has a sidecar-wide preset. Set
 `NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET` to one of:
 
 - `default`: uses the field source order adapted to this project: title from
-  ThePornDB/MGStage/DMM/JavBus/JavLibrary; actors from
+  ThePornDB/MGStage/DMM/JavBus/Jav321/JavLibrary; outline and text from
+  ThePornDB/DMM/Jav321 before community fallbacks; actors from
   ThePornDB/JavBus/JavLibrary/JavDB; thumbnail and poster art from
   ThePornDB/JavBus; extra fanart from JavBus/ThePornDB; release/runtime,
   directors, series, studio, publisher, maker, and label from
@@ -365,7 +366,7 @@ for rendered providers, and run:
 
 ```powershell
 $env:NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT = '1'
-$env:NAKO_METADATA_SCRAPER_LIVE_AV_PROVIDER_DRIFT_CASES = 'javdb=SSNI-644;fc2=FC2-1723984'
+$env:NAKO_METADATA_SCRAPER_LIVE_AV_PROVIDER_DRIFT_CASES = 'javdb=SSNI-644;jav321=SSNI-644;fc2=FC2-1723984'
 cargo test -p nako-metadata-scraper --test live_provider_drift -- --ignored av_live_provider_field_health_smoke
 ```
 
@@ -373,14 +374,17 @@ The harness enables only the AV providers named in the case list, then calls
 the same provider registry and `MetadataProvider::suggest` seam used by runtime
 scraping. Browser-rendered providers inherit
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_*` render settings and proxy policy.
+Jav321 uses the Rust HTTP runtime directly; set
+`NAKO_METADATA_SCRAPER_JAV321_PROXY_URL` when it must use an operator-managed
+proxy.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `xcity_id`, `xcity_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`,
 `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`,
-`10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`, `avsox_url`,
-`mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
+`10musume_url`, `jav321_id`, `jav321_url`, `javbus_id`, `javbus_url`,
+`javlibrary_id`, `javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`,
+`avsox_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
 `theporndb_url`, `file_oshash`, `file_phash`, and `av_number`. These aliases
 are derived from provider-owned external ID capabilities.
 
@@ -393,11 +397,12 @@ field mapping, ranking facts, and artwork candidates stay inside the Rust
 provider. This keeps Playwright/Crawlee out of the Rust sidecar without turning
 the worker into a second metadata scraper.
 
-JavDB, DMM, FC2, FC2PPVDB, Caribbean, 1Pondo, 10Musume, JavBus, JavLibrary,
-MGStage, Prestige, and ThePornDB metadata are available when their providers
-are enabled.
+JavDB, DMM, FC2, FC2PPVDB, Caribbean, 1Pondo, 10Musume, Jav321, JavBus,
+JavLibrary, MGStage, Prestige, and ThePornDB metadata are available when their
+providers are enabled.
 JavDB, DMM, FC2, FC2PPVDB, Caribbean, 1Pondo, 10Musume, JavBus, JavLibrary, and
-MGStage use the browser-worker companion service for rendered HTML. Prestige
+MGStage use the browser-worker companion service for rendered HTML. Jav321 posts
+form search requests and parses raw HTML in the Rust sidecar. Prestige
 uses the official JSON API and can use
 `NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL` directly from the Rust sidecar.
 ThePornDB uses the ThePornDB JSON API, requires
@@ -412,7 +417,12 @@ uses deterministic article URLs and supports `fc2ppvdb_id` or `fc2ppvdb_url`
 direct lookup. Caribbean, 1Pondo, and 10Musume are official uncensored sources
 for date-style IDs such as `010116-001`, `010116_001`, and `010116_01`; they
 support `caribbean_id`/`caribbean_url`, `1pondo_id`/`1pondo_url`, and
-`10musume_id`/`10musume_url` direct lookup. JavBus is a broad
+`10musume_id`/`10musume_url` direct lookup. Jav321 is a raw-HTML community
+fallback for normalized censored, uncensored, and amateur numbers; it posts
+`sn=<AV number>` to `/search`, parses the returned detail HTML for title,
+outline, score, actors, release date, runtime, studio/publisher, series, tags,
+thumbnail/poster, and extra fanart, and supports `jav321_id` or `jav321_url`
+direct lookup. JavBus is a broad
 disabled-by-default AV fallback for normalized censored and uncensored numbers
 and supports explicit `javbus_id` or
 `javbus_url` direct lookup. JavBus first attempts a direct detail URL, then
@@ -452,6 +462,13 @@ JavBus environment knobs:
 - `NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL=https://www.javbus.com`
 - `NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS=10000`
 - `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE=<cookie header value>`
+
+Jav321 environment knobs:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_JAV321_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_JAV321_BASE_URL=https://www.jav321.com`
+- `NAKO_METADATA_SCRAPER_JAV321_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_JAV321_PROXY_URL=http://127.0.0.1:10809`
 
 AV candidates also expose a response-side `av` object for AV-specific evidence:
 actors, all actors, directors, series, studio, publisher, maker, label, wanted

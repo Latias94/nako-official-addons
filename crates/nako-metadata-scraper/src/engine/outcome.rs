@@ -18,6 +18,7 @@ pub enum ProviderOutcome {
     CaribbeanRenderedHtmlParsed,
     OnePondoRenderedHtmlParsed,
     TenMusumeRenderedHtmlParsed,
+    Jav321RawHtmlParsed,
     JavbusRenderedHtmlParsed,
     JavlibraryRenderedHtmlParsed,
     AiravRenderedHtmlParsed,
@@ -101,6 +102,7 @@ impl ProviderOutcome {
             Self::TenMusumeRenderedHtmlParsed => {
                 "10Musume AV candidate parsed from browser-worker rendered HTML."
             }
+            Self::Jav321RawHtmlParsed => "Jav321 AV candidate parsed from raw HTML.",
             Self::JavbusRenderedHtmlParsed => {
                 "JavBus AV candidate parsed from browser-worker rendered HTML."
             }

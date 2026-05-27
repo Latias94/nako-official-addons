@@ -557,6 +557,7 @@ mod tests {
                 "caribbean",
                 "1pondo",
                 "10musume",
+                "jav321",
                 "javbus",
                 "javlibrary",
                 "airav",
@@ -580,6 +581,10 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["network_policy"]["prestige_proxy_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["jav321_proxy_configured"],
             false
         );
         assert_eq!(
@@ -608,6 +613,9 @@ mod tests {
             }
             "NAKO_METADATA_SCRAPER_PRESTIGE_PROXY_URL" => {
                 Some("http://prestige-proxy.example:8080".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_JAV321_PROXY_URL" => {
+                Some("http://jav321-proxy.example:8080".to_owned())
             }
             _ => None,
         }))
@@ -640,9 +648,14 @@ mod tests {
             payload.diagnostics["network_policy"]["prestige_proxy_configured"],
             true
         );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["jav321_proxy_configured"],
+            true
+        );
         let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
         assert!(!diagnostics.contains("proxy.example"));
         assert!(!diagnostics.contains("prestige-proxy.example"));
+        assert!(!diagnostics.contains("jav321-proxy.example"));
         assert!(!diagnostics.contains("user:pass"));
     }
 }

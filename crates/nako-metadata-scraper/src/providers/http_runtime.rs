@@ -80,6 +80,28 @@ where
             query,
             headers,
             json_body: None,
+            form_body: Vec::new(),
+        })
+        .await
+    }
+
+    pub async fn get_text(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+    ) -> ProviderHttpResult<ProviderHttpTextResponse> {
+        self.execute_text(ProviderHttpRequest {
+            method: ProviderHttpMethod::Get,
+            provider_id,
+            operation,
+            url: url.into(),
+            query,
+            headers,
+            json_body: None,
+            form_body: Vec::new(),
         })
         .await
     }
@@ -110,6 +132,29 @@ where
             query,
             headers,
             json_body: Some(json_body),
+            form_body: Vec::new(),
+        })
+        .await
+    }
+
+    pub async fn post_form_text(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+        form_body: Vec<(String, String)>,
+    ) -> ProviderHttpResult<ProviderHttpTextResponse> {
+        self.execute_text(ProviderHttpRequest {
+            method: ProviderHttpMethod::Post,
+            provider_id,
+            operation,
+            url: url.into(),
+            query,
+            headers,
+            json_body: None,
+            form_body,
         })
         .await
     }
@@ -118,6 +163,42 @@ where
         &self,
         request: ProviderHttpRequest,
     ) -> ProviderHttpResult<ProviderHttpJsonResponse> {
+        let provider_id = request.provider_id;
+        let operation = request.operation;
+        let (response, attempts) = self.execute_response(request).await?;
+        let status = response.status;
+        let body = serde_json::from_slice(&response.body).map_err(|source| {
+            ProviderHttpError::InvalidJson {
+                provider_id,
+                operation,
+                message: safe_excerpt(source.to_string().as_bytes()),
+                attempts,
+            }
+        })?;
+
+        Ok(ProviderHttpJsonResponse {
+            status,
+            body,
+            attempts,
+        })
+    }
+
+    async fn execute_text(
+        &self,
+        request: ProviderHttpRequest,
+    ) -> ProviderHttpResult<ProviderHttpTextResponse> {
+        let (response, attempts) = self.execute_response(request).await?;
+        Ok(ProviderHttpTextResponse {
+            status: response.status,
+            body: String::from_utf8_lossy(&response.body).into_owned(),
+            attempts,
+        })
+    }
+
+    async fn execute_response(
+        &self,
+        request: ProviderHttpRequest,
+    ) -> ProviderHttpResult<(ProviderHttpResponse, u32)> {
         let max_attempts = self.config.max_attempts.max(1);
         let mut last_retryable_error = None;
 
@@ -174,20 +255,7 @@ where
                 });
             }
 
-            let body = serde_json::from_slice(&response.body).map_err(|source| {
-                ProviderHttpError::InvalidJson {
-                    provider_id: request.provider_id,
-                    operation: request.operation,
-                    message: safe_excerpt(source.to_string().as_bytes()),
-                    attempts: attempt,
-                }
-            })?;
-
-            return Ok(ProviderHttpJsonResponse {
-                status,
-                body,
-                attempts: attempt,
-            });
+            return Ok((response, attempt));
         }
 
         Err(
@@ -219,6 +287,7 @@ pub struct ProviderHttpRequest {
     pub query: Vec<(String, String)>,
     pub headers: Vec<(String, String)>,
     pub json_body: Option<Vec<u8>>,
+    pub form_body: Vec<(String, String)>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -237,6 +306,13 @@ pub struct ProviderHttpResponse {
 pub struct ProviderHttpJsonResponse {
     pub status: u16,
     pub body: serde_json::Value,
+    pub attempts: u32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProviderHttpTextResponse {
+    pub status: u16,
+    pub body: String,
     pub attempts: u32,
 }
 
@@ -305,6 +381,8 @@ impl ProviderHttpTransport for ReqwestProviderHttpTransport {
             builder = builder
                 .header("content-type", "application/json")
                 .body(json_body);
+        } else if !request.form_body.is_empty() {
+            builder = builder.form(&request.form_body);
         }
 
         let response = builder
@@ -783,6 +861,7 @@ mod tests {
                     query: Vec::new(),
                     headers: Vec::new(),
                     json_body: None,
+                    form_body: Vec::new(),
                 },
                 ProviderHttpRuntimeConfig {
                     response_size_limit_bytes: 8,
@@ -925,6 +1004,51 @@ mod tests {
             requests[0].json_body.as_deref(),
             Some(br#"{"id":"fixture:1"}"#.as_slice())
         );
+    }
+
+    #[tokio::test]
+    async fn http_runtime_posts_form_and_returns_text_body() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: b"<html><h3>SSNI-644 Fixture</h3></html>".to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+
+        let response = runtime
+            .post_form_text(
+                "jav321",
+                "search",
+                "https://www.jav321.com/search",
+                Vec::new(),
+                vec![("accept-language".to_owned(), "zh-CN,zh;q=0.9".to_owned())],
+                vec![("sn".to_owned(), "SSNI-644".to_owned())],
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status, 200);
+        assert_eq!(response.attempts, 1);
+        assert!(response.body.contains("SSNI-644 Fixture"));
+        let requests = transport.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].method, ProviderHttpMethod::Post);
+        assert_eq!(requests[0].url, "https://www.jav321.com/search");
+        assert_eq!(
+            requests[0].headers[0],
+            ("accept-language".to_owned(), "zh-CN,zh;q=0.9".to_owned())
+        );
+        assert_eq!(
+            requests[0].form_body,
+            vec![("sn".to_owned(), "SSNI-644".to_owned())]
+        );
+        assert!(requests[0].json_body.is_none());
     }
 
     #[derive(Clone, Default)]

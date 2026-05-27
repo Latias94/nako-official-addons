@@ -50,6 +50,13 @@ Current alpha provider defaults:
   rendered HTML and acts as an official uncensored source for date-style IDs
   such as `010116_01`. It supports `10musume_id` or `10musume_url` direct
   lookup and emits `10musume`, `10musume_url`, and `av_number` external IDs.
+- `jav321`: disabled by default; posts the normalized AV number to Jav321 search
+  and parses the returned raw detail HTML without the browser worker. It
+  contributes title, outline, score, actors, release date, runtime, studio,
+  publisher, series, tags, thumbnail/poster art, and extra fanart. It supports
+  `jav321_id` or `jav321_url` direct lookup, emits `jav321`, `jav321_url`, and
+  `av_number` external IDs, and accepts
+  `NAKO_METADATA_SCRAPER_JAV321_PROXY_URL` for proxied access.
 - `javbus`: disabled by default; calls the companion browser worker for
   rendered HTML and acts as a broad AV fallback for normalized censored and
   uncensored numbers. It tries a direct detail URL before search, rejects
@@ -78,8 +85,9 @@ Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
 `dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
 `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
-`javbus_id`, `javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`,
-`mgstage_url`, `prestige_id`, `prestige_url`, `theporndb_id`,
+`jav321_id`, `jav321_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
+`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
+`theporndb_id`,
 `theporndb_url`, `file_oshash`, `file_phash`, and `av_number`. These aliases
 are derived from provider-owned external ID capabilities.
 
@@ -92,12 +100,12 @@ are not echoed.
 
 When `javdb_id`, `dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`,
 `fc2ppvdb_url`, `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`,
-`10musume_id`, `10musume_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
-`javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
-`theporndb_id`, or `theporndb_url` is supplied, the matching provider performs
-direct detail lookup before falling back to inferred AV-number search. This is
-useful for appointed-source corrections where a user already knows the
-authoritative site record.
+`10musume_id`, `10musume_url`, `jav321_id`, `jav321_url`, `javbus_id`,
+`javbus_url`, `javlibrary_id`, `javlibrary_url`, `mgstage_id`, `mgstage_url`,
+`prestige_id`, `prestige_url`, `theporndb_id`, or `theporndb_url` is supplied,
+the matching provider performs direct detail lookup before falling back to
+inferred AV-number search. This is useful for appointed-source corrections
+where a user already knows the authoritative site record.
 
 When `file_oshash` or `file_phash` is supplied, ThePornDB performs direct scene
 hash lookup through `/scenes/hash/{hash}` before ID, AV-number, or title search.
@@ -163,17 +171,18 @@ candidates that share declared provider-emitted external IDs before ranking,
 caps the final result set, and uses shared community score/vote-count facts
 from TMDB, Bangumi, and Douban as a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
-FC2 path, while censored AV numbers can fan out to enabled JavDB/DMM/JavBus,
-Prestige, and ThePornDB providers. Official uncensored date-style IDs fan out
-only to enabled Caribbean/1Pondo/10Musume and uncensored-capable fallback
-providers. Western-style AV numbers can fan out to ThePornDB when configured.
+FC2 path, while censored AV numbers can fan out to enabled
+JavDB/DMM/Jav321/JavBus, Prestige, and ThePornDB providers. Official
+uncensored date-style IDs fan out only to enabled Caribbean/1Pondo/10Musume and
+uncensored-capable fallback providers. Western-style AV numbers can fan out to
+ThePornDB when configured.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 
-The `/health` diagnostics report whether TMDB/Bangumi/Prestige/ThePornDB proxy
-policy and browser render proxy/session policy are configured without exposing
-proxy URLs, credentials, or session key values. Browser-rendered AV providers
-use proxy configuration from the companion browser worker, for example
+The `/health` diagnostics report whether TMDB/Bangumi/Jav321/Prestige/ThePornDB
+proxy policy and browser render proxy/session policy are configured without
+exposing proxy URLs, credentials, or session key values. Browser-rendered AV
+providers use proxy configuration from the companion browser worker, for example
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust
 providers send a typed render intent to the worker; operators can set
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_STATE` (`load`, `domcontentloaded`,
@@ -188,6 +197,13 @@ JavBus may require an age or region cookie depending on network location. Set
 only to the browser worker as a page request header and is not emitted in
 diagnostics. Without a valid cookie, age-verification pages are treated as
 access gates and do not produce metadata candidates.
+
+Jav321 raw HTML access is configured directly on the Rust sidecar:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_JAV321_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_JAV321_BASE_URL=https://www.jav321.com`
+- `NAKO_METADATA_SCRAPER_JAV321_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_JAV321_PROXY_URL=http://127.0.0.1:10809`
 
 ThePornDB API access is configured directly on the Rust sidecar:
 

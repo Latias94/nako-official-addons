@@ -176,6 +176,7 @@ mod tests {
         assert_eq!(provider_properties["caribbean"]["default"], false);
         assert_eq!(provider_properties["1pondo"]["default"], false);
         assert_eq!(provider_properties["10musume"]["default"], false);
+        assert_eq!(provider_properties["jav321"]["default"], false);
         assert_eq!(provider_properties["javbus"]["default"], false);
         assert_eq!(provider_properties["javlibrary"]["default"], false);
         assert_eq!(provider_properties["airav"]["default"], false);
@@ -202,6 +203,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_1PONDO_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAV321_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_AIRAV_ENABLED" => Some("true".to_owned()),
@@ -264,6 +266,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["10musume"]["default"],
+            true
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["jav321"]["default"],
             true
         );
         assert_eq!(
@@ -340,6 +346,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Caribbean),
                 ProviderConfig::disabled(ProviderId::OnePondo),
                 ProviderConfig::disabled(ProviderId::TenMusume),
+                ProviderConfig::disabled(ProviderId::Jav321),
                 ProviderConfig::disabled(ProviderId::Javbus),
                 ProviderConfig::disabled(ProviderId::Javlibrary),
                 ProviderConfig::disabled(ProviderId::Airav),

@@ -77,6 +77,7 @@
           "caribbean": { "type": "boolean", "default": false },
           "1pondo": { "type": "boolean", "default": false },
           "10musume": { "type": "boolean", "default": false },
+          "jav321": { "type": "boolean", "default": false },
           "javbus": { "type": "boolean", "default": false },
           "javlibrary": { "type": "boolean", "default": false },
           "airav": { "type": "boolean", "default": false },

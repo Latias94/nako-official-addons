@@ -3,11 +3,11 @@ pub use crate::providers::{
     airav::AiravProviderConfig, avsox::AvsoxProviderConfig, bangumi::BangumiProviderConfig,
     browser_worker::BrowserWorkerProviderConfig, caribbean::CaribbeanProviderConfig,
     dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    fc2ppvdb::Fc2ppvdbProviderConfig, javbus::JavbusProviderConfig, javdb::JavdbProviderConfig,
-    javlibrary::JavlibraryProviderConfig, mgstage::MgstageProviderConfig,
-    onepondo::OnePondoProviderConfig, prestige::PrestigeProviderConfig,
-    tenmusume::TenMusumeProviderConfig, theporndb::ThePornDbProviderConfig,
-    tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
+    fc2ppvdb::Fc2ppvdbProviderConfig, jav321::Jav321ProviderConfig, javbus::JavbusProviderConfig,
+    javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
+    mgstage::MgstageProviderConfig, onepondo::OnePondoProviderConfig,
+    prestige::PrestigeProviderConfig, tenmusume::TenMusumeProviderConfig,
+    theporndb::ThePornDbProviderConfig, tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -84,6 +84,7 @@ pub enum ProviderId {
     Caribbean,
     OnePondo,
     TenMusume,
+    Jav321,
     Javbus,
     Javlibrary,
     Airav,
@@ -110,6 +111,7 @@ impl ProviderId {
             Self::Caribbean => "caribbean",
             Self::OnePondo => "1pondo",
             Self::TenMusume => "10musume",
+            Self::Jav321 => "jav321",
             Self::Javbus => "javbus",
             Self::Javlibrary => "javlibrary",
             Self::Airav => "airav",
@@ -132,6 +134,7 @@ impl ProviderId {
                 | Self::Caribbean
                 | Self::OnePondo
                 | Self::TenMusume
+                | Self::Jav321
                 | Self::Javbus
                 | Self::Javlibrary
                 | Self::Airav
@@ -165,6 +168,7 @@ const OFFICIAL_ONLY_AV_PROVIDERS: &[ProviderId] = &[
 ];
 const COMMUNITY_FIRST_AV_PROVIDERS: &[ProviderId] = &[
     ProviderId::Javdb,
+    ProviderId::Jav321,
     ProviderId::Javbus,
     ProviderId::Javlibrary,
     ProviderId::Airav,
@@ -428,6 +432,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn jav321(enabled: bool, config: Jav321ProviderConfig) -> Self {
+        Self {
+            id: ProviderId::Jav321,
+            enabled,
+            kind: ProviderConfigKind::Jav321(config),
+        }
+    }
+
+    #[must_use]
     pub fn javbus(enabled: bool, config: JavbusProviderConfig) -> Self {
         Self {
             id: ProviderId::Javbus,
@@ -587,6 +600,14 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn jav321_config(&self) -> Option<&Jav321ProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::Jav321(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn javbus_config(&self) -> Option<&JavbusProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Javbus(config) => Some(config),
@@ -700,6 +721,9 @@ impl ProviderConfig {
                     "https://www.10musume.com",
                 ),
             ),
+            ProviderId::Jav321 => {
+                Self::jav321(enabled, Jav321ProviderConfig::from_env_lookup(|_| None))
+            }
             ProviderId::Javbus => {
                 Self::javbus(enabled, JavbusProviderConfig::from_env_lookup(|_| None))
             }
@@ -752,6 +776,7 @@ pub enum ProviderConfigKind {
     Caribbean(CaribbeanProviderConfig),
     OnePondo(OnePondoProviderConfig),
     TenMusume(TenMusumeProviderConfig),
+    Jav321(Jav321ProviderConfig),
     Javbus(JavbusProviderConfig),
     Javlibrary(JavlibraryProviderConfig),
     Airav(AiravProviderConfig),
@@ -878,7 +903,9 @@ impl ProviderConfig {
             ProviderConfigKind::Airav(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Avsox(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
-            ProviderConfigKind::Prestige(_) | ProviderConfigKind::ThePornDb(_) => false,
+            ProviderConfigKind::Jav321(_)
+            | ProviderConfigKind::Prestige(_)
+            | ProviderConfigKind::ThePornDb(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -906,7 +933,9 @@ impl ProviderConfig {
             ProviderConfigKind::Airav(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Avsox(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
-            ProviderConfigKind::Prestige(_) | ProviderConfigKind::ThePornDb(_) => false,
+            ProviderConfigKind::Jav321(_)
+            | ProviderConfigKind::Prestige(_)
+            | ProviderConfigKind::ThePornDb(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -1107,6 +1136,12 @@ mod tests {
         );
         assert_eq!(tenmusume.render_path, "/render");
         assert_eq!(tenmusume.rendered_pages.timeout_ms, 10_000);
+        let jav321_provider = config.provider_config(ProviderId::Jav321).unwrap();
+        assert!(!jav321_provider.enabled);
+        let jav321 = jav321_provider.jav321_config().unwrap();
+        assert_eq!(jav321.base_url, "https://www.jav321.com");
+        assert_eq!(jav321.timeout_ms, 10_000);
+        assert!(jav321.proxy_url.is_none());
         let javbus_provider = config.provider_config(ProviderId::Javbus).unwrap();
         assert!(!javbus_provider.enabled);
         let javbus = javbus_provider.javbus_config().unwrap();
@@ -1185,6 +1220,7 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Caribbean));
         assert!(!config.provider_enabled(ProviderId::OnePondo));
         assert!(!config.provider_enabled(ProviderId::TenMusume));
+        assert!(!config.provider_enabled(ProviderId::Jav321));
         assert!(!config.provider_enabled(ProviderId::Javbus));
         assert!(!config.provider_enabled(ProviderId::Javlibrary));
         assert!(!config.provider_enabled(ProviderId::Airav));
@@ -1194,6 +1230,7 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::ThePornDb));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
+        assert!(!config.provider_proxy_configured(ProviderId::Jav321));
         assert!(!config.provider_proxy_configured(ProviderId::Prestige));
         assert!(!config.provider_proxy_configured(ProviderId::ThePornDb));
         assert_eq!(
@@ -1229,6 +1266,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_CARIBBEAN_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_1PONDO_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_10MUSUME_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_JAV321_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_AIRAV_ENABLED" => Some("true".to_owned()),
@@ -1289,6 +1327,11 @@ mod tests {
                 Some("https://10musume.example".to_owned())
             }
             "NAKO_METADATA_SCRAPER_10MUSUME_TIMEOUT_MS" => Some("5100".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAV321_BASE_URL" => Some("https://jav321.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAV321_TIMEOUT_MS" => Some("5200".to_owned()),
+            "NAKO_METADATA_SCRAPER_JAV321_PROXY_URL" => {
+                Some(" http://jav321-proxy.example:8080 ".to_owned())
+            }
             "NAKO_METADATA_SCRAPER_JAVBUS_BASE_URL" => Some("https://javbus.example".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVBUS_TIMEOUT_MS" => Some("8500".to_owned()),
             "NAKO_METADATA_SCRAPER_JAVLIBRARY_BASE_URL" => {
@@ -1358,6 +1401,7 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Tmdb));
         assert!(config.provider_enabled(ProviderId::Bangumi));
         assert!(config.provider_enabled(ProviderId::Javdb));
+        assert!(config.provider_enabled(ProviderId::Jav321));
         assert!(config.provider_enabled(ProviderId::Javbus));
         assert!(config.provider_enabled(ProviderId::Javlibrary));
         assert!(config.provider_enabled(ProviderId::Airav));
@@ -1498,6 +1542,19 @@ mod tests {
         );
         assert_eq!(tenmusume.render_path, "/render");
         assert_eq!(tenmusume.rendered_pages.timeout_ms, 5100);
+        assert!(config.provider_enabled(ProviderId::Jav321));
+        let jav321 = config
+            .provider_config(ProviderId::Jav321)
+            .unwrap()
+            .jav321_config()
+            .unwrap();
+        assert_eq!(jav321.base_url, "https://jav321.example");
+        assert_eq!(jav321.timeout_ms, 5200);
+        assert_eq!(
+            jav321.proxy_url.as_deref(),
+            Some("http://jav321-proxy.example:8080")
+        );
+        assert!(config.provider_proxy_configured(ProviderId::Jav321));
         assert!(config.provider_enabled(ProviderId::Javbus));
         let javbus = config
             .provider_config(ProviderId::Javbus)
@@ -1603,6 +1660,7 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Fc2));
         assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
         assert!(!config.provider_enabled(ProviderId::Javdb));
+        assert!(!config.provider_enabled(ProviderId::Jav321));
         assert!(!config.provider_enabled(ProviderId::Prestige));
         assert!(!config.provider_enabled(ProviderId::ThePornDb));
     }
