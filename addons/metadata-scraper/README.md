@@ -327,7 +327,10 @@ worker. The Rust sidecar can require, bypass, or default that worker proxy via
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` as typed render intent
 defaults. Browser-worker render intents can also carry provider-owned headers
 and bounded page actions; these are used for site-specific operational gates
-without moving metadata parsing into the worker.
+without moving metadata parsing into the worker. Browser-worker failures can
+include redaction-safe `failure_kind` values such as `operator_action` or
+`selector_timeout`; the sidecar maps these into provider execution failure
+classes without exposing URLs, selectors, cookies, or proxy values.
 
 AV provider presets can enable coherent provider groups without setting every
 provider toggle individually. Set `NAKO_METADATA_SCRAPER_AV_PROVIDER_PRESET` to

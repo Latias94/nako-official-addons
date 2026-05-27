@@ -219,6 +219,8 @@ pub(crate) fn safe_provider_failure_reason(error: &anyhow::Error) -> &'static st
         || message.contains("403")
         || message.contains("unauthorized")
         || message.contains("forbidden")
+        || message.contains("proxy_required")
+        || message.contains("operator_action")
     {
         "auth_or_forbidden"
     } else if message.contains("404") || message.contains("not found") {
@@ -300,5 +302,20 @@ mod tests {
                 max_selected_providers: Some(2),
             }
         );
+    }
+
+    #[test]
+    fn safe_provider_failure_reason_maps_browser_worker_failure_kind() {
+        let error = anyhow::anyhow!(
+            "browser_worker render page returned HTTP 502: {{\"safe_error_code\":\"proxy_required\",\"failure_kind\":\"operator_action\"}}"
+        );
+
+        assert_eq!(safe_provider_failure_reason(&error), "auth_or_forbidden");
+
+        let error = anyhow::anyhow!(
+            "browser_worker render page returned HTTP 502: {{\"safe_error_code\":\"render_wait_selector_timeout\",\"failure_kind\":\"selector_timeout\"}}"
+        );
+
+        assert_eq!(safe_provider_failure_reason(&error), "timeout");
     }
 }

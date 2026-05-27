@@ -3,8 +3,9 @@ import express from 'express';
 import {
   browserWorkerProxyFacts,
   extractRenderedPage,
-  normalizeRenderOptions,
 } from './extract.mjs';
+import { parseRenderRequestBody } from './render-contract.mjs';
+import { errorResponseFromError } from './render-errors.mjs';
 
 const FIXTURE_HTML = `<!doctype html>
 <html lang="en">
@@ -24,37 +25,23 @@ const FIXTURE_HTML = `<!doctype html>
 </html>`;
 
 function renderRequestFromBody(body) {
-  const url = body?.url;
-  if (typeof url !== 'string' || !url.trim()) {
+  try {
+    return {
+      ok: true,
+      ...parseRenderRequestBody(body),
+    };
+  } catch (error) {
+    const response = errorResponseFromError(error, {
+      errorCode: 'invalid_request',
+      fallbackSafeErrorCode: 'invalid_render_options',
+      fallbackFailureKind: 'invalid_options',
+    });
     return {
       ok: false,
-      status: 400,
-      body: {
-        status: 'error',
-        error: 'invalid_request',
-        safe_error_code: 'missing_url',
-      },
+      status: response.status,
+      body: response.body,
     };
   }
-
-  const options = normalizeRenderOptions(body);
-  if (!options) {
-    return {
-      ok: false,
-      status: 400,
-      body: {
-        status: 'error',
-        error: 'invalid_request',
-        safe_error_code: 'invalid_render_options',
-      },
-    };
-  }
-
-  return {
-    ok: true,
-    url: url.trim(),
-    options,
-  };
 }
 
 export function createApp({ env = process.env } = {}) {
@@ -90,11 +77,12 @@ export function createApp({ env = process.env } = {}) {
         ...extracted,
       });
     } catch (error) {
-      response.status(502).json({
-        status: 'error',
-        error: 'extract_failed',
-        safe_error_code: 'rendered_page_extraction_failed',
+      const renderedError = errorResponseFromError(error, {
+        errorCode: 'extract_failed',
+        fallbackSafeErrorCode: 'rendered_page_extraction_failed',
+        fallbackFailureKind: 'extraction_failed',
       });
+      response.status(renderedError.status).json(renderedError.body);
     }
   });
 
@@ -116,11 +104,12 @@ export function createApp({ env = process.env } = {}) {
         excerpt: rendered.excerpt,
       });
     } catch (error) {
-      response.status(502).json({
-        status: 'error',
-        error: 'render_failed',
-        safe_error_code: 'rendered_page_render_failed',
+      const renderedError = errorResponseFromError(error, {
+        errorCode: 'render_failed',
+        fallbackSafeErrorCode: 'rendered_page_render_failed',
+        fallbackFailureKind: 'render_failed',
       });
+      response.status(renderedError.status).json(renderedError.body);
     }
   });
 

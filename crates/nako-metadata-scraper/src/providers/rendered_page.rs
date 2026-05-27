@@ -451,7 +451,11 @@ pub(crate) struct RenderedHtmlPage {
 struct RenderedHtmlResponse {
     #[serde(default)]
     status: Option<String>,
-    html: String,
+    html: Option<String>,
+    #[serde(default)]
+    safe_error_code: Option<String>,
+    #[serde(default)]
+    failure_kind: Option<String>,
 }
 
 impl RenderedHtmlPage {
@@ -459,9 +463,16 @@ impl RenderedHtmlPage {
         let response: RenderedHtmlResponse = serde_json::from_value(value).map_err(|error| {
             anyhow::anyhow!("failed to parse browser worker render response: {error}")
         })?;
-        ensure_ok_status(response.status, "rendered page")?;
+        ensure_ok_status(
+            response.status,
+            "rendered page",
+            response.safe_error_code,
+            response.failure_kind,
+        )?;
         Ok(Self {
-            html: response.html,
+            html: response
+                .html
+                .ok_or_else(|| anyhow::anyhow!("browser worker render response missing html"))?,
         })
     }
 }
@@ -482,6 +493,10 @@ struct RenderedTextResponse {
     title: Option<String>,
     rendered_text: Option<String>,
     excerpt: Option<String>,
+    #[serde(default)]
+    safe_error_code: Option<String>,
+    #[serde(default)]
+    failure_kind: Option<String>,
 }
 
 impl RenderedTextPage {
@@ -489,7 +504,12 @@ impl RenderedTextPage {
         let response: RenderedTextResponse = serde_json::from_value(value).map_err(|error| {
             anyhow::anyhow!("failed to parse browser worker extract response: {error}")
         })?;
-        ensure_ok_status(response.status, source_url)?;
+        ensure_ok_status(
+            response.status,
+            source_url,
+            response.safe_error_code,
+            response.failure_kind,
+        )?;
         Ok(Self {
             final_url: response
                 .url
@@ -502,9 +522,16 @@ impl RenderedTextPage {
     }
 }
 
-fn ensure_ok_status(status: Option<String>, label: &str) -> anyhow::Result<()> {
+fn ensure_ok_status(
+    status: Option<String>,
+    label: &str,
+    safe_error_code: Option<String>,
+    failure_kind: Option<String>,
+) -> anyhow::Result<()> {
     if status.as_deref() != Some("ok") {
-        anyhow::bail!("browser worker returned non-ok status for {label}: {status:?}");
+        anyhow::bail!(
+            "browser worker returned non-ok status for {label}: status={status:?}, safe_error_code={safe_error_code:?}, failure_kind={failure_kind:?}"
+        );
     }
 
     Ok(())
@@ -617,6 +644,45 @@ mod tests {
                 ]
             })
         );
+    }
+
+    #[tokio::test]
+    async fn rendered_page_runtime_preserves_browser_worker_failure_kind() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: serde_json::json!({
+                "status": "error",
+                "safe_error_code": "proxy_required",
+                "failure_kind": "operator_action"
+            })
+            .to_string()
+            .into_bytes(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport,
+        );
+        let rendered_pages = RenderedPageRuntime::with_runtime(
+            RenderedPageSupportConfig::new("http://browser-worker.example".to_owned(), 10_000),
+            runtime,
+        );
+
+        let error = rendered_pages
+            .render_html(
+                "javbus",
+                "render page",
+                RenderedPageIntent::new("/render", "https://javbus.example/SSNI-644"),
+            )
+            .await
+            .unwrap_err();
+
+        let message = error.to_string();
+        assert!(message.contains("proxy_required"));
+        assert!(message.contains("operator_action"));
     }
 
     #[test]

@@ -4,6 +4,8 @@ import test from 'node:test';
 
 import { createApp } from '../src/app.mjs';
 import { normalizeRenderOptions } from '../src/extract.mjs';
+import { RenderRuntime } from '../src/render-runtime.mjs';
+import { RenderWorkerError } from '../src/render-errors.mjs';
 
 async function withApp(app, callback) {
   const server = createServer(app);
@@ -55,6 +57,26 @@ test('render endpoint rejects invalid render options before browser work', async
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.equal(body.safe_error_code, 'invalid_render_options');
+    assert.equal(body.failure_kind, 'invalid_options');
+  });
+});
+
+test('render endpoint rejects non-http URLs before browser work', async () => {
+  const app = createApp();
+
+  await withApp(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        url: 'file:///etc/passwd',
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.safe_error_code, 'invalid_render_url_scheme');
+    assert.equal(body.failure_kind, 'invalid_request');
   });
 });
 
@@ -84,6 +106,7 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
       timeoutMs: 1000,
     },
     proxyPolicy: 'required',
+    renderTimeoutMs: 30000,
     sessionKey: 'javdb:ssni-644',
     headers: {
       cookie: 'age=verified',
@@ -101,4 +124,51 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
       },
     ],
   });
+});
+
+test('normalizeRenderOptions rejects over-budget actions', () => {
+  const actions = Array.from({ length: 9 }, () => ({
+    type: 'click',
+    selector: '#submit',
+  }));
+
+  assert.equal(normalizeRenderOptions({ actions }), null);
+});
+
+test('RenderRuntime enforces rendered response size policy behind the runtime seam', async () => {
+  const runtime = new RenderRuntime({
+    adapter: {
+      async renderPage() {
+        return {
+          url: 'https://example.test/page',
+          title: 'Oversized',
+          html: '<html></html>',
+          text: 'too large',
+          rendered_text: 'too large',
+          excerpt: 'too large',
+        };
+      },
+    },
+    policy: {
+      maxHtmlBytes: 1024,
+      maxTextBytes: 4,
+    },
+  });
+
+  await assert.rejects(
+    runtime.render({
+      url: 'https://example.test/page',
+      options: {
+        waitFor: { state: 'networkidle' },
+        proxyPolicy: 'default',
+        renderTimeoutMs: 30000,
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof RenderWorkerError);
+      assert.equal(error.safeErrorCode, 'rendered_text_too_large');
+      assert.equal(error.failureKind, 'response_too_large');
+      return true;
+    },
+  );
 });

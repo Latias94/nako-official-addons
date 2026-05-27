@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "slug": "official-browser-worker-render-runtime-hardening",
+  "title": "Official Browser Worker Render Runtime Hardening",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OBWR",
+  "current_task": null,
+  "completed_tasks": [
+    "OBWR-010",
+    "OBWR-020",
+    "OBWR-030",
+    "OBWR-040",
+    "OBWR-050",
+    "OBWR-060"
+  ],
+  "problem": "The browser worker is moving from a deterministic rendered-page proof to a multi-provider rendered execution boundary, but request contract, safety policy, page execution, Crawlee lifecycle, and error handling are concentrated in one shallow module.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-browser-worker-render-runtime-hardening/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-browser-worker-render-runtime-hardening/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-browser-worker-render-runtime-hardening/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "npm test",
+    "npm run smoke",
+    "cargo nextest run -p nako-metadata-scraper rendered browser_worker provider_failure --no-fail-fast",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "python -m json.tool docs/workstreams/official-browser-worker-render-runtime-hardening/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "addons/browser-worker/src/app.mjs",
+    "addons/browser-worker/src/render-contract.mjs",
+    "addons/browser-worker/src/render-safety.mjs",
+    "addons/browser-worker/src/render-runtime.mjs",
+    "addons/browser-worker/src/crawlee-render-adapter.mjs",
+    "addons/browser-worker/src/render-errors.mjs",
+    "addons/browser-worker/test",
+    "docs/workstreams/official-metadata-browser-worker/HANDOFF.md"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "open_followup_workstream",
+    "notes": "This lane is complete. Follow-ups should use a fresh workstream for browser pool reuse, live rendered-provider drift checks, or stricter private-network policy."
+  }
+}

@@ -204,7 +204,10 @@ or `networkidle`), `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_SELECTOR`,
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_WAIT_TIMEOUT_MS`,
 `NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY` (`default`, `direct`, or
 `required`), and `NAKO_METADATA_SCRAPER_BROWSER_WORKER_SESSION_KEY` to shape all
-rendered-page requests without changing provider code.
+rendered-page requests without changing provider code. Browser-worker failures
+can include redaction-safe `failure_kind` values such as `operator_action` or
+`selector_timeout`; the sidecar maps these into provider execution failure
+classes without exposing URLs, selectors, cookies, or proxy values.
 
 JavBus may require an age or region cookie depending on network location. Set
 `NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` to the raw Cookie header value; it is sent
