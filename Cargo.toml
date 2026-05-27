@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/nako-chromecast-renderer",
     "crates/nako-metadata-scraper",
     "crates/nako-notification-bridge",
 ]
@@ -31,3 +32,4 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 nako-addon-client = { path = "../nako/crates/nako-addon-client", version = "0.1.0-alpha.2" }
 nako-official-addon-catalog = { path = "../nako/crates/nako-official-addon-catalog", version = "0.1.0-alpha.2" }
 nako-addon-protocol = { path = "../nako/crates/nako-addon-protocol", version = "0.1.0-alpha.2" }
+oxicast = { version = "0.0.3", default-features = false, features = ["discovery"] }

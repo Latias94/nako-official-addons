@@ -17,6 +17,9 @@ as one suite later:
   bridge ACK proof plus sidecar-owned, fixture-tested `http_webhook` provider
   plus `discord_webhook` and `telegram` provider sends when exactly one
   provider is explicitly configured;
+- users can install `nako-chromecast-renderer` for the first official external
+  renderer adapter proof: Chromecast target discovery plus host-owned,
+  cast-safe command envelope translation;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -44,6 +47,9 @@ as one suite later:
   first ACK-only notification bridge proof for scheduled `library.scanned`
   Addon Events and redaction-safe `http_webhook`, `discord_webhook`, and
   `telegram` provider sends.
+- `crates/nako-chromecast-renderer`: Rust HTTP sidecar that implements the
+  first official Chromecast `renderer_adapter` resource, with optional live LAN
+  discovery/control gates and redaction-safe diagnostics.
 
 ## Development
 
@@ -52,12 +58,14 @@ cargo fmt --all
 cargo nextest run --workspace --no-fail-fast
 cargo run -p nako-metadata-scraper
 cargo run -p nako-notification-bridge
+cargo run -p nako-chromecast-renderer
 ```
 
 Default listen addresses:
 
 - metadata scraper: `127.0.0.1:9100`
 - notification bridge: `127.0.0.1:9110`
+- Chromecast renderer: `127.0.0.1:9120`
 
 Provider defaults:
 
@@ -113,6 +121,11 @@ Provider defaults:
   diagnostics, controlled by
   `NAKO_NOTIFICATION_BRIDGE_PROVIDER_ATTEMPT_HISTORY_CAPACITY`. ACK-only events
   and disabled providers do not create history records.
+- `chromecast_renderer`: plan-only by default. Configure deterministic manual
+  targets through `NAKO_CHROMECAST_RENDERER_MANUAL_DEVICES_JSON`; enable live
+  LAN discovery or live device control only with
+  `NAKO_CHROMECAST_RENDERER_LIVE_DISCOVERY_ENABLED=1` or
+  `NAKO_CHROMECAST_RENDERER_LIVE_CONTROL_ENABLED=1`.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -128,6 +141,9 @@ pwsh -File addons/metadata-scraper/smoke.local.ps1 `
 
 pwsh -File addons/notification-bridge/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9110
+
+pwsh -File addons/chromecast-renderer/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9120
 ```
 
 Optional notification provider live smoke is skipped by default and must be
