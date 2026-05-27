@@ -344,12 +344,12 @@ AV field fusion also has a sidecar-wide preset. Set
 `NAKO_METADATA_SCRAPER_AV_FIELD_POLICY_PRESET` to one of:
 
 - `default`: uses the field source order adapted to this project: title from
-  ThePornDB/MGStage/DMM/JavBus/Jav321/JavLibrary; outline and text from
-  ThePornDB/DMM/Jav321 before community fallbacks; actors from
-  ThePornDB/JavBus/JavLibrary/JavDB; thumbnail and poster art from
-  ThePornDB/JavBus; extra fanart from JavBus/ThePornDB; release/runtime,
-  directors, series, studio, publisher, maker, and label from
-  JavBus-first supported sources.
+  ThePornDB/MGStage/DMM/JavBus/Jav321/JavLibrary; outline from
+  ThePornDB/DMM/Jav321; actors from ThePornDB/JavBus/JavLibrary/JavDB;
+  thumbnail and poster art from ThePornDB/JavBus; extra fanart, tags,
+  release/runtime, directors, series, studio, publisher, maker, and label from
+  JavBus-first supported sources; score from Jav321/JavLibrary/JavDB; wanted
+  count from JavLibrary/JavDB; trailers from MGStage/DMM.
 - `quality_scores`: the previous descriptor-derived policy based on provider
   official/community/artwork/trailer quality scores.
 - `none`: base candidate fields only unless the request supplies
@@ -518,10 +518,16 @@ priority inside an already-merged candidate cluster:
     "overview": ["dmm"],
     "tags": ["dmm"],
     "actors": ["javdb"],
-    "studio": ["dmm"]
+    "studio": ["dmm"],
+    "score": ["jav321", "javlibrary", "javdb"]
   }
 }
 ```
+
+Supported AV alias fields include `outline`, `actor`, `thumb`, `extrafanart`,
+`trailer`, `tag`, `release`, `runtime`, `director`, `wanted`, and `score`.
+Canonical fields such as `community_score_milli` and `community_vote_count`
+also work for callers that want the exact internal fact names.
 
 The policy does not merge unrelated candidates by itself; it only chooses fields
 after providers have emitted compatible external IDs such as the same

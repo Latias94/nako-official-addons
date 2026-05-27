@@ -146,7 +146,10 @@ AV field fusion has a sidecar-wide preset through
 Requests may optionally include `provider_field_policy` to choose field-level
 source priority within a merged candidate cluster. For example, a request can
 prefer JavDB for `title` while using another provider for `overview` and
-`tags`:
+`tags`. AV-friendly aliases such as `outline`, `actor`, `thumb`, `trailer`,
+`tag`, `release`, `runtime`, `director`, `wanted`, and `score` are accepted
+alongside canonical fields such as `community_score_milli` and
+`community_vote_count`:
 
 ```json
 {
@@ -154,7 +157,8 @@ prefer JavDB for `title` while using another provider for `overview` and
   "provider_field_policy": {
     "title": ["javdb"],
     "overview": ["dmm"],
-    "tags": ["dmm"]
+    "tags": ["dmm"],
+    "score": ["jav321", "javlibrary", "javdb"]
   }
 }
 ```
@@ -168,8 +172,8 @@ request.
 
 Runtime candidate shaping resolves exact duplicate provider candidates and
 candidates that share declared provider-emitted external IDs before ranking,
-caps the final result set, and uses shared community score/vote-count facts
-from TMDB, Bangumi, and Douban as a small generic ranking bonus.
+caps the final result set, and uses shared community score/vote-count facts as
+a small generic ranking bonus.
 AV provider routing now uses declared route support so FC2 numbers stay on the
 FC2 path, while censored AV numbers can fan out to enabled
 JavDB/DMM/Jav321/JavBus, Prestige, and ThePornDB providers. Official

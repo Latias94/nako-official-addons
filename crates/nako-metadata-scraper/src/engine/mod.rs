@@ -196,6 +196,8 @@ mod tests {
         av_actors: &'static [&'static str],
         av_studio: Option<&'static str>,
         av_wanted_count: Option<u32>,
+        community_score_milli: Option<u16>,
+        community_vote_count: Option<u32>,
         artwork: &'static [(&'static str, &'static str)],
         external_ids: &'static [(&'static str, &'static str)],
     }
@@ -406,8 +408,8 @@ mod tests {
                         ..AvMetadataFacts::default()
                     }
                     .non_empty(),
-                    community_score_milli: None,
-                    community_vote_count: None,
+                    community_score_milli: self.community_score_milli,
+                    community_vote_count: self.community_vote_count,
                     external_ids: self
                         .external_ids
                         .iter()
@@ -761,6 +763,8 @@ mod tests {
                     av_actors: &["JavDB Actor"],
                     av_studio: Some("JavDB Studio"),
                     av_wanted_count: Some(77),
+                    community_score_milli: Some(920),
+                    community_vote_count: Some(77),
                     artwork: &[
                         ("poster", "https://img.example/javdb-poster.jpg"),
                         ("backdrop", "https://img.example/javdb-backdrop.jpg"),
@@ -776,6 +780,8 @@ mod tests {
                     av_actors: &["DMM Actor"],
                     av_studio: Some("DMM Studio"),
                     av_wanted_count: None,
+                    community_score_milli: Some(880),
+                    community_vote_count: None,
                     artwork: &[
                         ("poster", "https://img.example/dmm-poster.jpg"),
                         ("backdrop", "https://img.example/dmm-backdrop.jpg"),
@@ -852,6 +858,8 @@ mod tests {
                     av_actors: &["DMM Actor"],
                     av_studio: Some("DMM Studio"),
                     av_wanted_count: None,
+                    community_score_milli: Some(880),
+                    community_vote_count: None,
                     artwork: &[("poster", "https://img.example/dmm-poster.jpg")],
                     external_ids: &[("av_number", "ssni-644")],
                 }),
@@ -860,10 +868,12 @@ mod tests {
                     provider_id: "javbus:ssni-644",
                     title: "JavBus Title",
                     overview: None,
-                    tags: &[],
+                    tags: &["javbus-tag"],
                     av_actors: &["JavBus Actor"],
                     av_studio: Some("JavBus Studio"),
                     av_wanted_count: None,
+                    community_score_milli: None,
+                    community_vote_count: None,
                     artwork: &[("poster", "https://img.example/javbus-poster.jpg")],
                     external_ids: &[("av_number", "SSNI-644"), ("javbus", "SSNI-644")],
                 }),
@@ -876,8 +886,41 @@ mod tests {
                     av_actors: &[],
                     av_studio: None,
                     av_wanted_count: None,
+                    community_score_milli: Some(900),
+                    community_vote_count: None,
                     artwork: &[("poster", "https://img.example/theporndb-poster.jpg")],
                     external_ids: &[("av_number", "SSNI-644"), ("theporndb", "abc123")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "jav321",
+                    provider_id: "jav321:movie:ssni-644",
+                    title: "Jav321 Title",
+                    overview: Some("Jav321 overview"),
+                    tags: &[],
+                    av_actors: &[],
+                    av_studio: None,
+                    av_wanted_count: None,
+                    community_score_milli: Some(840),
+                    community_vote_count: None,
+                    artwork: &[],
+                    external_ids: &[("av_number", "SSNI-644"), ("jav321", "SSNI-644")],
+                }),
+                Box::new(PolicyCandidateProvider {
+                    candidate_provider: "javlibrary",
+                    provider_id: "javlibrary:movie:ssni-644",
+                    title: "JavLibrary Title",
+                    overview: Some("JavLibrary overview"),
+                    tags: &[],
+                    av_actors: &["JavLibrary Actor"],
+                    av_studio: None,
+                    av_wanted_count: Some(234),
+                    community_score_milli: Some(860),
+                    community_vote_count: Some(234),
+                    artwork: &[],
+                    external_ids: &[
+                        ("av_number", "SSNI-644"),
+                        ("javlibrary", "javlibrary:ssni-644"),
+                    ],
                 }),
             ],
             None,
@@ -897,10 +940,15 @@ mod tests {
         assert_eq!(candidate["patch"]["title"], "ThePornDB Title");
         assert_eq!(candidate["patch"]["overview"], "ThePornDB overview");
         assert_eq!(
+            candidate["patch"]["tags"],
+            serde_json::json!(["javbus-tag"])
+        );
+        assert_eq!(
             candidate["av"]["actors"],
             serde_json::json!(["JavBus Actor"])
         );
         assert_eq!(candidate["av"]["studio"], "JavBus Studio");
+        assert_eq!(candidate["av"]["wanted_count"], 234);
         assert!(
             candidate["evidence"]["field_sources"]
                 .as_array()
@@ -914,6 +962,44 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|source| source["field"] == "actors" && source["provider"] == "javbus")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "tags" && source["provider"] == "javbus")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "wanted_count"
+                    && source["provider"] == "javlibrary")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "community_score_milli"
+                    && source["provider"] == "jav321")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "community_vote_count"
+                    && source["provider"] == "javlibrary")
+        );
+        assert!(
+            candidate["evidence"]["score_reasons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason["kind"] == "community_score")
         );
         assert!(
             candidate["artwork_candidates"]
@@ -939,6 +1025,8 @@ mod tests {
                     av_actors: &["JavDB Actor"],
                     av_studio: Some("JavDB Studio"),
                     av_wanted_count: Some(77),
+                    community_score_milli: Some(920),
+                    community_vote_count: Some(123),
                     artwork: &[],
                     external_ids: &[("av_number", "SSNI-644"), ("javdb", "abc123")],
                 }),
@@ -951,6 +1039,8 @@ mod tests {
                     av_actors: &["DMM Actor"],
                     av_studio: Some("DMM Studio"),
                     av_wanted_count: None,
+                    community_score_milli: Some(880),
+                    community_vote_count: None,
                     artwork: &[],
                     external_ids: &[("av_number", "ssni-644")],
                 }),
@@ -971,7 +1061,8 @@ mod tests {
                         "overview": ["dmm"],
                         "tags": ["dmm"],
                         "actors": ["javdb"],
-                        "studio": ["dmm"]
+                        "studio": ["dmm"],
+                        "score": ["javdb"]
                     }
                 }),
             })
@@ -1020,6 +1111,22 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|source| source["field"] == "studio" && source["provider"] == "dmm")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "community_score_milli"
+                    && source["provider"] == "javdb")
+        );
+        assert!(
+            candidate["evidence"]["field_sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|source| source["field"] == "community_vote_count"
+                    && source["provider"] == "javdb")
         );
     }
 

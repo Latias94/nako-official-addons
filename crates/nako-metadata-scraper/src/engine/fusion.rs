@@ -2,7 +2,8 @@ use nako_addon_protocol::{AddonArtworkKind, AddonMetadataPatch};
 
 use super::{
     AvMetadataFacts, ProviderArtworkCandidate, ProviderFieldPolicy, ProviderMetadataCandidate,
-    ranking::CandidateFieldSource, resolver::ResolvedProviderFact,
+    ranking::{CandidateFieldSource, ProviderCandidateFacts},
+    resolver::ResolvedProviderFact,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,6 +26,12 @@ pub(crate) fn fuse_provider_facts(
     );
     field_sources.extend(apply_provider_av_field_policy(
         &mut candidate.facts.av,
+        facts,
+        base_index,
+        provider_field_policy,
+    ));
+    field_sources.extend(apply_provider_candidate_fact_policy(
+        &mut candidate.facts,
         facts,
         base_index,
         provider_field_policy,
@@ -77,31 +84,34 @@ fn apply_provider_field_policy(
     patch.sort_title = sort_title;
     push_selected_field_source(&mut field_sources, "sort_title", facts, source);
 
-    let (overview, source) = select_string_field(
+    let (overview, source) = select_string_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "overview",
+        &["outline"],
         |patch| patch.overview.as_deref(),
     );
     patch.overview = overview;
     push_selected_field_source(&mut field_sources, "overview", facts, source);
 
-    let (release_date, source) = select_string_field(
+    let (release_date, source) = select_string_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "release_date",
+        &["release"],
         |patch| patch.release_date.as_deref(),
     );
     patch.release_date = release_date;
     push_selected_field_source(&mut field_sources, "release_date", facts, source);
 
-    let (runtime_minutes, source) = select_copy_field(
+    let (runtime_minutes, source) = select_copy_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "runtime_minutes",
+        &["runtime"],
         |patch| patch.runtime_minutes,
     );
     patch.runtime_minutes = runtime_minutes;
@@ -117,20 +127,25 @@ fn apply_provider_field_policy(
     patch.tagline = tagline;
     push_selected_field_source(&mut field_sources, "tagline", facts, source);
 
-    let (genres, source) = select_vec_field(
+    let (genres, source) = select_vec_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "genres",
+        &["tag"],
         |patch| patch.genres.as_ref(),
     );
     patch.genres = genres;
     push_selected_field_source(&mut field_sources, "genres", facts, source);
 
-    let (tags, source) =
-        select_vec_field(facts, base_index, provider_field_policy, "tags", |patch| {
-            patch.tags.as_ref()
-        });
+    let (tags, source) = select_vec_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        "tags",
+        &["tag"],
+        |patch| patch.tags.as_ref(),
+    );
     patch.tags = tags;
     push_selected_field_source(&mut field_sources, "tags", facts, source);
 
@@ -146,28 +161,34 @@ fn apply_provider_av_field_policy(
     let mut selected = AvMetadataFacts::default();
     let mut field_sources = Vec::new();
 
-    let (actors, source) =
-        select_av_vec_field(facts, base_index, provider_field_policy, "actors", |av| {
-            &av.actors
-        });
+    let (actors, source) = select_av_vec_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        "actors",
+        &["actor"],
+        |av| &av.actors,
+    );
     selected.actors = actors;
     push_selected_field_source(&mut field_sources, "actors", facts, source);
 
-    let (all_actors, source) = select_av_vec_field(
+    let (all_actors, source) = select_av_vec_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "all_actors",
+        &["actor"],
         |av| &av.all_actors,
     );
     selected.all_actors = all_actors;
     push_selected_field_source(&mut field_sources, "all_actors", facts, source);
 
-    let (directors, source) = select_av_vec_field(
+    let (directors, source) = select_av_vec_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "directors",
+        &["director"],
         |av| &av.directors,
     );
     selected.directors = directors;
@@ -211,47 +232,84 @@ fn apply_provider_av_field_policy(
     selected.label = label;
     push_selected_field_source(&mut field_sources, "label", facts, source);
 
-    let (wanted_count, source) = select_av_copy_field(
+    let (wanted_count, source) = select_av_copy_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "wanted_count",
+        &["wanted"],
         |av| av.wanted_count,
     );
     selected.wanted_count = wanted_count;
     push_selected_field_source(&mut field_sources, "wanted_count", facts, source);
 
-    let (thumb_url, source) = select_av_string_field(
+    let (thumb_url, source) = select_av_string_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "thumb_url",
+        &["thumb"],
         |av| av.thumb_url.as_deref(),
     );
     selected.thumb_url = thumb_url;
     push_selected_field_source(&mut field_sources, "thumb_url", facts, source);
 
-    let (trailer_url, source) = select_av_string_field(
+    let (trailer_url, source) = select_av_string_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "trailer_url",
+        &["trailer"],
         |av| av.trailer_url.as_deref(),
     );
     selected.trailer_url = trailer_url;
     push_selected_field_source(&mut field_sources, "trailer_url", facts, source);
 
-    let (extrafanart_urls, source) = select_av_vec_field(
+    let (extrafanart_urls, source) = select_av_vec_field_with_aliases(
         facts,
         base_index,
         provider_field_policy,
         "extrafanart_urls",
+        &["extrafanart"],
         |av| &av.extrafanart_urls,
     );
     selected.extrafanart_urls = extrafanart_urls;
     push_selected_field_source(&mut field_sources, "extrafanart_urls", facts, source);
 
     *av = selected.non_empty();
+    field_sources
+}
+
+fn apply_provider_candidate_fact_policy(
+    candidate_facts: &mut ProviderCandidateFacts,
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+) -> Vec<CandidateFieldSource> {
+    let mut field_sources = Vec::new();
+
+    let (community_score_milli, source) = select_candidate_copy_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        "community_score_milli",
+        &["score"],
+        |candidate_facts| candidate_facts.community_score_milli,
+    );
+    candidate_facts.community_score_milli = community_score_milli;
+    push_selected_field_source(&mut field_sources, "community_score_milli", facts, source);
+
+    let (community_vote_count, source) = select_candidate_copy_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        "community_vote_count",
+        &["score"],
+        |candidate_facts| candidate_facts.community_vote_count,
+    );
+    candidate_facts.community_vote_count = community_vote_count;
+    push_selected_field_source(&mut field_sources, "community_vote_count", facts, source);
+
     field_sources
 }
 
@@ -262,9 +320,32 @@ fn select_string_field(
     field: &'static str,
     get_value: impl Fn(&AddonMetadataPatch) -> Option<&str>,
 ) -> (Option<String>, Option<usize>) {
-    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
-        get_value(patch).is_some_and(|value| !value.trim().is_empty())
-    }) else {
+    select_string_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        &[],
+        get_value,
+    )
+}
+
+fn select_string_field_with_aliases(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    aliases: &[&str],
+    get_value: impl Fn(&AddonMetadataPatch) -> Option<&str>,
+) -> (Option<String>, Option<usize>) {
+    let Some(index) = select_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |patch| get_value(patch).is_some_and(|value| !value.trim().is_empty()),
+    ) else {
         return (None, None);
     };
 
@@ -274,16 +355,22 @@ fn select_string_field(
     )
 }
 
-fn select_vec_field(
+fn select_vec_field_with_aliases(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &'static str,
+    aliases: &[&str],
     get_value: impl Fn(&AddonMetadataPatch) -> Option<&Vec<String>>,
 ) -> (Option<Vec<String>>, Option<usize>) {
-    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
-        get_value(patch).is_some_and(|values| !values.is_empty())
-    }) else {
+    let Some(index) = select_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |patch| get_value(patch).is_some_and(|values| !values.is_empty()),
+    ) else {
         return (None, None);
     };
 
@@ -293,16 +380,22 @@ fn select_vec_field(
     )
 }
 
-fn select_copy_field<T: Copy>(
+fn select_copy_field_with_aliases<T: Copy>(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &'static str,
+    aliases: &[&str],
     get_value: impl Fn(&AddonMetadataPatch) -> Option<T>,
 ) -> (Option<T>, Option<usize>) {
-    let Some(index) = select_fact_index(facts, base_index, provider_field_policy, field, |patch| {
-        get_value(patch).is_some()
-    }) else {
+    let Some(index) = select_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |patch| get_value(patch).is_some(),
+    ) else {
         return (None, None);
     };
 
@@ -316,9 +409,32 @@ fn select_av_string_field(
     field: &'static str,
     get_value: impl Fn(&AvMetadataFacts) -> Option<&str>,
 ) -> (Option<String>, Option<usize>) {
-    let Some(index) = select_av_fact_index(facts, base_index, provider_field_policy, field, |av| {
-        get_value(av).is_some_and(|value| !value.trim().is_empty())
-    }) else {
+    select_av_string_field_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        &[],
+        get_value,
+    )
+}
+
+fn select_av_string_field_with_aliases(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    aliases: &[&str],
+    get_value: impl Fn(&AvMetadataFacts) -> Option<&str>,
+) -> (Option<String>, Option<usize>) {
+    let Some(index) = select_av_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |av| get_value(av).is_some_and(|value| !value.trim().is_empty()),
+    ) else {
         return (None, None);
     };
 
@@ -334,16 +450,22 @@ fn select_av_string_field(
     )
 }
 
-fn select_av_vec_field(
+fn select_av_vec_field_with_aliases(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &'static str,
+    aliases: &[&str],
     get_value: impl Fn(&AvMetadataFacts) -> &Vec<String>,
 ) -> (Vec<String>, Option<usize>) {
-    let Some(index) = select_av_fact_index(facts, base_index, provider_field_policy, field, |av| {
-        !get_value(av).is_empty()
-    }) else {
+    let Some(index) = select_av_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |av| !get_value(av).is_empty(),
+    ) else {
         return (Vec::new(), None);
     };
 
@@ -360,16 +482,22 @@ fn select_av_vec_field(
     )
 }
 
-fn select_av_copy_field<T: Copy>(
+fn select_av_copy_field_with_aliases<T: Copy>(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &'static str,
+    aliases: &[&str],
     get_value: impl Fn(&AvMetadataFacts) -> Option<T>,
 ) -> (Option<T>, Option<usize>) {
-    let Some(index) = select_av_fact_index(facts, base_index, provider_field_policy, field, |av| {
-        get_value(av).is_some()
-    }) else {
+    let Some(index) = select_av_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |av| get_value(av).is_some(),
+    ) else {
         return (None, None);
     };
 
@@ -379,15 +507,38 @@ fn select_av_copy_field<T: Copy>(
     )
 }
 
-fn select_fact_index(
+fn select_candidate_copy_field_with_aliases<T: Copy>(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &'static str,
+    aliases: &[&str],
+    get_value: impl Fn(&ProviderCandidateFacts) -> Option<T>,
+) -> (Option<T>, Option<usize>) {
+    let Some(index) = select_candidate_fact_index_with_aliases(
+        facts,
+        base_index,
+        provider_field_policy,
+        field,
+        aliases,
+        |candidate_facts| get_value(candidate_facts).is_some(),
+    ) else {
+        return (None, None);
+    };
+
+    (get_value(&facts[index].candidate.facts), Some(index))
+}
+
+fn select_fact_index_with_aliases(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &str,
+    aliases: &[&str],
     has_value: impl Fn(&AddonMetadataPatch) -> bool,
 ) -> Option<usize> {
-    let preferences = provider_field_policy.providers_for(field);
-    for provider in preferences {
+    let preferences = provider_field_policy.providers_for_any(field, aliases);
+    for provider in &preferences {
         if let Some(index) = facts
             .iter()
             .position(|fact| fact.source.provider == *provider && has_value(&fact.candidate.patch))
@@ -409,15 +560,16 @@ fn select_fact_index(
         .position(|fact| has_value(&fact.candidate.patch))
 }
 
-fn select_av_fact_index(
+fn select_av_fact_index_with_aliases(
     facts: &[ResolvedProviderFact],
     base_index: usize,
     provider_field_policy: &ProviderFieldPolicy,
     field: &str,
+    aliases: &[&str],
     has_value: impl Fn(&AvMetadataFacts) -> bool,
 ) -> Option<usize> {
-    let preferences = provider_field_policy.providers_for(field);
-    for provider in preferences {
+    let preferences = provider_field_policy.providers_for_any(field, aliases);
+    for provider in &preferences {
         if let Some(index) = facts.iter().position(|fact| {
             fact.source.provider == *provider
                 && fact.candidate.facts.av.as_ref().is_some_and(&has_value)
@@ -443,6 +595,37 @@ fn select_av_fact_index(
     facts
         .iter()
         .position(|fact| fact.candidate.facts.av.as_ref().is_some_and(&has_value))
+}
+
+fn select_candidate_fact_index_with_aliases(
+    facts: &[ResolvedProviderFact],
+    base_index: usize,
+    provider_field_policy: &ProviderFieldPolicy,
+    field: &str,
+    aliases: &[&str],
+    has_value: impl Fn(&ProviderCandidateFacts) -> bool,
+) -> Option<usize> {
+    let preferences = provider_field_policy.providers_for_any(field, aliases);
+    for provider in &preferences {
+        if let Some(index) = facts
+            .iter()
+            .position(|fact| fact.source.provider == *provider && has_value(&fact.candidate.facts))
+        {
+            return Some(index);
+        }
+    }
+
+    if has_value(&facts[base_index].candidate.facts) {
+        return Some(base_index);
+    }
+
+    if preferences.is_empty() {
+        return None;
+    }
+
+    facts
+        .iter()
+        .position(|fact| has_value(&fact.candidate.facts))
 }
 
 fn apply_provider_artwork_policy(

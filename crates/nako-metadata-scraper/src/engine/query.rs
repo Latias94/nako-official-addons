@@ -92,27 +92,43 @@ impl ProviderFieldPolicy {
             "original_title",
             "sort_title",
             "overview",
+            "outline",
             "release_date",
+            "release",
             "runtime_minutes",
+            "runtime",
             "tagline",
             "genres",
             "tags",
+            "tag",
             "directors",
+            "director",
             "series",
             "studio",
             "publisher",
             "maker",
             "label",
         ];
-        const COMMUNITY_AV_FIELDS: &[&str] = &["actors", "all_actors", "wanted_count"];
+        const COMMUNITY_AV_FIELDS: &[&str] = &[
+            "actors",
+            "actor",
+            "all_actors",
+            "wanted_count",
+            "wanted",
+            "community_score_milli",
+            "community_vote_count",
+            "score",
+        ];
         const ARTWORK_AV_FIELDS: &[&str] = &[
             "thumb_url",
+            "thumb",
             "extrafanart_urls",
+            "extrafanart",
             "poster",
             "backdrop",
             "artwork",
         ];
-        const TRAILER_AV_FIELDS: &[&str] = &["trailer_url"];
+        const TRAILER_AV_FIELDS: &[&str] = &["trailer_url", "trailer"];
 
         let descriptors = descriptors
             .into_iter()
@@ -137,6 +153,16 @@ impl ProviderFieldPolicy {
         self.preferences
             .get(&normalize_policy_field(field))
             .map_or(&[], Vec::as_slice)
+    }
+
+    #[must_use]
+    pub(crate) fn providers_for_any<'a>(&'a self, field: &str, aliases: &[&str]) -> Vec<&'a str> {
+        let mut providers = Vec::new();
+        self.push_providers_for_field(field, &mut providers);
+        for alias in aliases {
+            self.push_providers_for_field(alias, &mut providers);
+        }
+        providers
     }
 
     #[must_use]
@@ -169,6 +195,18 @@ impl ProviderFieldPolicy {
         }
 
         Self { preferences }
+    }
+
+    fn push_providers_for_field<'a>(&'a self, field: &str, providers: &mut Vec<&'a str>) {
+        for provider in self.providers_for(field) {
+            let provider = provider.as_str();
+            if !providers
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(provider))
+            {
+                providers.push(provider);
+            }
+        }
     }
 }
 

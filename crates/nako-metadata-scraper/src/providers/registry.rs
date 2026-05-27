@@ -55,63 +55,61 @@ const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] = &[
     "jav321",
     "javlibrary",
 ];
+const DEFAULT_OUTLINE_PROVIDER_ORDER: &[&str] = &["theporndb", "dmm", "jav321"];
 const DEFAULT_ACTOR_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus", "javlibrary", "javdb"];
-const DEFAULT_TEXT_PROVIDER_ORDER: &[&str] = &[
-    "theporndb",
-    "dmm",
-    "jav321",
-    "javdb",
-    "javlibrary",
-    "javbus",
-];
-const DEFAULT_FACT_PROVIDER_ORDER: &[&str] = &[
-    "javbus",
-    "dmm",
-    "mgstage",
-    "prestige",
-    "javlibrary",
-    "javdb",
-];
-const DEFAULT_COMMUNITY_PROVIDER_ORDER: &[&str] = &["javdb", "javlibrary", "javbus"];
 const DEFAULT_THUMB_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
 const DEFAULT_POSTER_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
-const DEFAULT_EXTRAFANART_PROVIDER_ORDER: &[&str] = &["javbus", "theporndb"];
-const DEFAULT_TRAILER_PROVIDER_ORDER: &[&str] = &[
-    "theporndb",
-    "prestige",
-    "mgstage",
-    "dmm",
-    "javdb",
-    "fc2ppvdb",
-    "fc2",
-    "javbus",
-];
+const DEFAULT_EXTRAFANART_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_TRAILER_PROVIDER_ORDER: &[&str] = &["mgstage", "dmm"];
+const DEFAULT_TAG_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_RELEASE_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_RUNTIME_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_SCORE_PROVIDER_ORDER: &[&str] = &["jav321", "javlibrary", "javdb"];
+const DEFAULT_SCORE_VOTE_PROVIDER_ORDER: &[&str] = &["javlibrary", "javdb"];
+const DEFAULT_DIRECTOR_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_SERIES_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_STUDIO_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_PUBLISHER_PROVIDER_ORDER: &[&str] = &["javbus"];
+const DEFAULT_WANTED_PROVIDER_ORDER: &[&str] = &["javlibrary", "javdb"];
 
 const DEFAULT_FIELD_PROVIDER_PREFERENCES: &[(&str, &[&str])] = &[
     ("title", DEFAULT_TITLE_PROVIDER_ORDER),
     ("original_title", DEFAULT_TITLE_PROVIDER_ORDER),
     ("sort_title", DEFAULT_TITLE_PROVIDER_ORDER),
-    ("overview", DEFAULT_TEXT_PROVIDER_ORDER),
-    ("tagline", DEFAULT_TEXT_PROVIDER_ORDER),
-    ("genres", DEFAULT_TEXT_PROVIDER_ORDER),
-    ("tags", DEFAULT_TEXT_PROVIDER_ORDER),
-    ("release_date", DEFAULT_FACT_PROVIDER_ORDER),
-    ("runtime_minutes", DEFAULT_FACT_PROVIDER_ORDER),
-    ("directors", DEFAULT_FACT_PROVIDER_ORDER),
-    ("series", DEFAULT_FACT_PROVIDER_ORDER),
-    ("studio", DEFAULT_FACT_PROVIDER_ORDER),
-    ("publisher", DEFAULT_FACT_PROVIDER_ORDER),
-    ("maker", DEFAULT_FACT_PROVIDER_ORDER),
-    ("label", DEFAULT_FACT_PROVIDER_ORDER),
+    ("overview", DEFAULT_OUTLINE_PROVIDER_ORDER),
+    ("outline", DEFAULT_OUTLINE_PROVIDER_ORDER),
+    ("tagline", DEFAULT_OUTLINE_PROVIDER_ORDER),
+    ("genres", DEFAULT_TAG_PROVIDER_ORDER),
+    ("tags", DEFAULT_TAG_PROVIDER_ORDER),
+    ("tag", DEFAULT_TAG_PROVIDER_ORDER),
+    ("release_date", DEFAULT_RELEASE_PROVIDER_ORDER),
+    ("release", DEFAULT_RELEASE_PROVIDER_ORDER),
+    ("runtime_minutes", DEFAULT_RUNTIME_PROVIDER_ORDER),
+    ("runtime", DEFAULT_RUNTIME_PROVIDER_ORDER),
+    ("directors", DEFAULT_DIRECTOR_PROVIDER_ORDER),
+    ("director", DEFAULT_DIRECTOR_PROVIDER_ORDER),
+    ("series", DEFAULT_SERIES_PROVIDER_ORDER),
+    ("studio", DEFAULT_STUDIO_PROVIDER_ORDER),
+    ("publisher", DEFAULT_PUBLISHER_PROVIDER_ORDER),
+    ("maker", DEFAULT_PUBLISHER_PROVIDER_ORDER),
+    ("label", DEFAULT_PUBLISHER_PROVIDER_ORDER),
     ("actors", DEFAULT_ACTOR_PROVIDER_ORDER),
+    ("actor", DEFAULT_ACTOR_PROVIDER_ORDER),
     ("all_actors", DEFAULT_ACTOR_PROVIDER_ORDER),
-    ("wanted_count", DEFAULT_COMMUNITY_PROVIDER_ORDER),
+    ("wanted_count", DEFAULT_WANTED_PROVIDER_ORDER),
+    ("wanted", DEFAULT_WANTED_PROVIDER_ORDER),
+    ("community_score_milli", DEFAULT_SCORE_PROVIDER_ORDER),
+    ("score", DEFAULT_SCORE_PROVIDER_ORDER),
+    ("community_vote_count", DEFAULT_SCORE_VOTE_PROVIDER_ORDER),
     ("thumb_url", DEFAULT_THUMB_PROVIDER_ORDER),
+    ("thumb", DEFAULT_THUMB_PROVIDER_ORDER),
     ("poster", DEFAULT_POSTER_PROVIDER_ORDER),
     ("backdrop", DEFAULT_POSTER_PROVIDER_ORDER),
     ("artwork", DEFAULT_POSTER_PROVIDER_ORDER),
     ("extrafanart_urls", DEFAULT_EXTRAFANART_PROVIDER_ORDER),
+    ("extrafanart", DEFAULT_EXTRAFANART_PROVIDER_ORDER),
     ("trailer_url", DEFAULT_TRAILER_PROVIDER_ORDER),
+    ("trailer", DEFAULT_TRAILER_PROVIDER_ORDER),
 ];
 
 impl ProviderRegistry {
@@ -379,6 +377,14 @@ mod tests {
             ]
         );
         assert_eq!(
+            policy.providers_for("score"),
+            policy.providers_for("actors")
+        );
+        assert_eq!(
+            policy.providers_for("community_score_milli"),
+            policy.providers_for("actors")
+        );
+        assert_eq!(
             policy.providers_for("trailer_url"),
             &[
                 "theporndb".to_owned(),
@@ -419,10 +425,15 @@ mod tests {
             &[
                 "theporndb".to_owned(),
                 "dmm".to_owned(),
-                "jav321".to_owned(),
-                "javdb".to_owned(),
-                "javlibrary".to_owned(),
-                "javbus".to_owned(),
+                "jav321".to_owned()
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("outline"),
+            &[
+                "theporndb".to_owned(),
+                "dmm".to_owned(),
+                "jav321".to_owned()
             ]
         );
         assert_eq!(
@@ -435,6 +446,10 @@ mod tests {
             ]
         );
         assert_eq!(
+            policy.providers_for("actor"),
+            policy.providers_for("actors")
+        );
+        assert_eq!(
             policy.providers_for("thumb_url"),
             &["theporndb".to_owned(), "javbus".to_owned()]
         );
@@ -444,18 +459,45 @@ mod tests {
         );
         assert_eq!(
             policy.providers_for("extrafanart_urls"),
-            &["javbus".to_owned(), "theporndb".to_owned()]
+            &["javbus".to_owned()]
+        );
+        assert_eq!(policy.providers_for("release_date"), &["javbus".to_owned()]);
+        assert_eq!(
+            policy.providers_for("runtime_minutes"),
+            &["javbus".to_owned()]
+        );
+        assert_eq!(policy.providers_for("tags"), &["javbus".to_owned()]);
+        assert_eq!(policy.providers_for("directors"), &["javbus".to_owned()]);
+        assert_eq!(policy.providers_for("series"), &["javbus".to_owned()]);
+        assert_eq!(policy.providers_for("studio"), &["javbus".to_owned()]);
+        assert_eq!(policy.providers_for("publisher"), &["javbus".to_owned()]);
+        assert_eq!(
+            policy.providers_for("trailer_url"),
+            &["mgstage".to_owned(), "dmm".to_owned()]
         );
         assert_eq!(
-            policy.providers_for("release_date"),
+            policy.providers_for("wanted_count"),
+            &["javlibrary".to_owned(), "javdb".to_owned()]
+        );
+        assert_eq!(
+            policy.providers_for("score"),
             &[
-                "javbus".to_owned(),
-                "dmm".to_owned(),
-                "mgstage".to_owned(),
-                "prestige".to_owned(),
+                "jav321".to_owned(),
                 "javlibrary".to_owned(),
                 "javdb".to_owned(),
             ]
+        );
+        assert_eq!(
+            policy.providers_for("community_score_milli"),
+            &[
+                "jav321".to_owned(),
+                "javlibrary".to_owned(),
+                "javdb".to_owned(),
+            ]
+        );
+        assert_eq!(
+            policy.providers_for("community_vote_count"),
+            &["javlibrary".to_owned(), "javdb".to_owned()]
         );
     }
 
