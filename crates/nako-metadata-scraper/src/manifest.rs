@@ -91,8 +91,8 @@ mod tests {
 
     use super::*;
     use crate::config::{
-        AvFieldPolicyPreset, AvProviderPreset, BangumiProviderConfig, ProviderConfig, ProviderId,
-        TmdbProviderConfig,
+        AniListProviderConfig, AvFieldPolicyPreset, AvProviderPreset, BangumiProviderConfig,
+        ProviderConfig, ProviderId, TmdbProviderConfig,
     };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
     use crate::providers::{javbus::JavbusProviderConfig, theporndb::ThePornDbProviderConfig};
@@ -184,6 +184,7 @@ mod tests {
         assert_eq!(provider_properties["mgstage"]["default"], false);
         assert_eq!(provider_properties["prestige"]["default"], false);
         assert_eq!(provider_properties["theporndb"]["default"], false);
+        assert_eq!(provider_properties["anilist"]["default"], false);
         assert!(manifest.secret_reference_fields.is_empty());
     }
 
@@ -211,6 +212,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED" => Some("true".to_owned()),
             _ => None,
         });
         let manifest = addon_manifest(&config);
@@ -300,7 +302,11 @@ mod tests {
             schema["properties"]["providers"]["properties"]["theporndb"]["default"],
             true
         );
-        assert_eq!(manifest.secret_reference_fields.len(), 4);
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["anilist"]["default"],
+            true
+        );
+        assert_eq!(manifest.secret_reference_fields.len(), 5);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
             TmdbProviderConfig::secret_field_id()
@@ -321,6 +327,11 @@ mod tests {
             ThePornDbProviderConfig::secret_field_id()
         );
         assert!(manifest.secret_reference_fields[3].required);
+        assert_eq!(
+            manifest.secret_reference_fields[4].id,
+            AniListProviderConfig::secret_field_id()
+        );
+        assert!(!manifest.secret_reference_fields[4].required);
     }
 
     #[test]
@@ -354,6 +365,7 @@ mod tests {
                 ProviderConfig::disabled(ProviderId::Mgstage),
                 ProviderConfig::disabled(ProviderId::Prestige),
                 ProviderConfig::disabled(ProviderId::ThePornDb),
+                ProviderConfig::disabled(ProviderId::AniList),
             ],
             ..Config::default()
         });

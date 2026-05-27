@@ -540,7 +540,8 @@ mod tests {
                 "avsox",
                 "mgstage",
                 "prestige",
-                "theporndb"
+                "theporndb",
+                "anilist"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -857,6 +858,16 @@ mod tests {
                 status: ProviderStatus::Disabled,
             }
         );
+        assert_eq!(
+            diagnostics.supported[21],
+            ProviderDescriptor {
+                id: "anilist",
+                enabled: false,
+                available: false,
+                capabilities: vec!["metadata_suggestion", "anime_search", "graphql_api"],
+                status: ProviderStatus::Disabled,
+            }
+        );
     }
 
     #[test]
@@ -897,6 +908,22 @@ mod tests {
                     .top_level_fields
                     .contains(&"browser_worker_recipe_url")
                 && !capability.reject_non_positive_numeric
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "anilist"
+                && capability.value_kind == ExternalIdValueKind::Numeric
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"anilist_id")
+                && capability.reject_non_positive_numeric
+        }));
+        assert!(capabilities.iter().any(|capability| {
+            capability.provider == "mal"
+                && capability.value_kind == ExternalIdValueKind::Numeric
+                && capability.accepts_direct_lookup
+                && capability.emits
+                && capability.top_level_fields.contains(&"mal_id")
+                && capability.reject_non_positive_numeric
         }));
         assert!(capabilities.iter().any(|capability| {
             capability.provider == "douban"
@@ -1136,6 +1163,8 @@ mod tests {
             "browser_worker_recipe",
             false
         )));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("anilist_id", "anilist", true)));
+        assert!(aliases.contains(&QueryExternalIdAlias::new("mal_id", "mal", true)));
         assert!(!aliases.iter().any(|alias| alias.provider == "douban"));
         assert!(aliases.contains(&QueryExternalIdAlias::new("av_number", "av_number", false)));
         assert!(aliases.contains(&QueryExternalIdAlias::new("javdb_id", "javdb", false)));
@@ -1265,7 +1294,8 @@ mod tests {
                 "avsox",
                 "mgstage",
                 "prestige",
-                "theporndb"
+                "theporndb",
+                "anilist"
             ]
         );
         assert!(diagnostics.unavailable.is_empty());
@@ -1328,7 +1358,8 @@ mod tests {
                 "avsox",
                 "mgstage",
                 "prestige",
-                "theporndb"
+                "theporndb",
+                "anilist"
             ]
         );
         assert_eq!(diagnostics.unavailable, vec!["tmdb"]);
@@ -1351,7 +1382,12 @@ mod tests {
         assert!(diagnostics.enabled.is_empty());
         assert_eq!(diagnostics.unavailable, vec!["theporndb"]);
         assert_eq!(
-            diagnostics.supported.last().unwrap().status,
+            diagnostics
+                .supported
+                .iter()
+                .find(|descriptor| descriptor.id == "theporndb")
+                .unwrap()
+                .status,
             ProviderStatus::Unavailable
         );
     }

@@ -9,8 +9,8 @@ Official addons repository: <https://github.com/Latias94/nako-official-addons>.
 
 This repository is being refactored toward a future-facing metadata addon
 architecture. The current runtime has one installable addon, a fixture adapter
-for smoke tests, plus bounded TMDB movie and Bangumi subject baselines behind
-the shared provider registry, ranking model, and HTTP runtime.
+for smoke tests, plus bounded TMDB movie/TV, Bangumi subject, and AniList anime
+providers behind the shared provider registry, ranking model, and HTTP runtime.
 
 ## Run locally
 
@@ -282,10 +282,10 @@ environment policy.
 Users install one Addon: `nako-metadata-scraper`.
 
 Providers are code modules inside the Addon, not separate user-visible Addons.
-Today that means fixture by default and optional TMDB movie metadata when
+Today that means fixture by default and optional TMDB movie/TV metadata when
 `NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED=true` and
-`NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` is configured. TMDB currently
-uses movie search plus bounded detail and external-ID enrichment for runtime,
+`NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` is configured. TMDB uses movie
+and TV-series search plus bounded detail and external-ID enrichment for runtime,
 tagline, genres, selected IDs, and typed poster/backdrop artwork candidates.
 Set `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` when TMDB traffic must use an
 operator-managed proxy.
@@ -303,10 +303,20 @@ facts.
 Set `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` when Bangumi traffic must use an
 operator-managed proxy.
 
+AniList anime metadata is available when
+`NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED=true`. Public GraphQL search and
+detail lookup work without a token; optionally set
+`NAKO_METADATA_SCRAPER_ANILIST_ACCESS_TOKEN` for authenticated requests.
+AniList maps title variants, description, release date/year, episodes, runtime,
+genres, high-confidence tags, studios, score, poster/backdrop artwork, AniList
+IDs, MAL IDs, and canonical AniList URLs. Set
+`NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL` when AniList traffic must use an
+operator-managed proxy.
+
 The Addon Health Check diagnostics and `/ui/diagnostics` show whether TMDB,
-Bangumi, Jav321, Prestige, ThePornDB, and browser-render proxy/session policy is
-configured. They intentionally expose only boolean policy state, not proxy URLs,
-credentials, or session key values.
+Bangumi, AniList, Jav321, Prestige, ThePornDB, and browser-render proxy/session
+policy is configured. They intentionally expose only boolean policy state, not
+proxy URLs, credentials, or session key values.
 Browser-rendered providers use the companion browser worker for proxying; set
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST` on that
 worker. The Rust sidecar can require, bypass, or default that worker proxy via
@@ -379,8 +389,10 @@ Jav321 uses the Rust HTTP runtime directly; set
 proxy.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `xcity_id`, `xcity_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`,
+`tmdb_id`, `tmdb_tv_id`, `imdb_id`, `bangumi_id`, `bgm_id`, `anilist_id`,
+`mal_id`, `browser_worker_url`, `browser_worker_recipe_url`, `javdb_id`,
+`dmm_id`, `dmm_url`, `xcity_id`, `xcity_url`, `fc2_id`, `fc2ppvdb_id`,
+`fc2ppvdb_url`,
 `caribbean_id`, `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`,
 `10musume_url`, `jav321_id`, `jav321_url`, `javbus_id`, `javbus_url`,
 `javlibrary_id`, `javlibrary_url`, `airav_id`, `airav_url`, `avsox_id`,
@@ -456,6 +468,15 @@ ThePornDB environment knobs:
 - `NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS=10000`
 - `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL=http://127.0.0.1:10809`
 
+AniList environment knobs:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_ANILIST_ACCESS_TOKEN=<optional AniList bearer token>`
+- `NAKO_METADATA_SCRAPER_ANILIST_GRAPHQL_URL=https://graphql.anilist.co`
+- `NAKO_METADATA_SCRAPER_ANILIST_INCLUDE_ADULT=false`
+- `NAKO_METADATA_SCRAPER_ANILIST_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL=http://127.0.0.1:10809`
+
 JavBus environment knobs:
 
 - `NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED=true`
@@ -482,7 +503,8 @@ provider field-source evidence.
 The runtime then resolves exact duplicate candidates and candidates that share
 declared provider-emitted external IDs, caps the final list, and applies a
 small generic bonus from the shared community score/vote-count facts exposed by
-TMDB, Bangumi, and Douban. The resource response envelope does not change.
+TMDB, Bangumi, Douban, and AniList. The resource response envelope does not
+change.
 
 Each metadata response includes `provider_execution`, which records the
 provider IDs selected, skipped by AV route, suppressed by request policy,

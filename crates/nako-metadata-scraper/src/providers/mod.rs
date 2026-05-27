@@ -4,6 +4,7 @@ use crate::config::ProviderId;
 use crate::engine::{MetadataQuery, ProviderMetadataCandidate, av::AvNumberRoute};
 
 pub mod airav;
+pub mod anilist;
 pub mod avsox;
 pub mod bangumi;
 pub mod browser_worker;
@@ -65,6 +66,7 @@ pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {
         mgstage::catalog_entry(),
         prestige::catalog_entry(),
         theporndb::catalog_entry(),
+        anilist::catalog_entry(),
     ]
 }
 

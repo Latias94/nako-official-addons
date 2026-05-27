@@ -84,7 +84,8 @@
           "avsox": { "type": "boolean", "default": false },
           "mgstage": { "type": "boolean", "default": false },
           "prestige": { "type": "boolean", "default": false },
-          "theporndb": { "type": "boolean", "default": false }
+          "theporndb": { "type": "boolean", "default": false },
+          "anilist": { "type": "boolean", "default": false }
         },
           "additionalProperties": false
         }

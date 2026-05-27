@@ -1,6 +1,6 @@
 # Official Metadata Addon Non-AV Provider Expansion - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-27
 
 ## M0 - Scope
@@ -43,22 +43,22 @@ Last updated: 2026-05-27
 
 ## M4 - New Provider First Wave
 
-- [ ] OMANV-060 [owner=codex] [deps=OMANV-050] [scope=crates/nako-metadata-scraper/src/providers/anilist.rs,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/registry.rs]
+- [x] OMANV-060 [owner=codex] [deps=OMANV-050] [scope=crates/nako-metadata-scraper/src/providers/anilist.rs,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/providers/registry.rs]
   Goal: Add AniList as the first new non-AV provider with GraphQL search/direct lookup, anime fields, artwork, score, external IDs, config, manifest, and docs.
-  Validation: `cargo nextest run -p nako-metadata-scraper anilist config registry manifest --no-fail-fast`
+  Validation: `cargo nextest run -p nako-metadata-scraper anilist config registry manifest routes --no-fail-fast`
   Review: Keep GraphQL queries provider-local and avoid coupling query parsing to provider internals.
-  Evidence: AniList provider tests.
+  Evidence: AniList provider tests; config/registry/manifest/route diagnostics tests.
 
-- [ ] OMANV-070 [owner=planner] [deps=OMANV-050,OMANV-060] [scope=docs/workstreams/official-metadata-addon-non-av-provider-expansion]
+- [x] OMANV-070 [owner=planner] [deps=OMANV-050,OMANV-060] [scope=docs/workstreams/official-metadata-addon-non-av-provider-expansion]
   Goal: Decide whether TVDB, MAL, and IMDb should be implemented in this lane or split based on API/reliability evidence after TMDB TV, Bangumi, recipes, and AniList land.
   Validation: `python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json`
   Review: Do not add brittle providers just to increase count.
-  Evidence: `HANDOFF.md`
+  Evidence: Split decision recorded in `DESIGN.md` and `HANDOFF.md`.
 
 ## M5 - Verification And Closeout
 
-- [ ] OMANV-080 [owner=codex] [deps=OMANV-020,OMANV-040,OMANV-050,OMANV-060] [scope=docs/workstreams/official-metadata-addon-non-av-provider-expansion,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+- [x] OMANV-080 [owner=codex] [deps=OMANV-020,OMANV-040,OMANV-050,OMANV-060] [scope=docs/workstreams/official-metadata-addon-non-av-provider-expansion,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
   Goal: Run full gates, update docs, record evidence, and close or split follow-ups.
   Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`; `python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json`; `git diff --check`
   Review: Worktree must contain only intended changes before commit.
-  Evidence: `EVIDENCE_AND_GATES.md`
+  Evidence: Full package, fmt, JSON, and diff hygiene gates passed; `EVIDENCE_AND_GATES.md`.

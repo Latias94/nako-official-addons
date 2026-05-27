@@ -1,10 +1,10 @@
 use crate::providers::{ProviderConfigInput, ProviderRegistry};
 pub use crate::providers::{
-    airav::AiravProviderConfig, avsox::AvsoxProviderConfig, bangumi::BangumiProviderConfig,
-    browser_worker::BrowserWorkerProviderConfig, caribbean::CaribbeanProviderConfig,
-    dmm::DmmProviderConfig, douban::DoubanProviderConfig, fc2::Fc2ProviderConfig,
-    fc2ppvdb::Fc2ppvdbProviderConfig, jav321::Jav321ProviderConfig, javbus::JavbusProviderConfig,
-    javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
+    airav::AiravProviderConfig, anilist::AniListProviderConfig, avsox::AvsoxProviderConfig,
+    bangumi::BangumiProviderConfig, browser_worker::BrowserWorkerProviderConfig,
+    caribbean::CaribbeanProviderConfig, dmm::DmmProviderConfig, douban::DoubanProviderConfig,
+    fc2::Fc2ProviderConfig, fc2ppvdb::Fc2ppvdbProviderConfig, jav321::Jav321ProviderConfig,
+    javbus::JavbusProviderConfig, javdb::JavdbProviderConfig, javlibrary::JavlibraryProviderConfig,
     mgstage::MgstageProviderConfig, onepondo::OnePondoProviderConfig,
     prestige::PrestigeProviderConfig, tenmusume::TenMusumeProviderConfig,
     theporndb::ThePornDbProviderConfig, tmdb::TmdbProviderConfig, xcity::XcityProviderConfig,
@@ -92,6 +92,7 @@ pub enum ProviderId {
     Mgstage,
     Prestige,
     ThePornDb,
+    AniList,
 }
 
 impl ProviderId {
@@ -119,6 +120,7 @@ impl ProviderId {
             Self::Mgstage => "mgstage",
             Self::Prestige => "prestige",
             Self::ThePornDb => "theporndb",
+            Self::AniList => "anilist",
         }
     }
 
@@ -504,6 +506,15 @@ impl ProviderConfig {
     }
 
     #[must_use]
+    pub fn anilist(enabled: bool, config: AniListProviderConfig) -> Self {
+        Self {
+            id: ProviderId::AniList,
+            enabled,
+            kind: ProviderConfigKind::AniList(config),
+        }
+    }
+
+    #[must_use]
     pub fn tmdb_config(&self) -> Option<&TmdbProviderConfig> {
         match &self.kind {
             ProviderConfigKind::Tmdb(config) => Some(config),
@@ -663,6 +674,14 @@ impl ProviderConfig {
         }
     }
 
+    #[must_use]
+    pub fn anilist_config(&self) -> Option<&AniListProviderConfig> {
+        match &self.kind {
+            ProviderConfigKind::AniList(config) => Some(config),
+            _ => None,
+        }
+    }
+
     fn with_enabled(id: ProviderId, enabled: bool) -> Self {
         match id {
             ProviderId::Fixture => Self::fixture(enabled),
@@ -757,6 +776,9 @@ impl ProviderConfig {
             ProviderId::ThePornDb => {
                 Self::theporndb(enabled, ThePornDbProviderConfig::from_env_lookup(|_| None))
             }
+            ProviderId::AniList => {
+                Self::anilist(enabled, AniListProviderConfig::from_env_lookup(|_| None))
+            }
         }
     }
 }
@@ -784,6 +806,7 @@ pub enum ProviderConfigKind {
     Mgstage(MgstageProviderConfig),
     Prestige(PrestigeProviderConfig),
     ThePornDb(ThePornDbProviderConfig),
+    AniList(AniListProviderConfig),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -905,7 +928,8 @@ impl ProviderConfig {
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.proxy_policy_configured(),
             ProviderConfigKind::Jav321(_)
             | ProviderConfigKind::Prestige(_)
-            | ProviderConfigKind::ThePornDb(_) => false,
+            | ProviderConfigKind::ThePornDb(_)
+            | ProviderConfigKind::AniList(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -935,7 +959,8 @@ impl ProviderConfig {
             ProviderConfigKind::Mgstage(config) => config.rendered_pages.session_key_configured(),
             ProviderConfigKind::Jav321(_)
             | ProviderConfigKind::Prestige(_)
-            | ProviderConfigKind::ThePornDb(_) => false,
+            | ProviderConfigKind::ThePornDb(_)
+            | ProviderConfigKind::AniList(_) => false,
             ProviderConfigKind::Fixture
             | ProviderConfigKind::Tmdb(_)
             | ProviderConfigKind::Bangumi(_) => false,
@@ -1208,6 +1233,14 @@ mod tests {
         assert_eq!(theporndb.public_base_url, "https://theporndb.net");
         assert_eq!(theporndb.timeout_ms, 10_000);
         assert!(theporndb.proxy_url.is_none());
+        let anilist_provider = config.provider_config(ProviderId::AniList).unwrap();
+        assert!(!anilist_provider.enabled);
+        let anilist = anilist_provider.anilist_config().unwrap();
+        assert!(anilist.access_token.is_none());
+        assert_eq!(anilist.graphql_url, "https://graphql.anilist.co");
+        assert!(!anilist.include_adult);
+        assert_eq!(anilist.timeout_ms, 10_000);
+        assert!(anilist.proxy_url.is_none());
         assert!(config.provider_enabled(ProviderId::Fixture));
         assert!(!config.provider_enabled(ProviderId::Tmdb));
         assert!(!config.provider_enabled(ProviderId::Bangumi));
@@ -1229,11 +1262,13 @@ mod tests {
         assert!(!config.provider_enabled(ProviderId::Mgstage));
         assert!(!config.provider_enabled(ProviderId::Prestige));
         assert!(!config.provider_enabled(ProviderId::ThePornDb));
+        assert!(!config.provider_enabled(ProviderId::AniList));
         assert!(!config.provider_proxy_configured(ProviderId::Tmdb));
         assert!(!config.provider_proxy_configured(ProviderId::Bangumi));
         assert!(!config.provider_proxy_configured(ProviderId::Jav321));
         assert!(!config.provider_proxy_configured(ProviderId::Prestige));
         assert!(!config.provider_proxy_configured(ProviderId::ThePornDb));
+        assert!(!config.provider_proxy_configured(ProviderId::AniList));
         assert_eq!(
             config.provider_execution,
             ProviderExecutionConfig::default()
@@ -1275,6 +1310,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_PRESTIGE_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_PROVIDER_THEPORNDB_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED" => Some("true".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN" => Some("tmdb-token".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_API_BASE_URL" => Some("https://tmdb.example/3".to_owned()),
             "NAKO_METADATA_SCRAPER_TMDB_LANGUAGE" => Some("ja-JP".to_owned()),
@@ -1364,6 +1400,18 @@ mod tests {
             "NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL" => {
                 Some(" http://theporndb-proxy.example:8080 ".to_owned())
             }
+            "NAKO_METADATA_SCRAPER_ANILIST_ACCESS_TOKEN" => Some(" anilist-token ".to_owned()),
+            "NAKO_METADATA_SCRAPER_ANILIST_GRAPHQL_URL" => {
+                Some(" https://graphql.anilist.example ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_ANILIST_USER_AGENT" => {
+                Some(" Latias94/test-anilist/0.1.0 ".to_owned())
+            }
+            "NAKO_METADATA_SCRAPER_ANILIST_INCLUDE_ADULT" => Some("yes".to_owned()),
+            "NAKO_METADATA_SCRAPER_ANILIST_TIMEOUT_MS" => Some("13500".to_owned()),
+            "NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL" => {
+                Some(" http://anilist-proxy.example:8080 ".to_owned())
+            }
             "NAKO_METADATA_SCRAPER_PROVIDER_MAX_SELECTED_PER_REQUEST" => Some("2".to_owned()),
             _ => None,
         });
@@ -1409,6 +1457,7 @@ mod tests {
         assert!(config.provider_enabled(ProviderId::Avsox));
         assert!(config.provider_enabled(ProviderId::Xcity));
         assert!(config.provider_enabled(ProviderId::Fc2ppvdb));
+        assert!(config.provider_enabled(ProviderId::AniList));
         let tmdb = config.providers[1].tmdb_config().unwrap();
         assert_eq!(tmdb.read_access_token.as_deref(), Some("tmdb-token"));
         assert_eq!(tmdb.api_base_url, "https://tmdb.example/3");
@@ -1649,6 +1698,21 @@ mod tests {
             Some("http://theporndb-proxy.example:8080")
         );
         assert!(config.provider_proxy_configured(ProviderId::ThePornDb));
+        let anilist = config
+            .provider_config(ProviderId::AniList)
+            .unwrap()
+            .anilist_config()
+            .unwrap();
+        assert_eq!(anilist.access_token.as_deref(), Some("anilist-token"));
+        assert_eq!(anilist.graphql_url, "https://graphql.anilist.example");
+        assert_eq!(anilist.user_agent, "Latias94/test-anilist/0.1.0");
+        assert!(anilist.include_adult);
+        assert_eq!(anilist.timeout_ms, 13500);
+        assert_eq!(
+            anilist.proxy_url.as_deref(),
+            Some("http://anilist-proxy.example:8080")
+        );
+        assert!(config.provider_proxy_configured(ProviderId::AniList));
     }
 
     #[test]

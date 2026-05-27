@@ -13,14 +13,23 @@ Current alpha provider defaults:
 
 - `fixture`: enabled by default for smoke tests.
 - `tmdb`: disabled by default; requires a TMDB read access token when enabled.
-  It also accepts `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` for proxied access.
+  It maps movie and TV-series search/detail results, supports explicit
+  `tmdb_id`, `tmdb_tv_id`, and `imdb_id` lookup, and accepts
+  `NAKO_METADATA_SCRAPER_TMDB_PROXY_URL` for proxied access.
 - `bangumi`: disabled by default; public subject search works without a token
   and requires a compliant User-Agent. It also accepts
   `NAKO_METADATA_SCRAPER_BANGUMI_PROXY_URL` for proxied access. It maps
   official subject facts such as NSFW/locked/series flags, episode and
   collection counts, ratings, selected infobox facts, tags, and poster artwork.
+- `anilist`: disabled by default; calls the official AniList GraphQL API for
+  anime search plus explicit `anilist_id` or `mal_id` lookup. Public metadata
+  works without a token; `NAKO_METADATA_SCRAPER_ANILIST_ACCESS_TOKEN` is an
+  optional secret for authenticated requests, and
+  `NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL` enables proxied API access.
 - `browser_worker`: disabled by default; uses the companion browser worker for
-  rendered-page extraction when an external browser-worker URL is supplied.
+  rendered-page extraction when an external browser-worker URL is supplied. It
+  supports explicit `browser_worker_url` text extraction and
+  `browser_worker_recipe_url` rendered metadata recipes.
 - `douban`: disabled by default; calls the companion browser worker for rendered
   HTML and keeps Douban parsing/mapping inside the Rust provider.
 - `javdb`: disabled by default; calls the companion browser worker for rendered
@@ -82,8 +91,9 @@ Current alpha provider defaults:
   `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL` for proxied API access.
 
 Metadata requests may provide explicit `external_ids` or top-level aliases:
-`tmdb_id`, `imdb_id`, `bangumi_id`, `browser_worker_url`, `javdb_id`, `dmm_id`,
-`dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
+`tmdb_id`, `tmdb_tv_id`, `imdb_id`, `bangumi_id`, `bgm_id`, `anilist_id`,
+`mal_id`, `browser_worker_url`, `browser_worker_recipe_url`, `javdb_id`,
+`dmm_id`, `dmm_url`, `fc2_id`, `fc2ppvdb_id`, `fc2ppvdb_url`, `caribbean_id`,
 `caribbean_url`, `1pondo_id`, `1pondo_url`, `10musume_id`, `10musume_url`,
 `jav321_id`, `jav321_url`, `javbus_id`, `javbus_url`, `javlibrary_id`,
 `javlibrary_url`, `mgstage_id`, `mgstage_url`, `prestige_id`, `prestige_url`,
@@ -183,9 +193,9 @@ ThePornDB when configured.
 Ranked candidate evidence also carries redaction-safe provider-source and
 field-source metadata when shared external IDs merge multiple provider facts.
 
-The `/health` diagnostics report whether TMDB/Bangumi/Jav321/Prestige/ThePornDB
-proxy policy and browser render proxy/session policy are configured without
-exposing proxy URLs, credentials, or session key values. Browser-rendered AV
+The `/health` diagnostics report whether TMDB/Bangumi/AniList/Jav321/Prestige/
+ThePornDB proxy policy and browser render proxy/session policy are configured
+without exposing proxy URLs, credentials, or session key values. Browser-rendered AV
 providers use proxy configuration from the companion browser worker, for example
 `NAKO_BROWSER_WORKER_PROXY_URL` or `NAKO_BROWSER_WORKER_PROXY_LIST`. Rust
 providers send a typed render intent to the worker; operators can set
@@ -217,6 +227,15 @@ ThePornDB API access is configured directly on the Rust sidecar:
 - `NAKO_METADATA_SCRAPER_THEPORNDB_PUBLIC_BASE_URL=https://theporndb.net`
 - `NAKO_METADATA_SCRAPER_THEPORNDB_TIMEOUT_MS=10000`
 - `NAKO_METADATA_SCRAPER_THEPORNDB_PROXY_URL=http://127.0.0.1:10809`
+
+AniList API access is configured directly on the Rust sidecar:
+
+- `NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED=true`
+- `NAKO_METADATA_SCRAPER_ANILIST_ACCESS_TOKEN=<optional AniList bearer token>`
+- `NAKO_METADATA_SCRAPER_ANILIST_GRAPHQL_URL=https://graphql.anilist.co`
+- `NAKO_METADATA_SCRAPER_ANILIST_INCLUDE_ADULT=false`
+- `NAKO_METADATA_SCRAPER_ANILIST_TIMEOUT_MS=10000`
+- `NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL=http://127.0.0.1:10809`
 
 Explicit `metadata_write` submission is available only when the request payload
 contains a `writeback` object and the disabled-by-default Nako runtime side

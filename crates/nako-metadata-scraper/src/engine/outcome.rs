@@ -13,6 +13,7 @@ pub enum ProviderOutcome {
     BangumiSubjectEnriched,
     BangumiSubjectDegraded,
     BangumiPartialTitleVariantSearchFailure,
+    AniListMediaMapped,
     DoubanRenderedHtmlParsed,
     JavdbRenderedHtmlParsed,
     DmmRenderedHtmlParsed,
@@ -90,6 +91,9 @@ impl ProviderOutcome {
             }
             Self::BangumiPartialTitleVariantSearchFailure => {
                 "Bangumi provider preserved candidates after partial title-variant search failure."
+            }
+            Self::AniListMediaMapped => {
+                "AniList provider mapped anime media from the official GraphQL API."
             }
             Self::DoubanRenderedHtmlParsed => {
                 "Douban candidate parsed from browser-worker rendered HTML."

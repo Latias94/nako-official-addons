@@ -198,6 +198,8 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         network_policy_label(&state.provider_diagnostics, "tmdb_proxy_configured");
     let bangumi_proxy_configured =
         network_policy_label(&state.provider_diagnostics, "bangumi_proxy_configured");
+    let anilist_proxy_configured =
+        network_policy_label(&state.provider_diagnostics, "anilist_proxy_configured");
     let prestige_proxy_configured =
         network_policy_label(&state.provider_diagnostics, "prestige_proxy_configured");
     let render_proxy_policy_configured =
@@ -222,6 +224,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Enabled providers: {enabled_providers}</p>
   <p>TMDB proxy configured: {tmdb_proxy_configured}</p>
   <p>Bangumi proxy configured: {bangumi_proxy_configured}</p>
+  <p>AniList proxy configured: {anilist_proxy_configured}</p>
   <p>Prestige proxy configured: {prestige_proxy_configured}</p>
   <p>Browser render proxy policy configured: {render_proxy_policy_configured}</p>
   <p>Browser render session key configured: {render_session_key_configured}</p>
@@ -300,6 +303,10 @@ mod tests {
         );
         assert_eq!(
             schema["properties"]["providers"]["properties"]["bangumi"]["default"],
+            false
+        );
+        assert_eq!(
+            schema["properties"]["providers"]["properties"]["anilist"]["default"],
             false
         );
         assert_eq!(
@@ -564,7 +571,8 @@ mod tests {
                 "avsox",
                 "mgstage",
                 "prestige",
-                "theporndb"
+                "theporndb",
+                "anilist"
             ])
         );
         assert_eq!(
@@ -577,6 +585,10 @@ mod tests {
         );
         assert_eq!(
             payload.diagnostics["network_policy"]["bangumi_proxy_configured"],
+            false
+        );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["anilist_proxy_configured"],
             false
         );
         assert_eq!(
@@ -617,6 +629,9 @@ mod tests {
             "NAKO_METADATA_SCRAPER_JAV321_PROXY_URL" => {
                 Some("http://jav321-proxy.example:8080".to_owned())
             }
+            "NAKO_METADATA_SCRAPER_ANILIST_PROXY_URL" => {
+                Some("http://anilist-proxy.example:8080".to_owned())
+            }
             _ => None,
         }))
         .oneshot(
@@ -652,10 +667,15 @@ mod tests {
             payload.diagnostics["network_policy"]["jav321_proxy_configured"],
             true
         );
+        assert_eq!(
+            payload.diagnostics["network_policy"]["anilist_proxy_configured"],
+            true
+        );
         let diagnostics = serde_json::to_string(&payload.diagnostics).unwrap();
         assert!(!diagnostics.contains("proxy.example"));
         assert!(!diagnostics.contains("prestige-proxy.example"));
         assert!(!diagnostics.contains("jav321-proxy.example"));
+        assert!(!diagnostics.contains("anilist-proxy.example"));
         assert!(!diagnostics.contains("user:pass"));
     }
 }

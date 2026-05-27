@@ -1,6 +1,6 @@
 # Official Metadata Addon Non-AV Provider Expansion
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-27
 
 ## Why This Lane Exists
@@ -87,6 +87,25 @@ are useful for sequels, adaptations, side stories, and franchise navigation. The
 candidate model has no typed relation graph, so this lane does not encode related subjects as
 ambiguous tags. A future relation-capable candidate fact should carry relation label, provider,
 provider ID, subject type, and display titles.
+
+## New Provider Split Decision
+
+AniList is the first native new provider because its public GraphQL API can
+return useful anime metadata without mandatory OAuth and it also bridges MAL IDs
+through `idMal`. The provider can therefore improve anime matching without
+adding a second authentication-heavy anime source in the same lane.
+
+TVDB, MAL, and IMDb are intentionally split:
+
+- TVDB is valuable for series, seasons, and episodes, but native implementation
+  should wait for typed episodic metadata fields in the addon protocol. Until
+  then, adding TVDB would either lose season/episode structure or duplicate
+  TMDB's current TV-series surface.
+- MAL has a stable official API shape but adds OAuth/client constraints. AniList
+  already accepts and emits MAL IDs, so native MAL should be added only when its
+  own fields are needed as authoritative writeback sources.
+- IMDb should start as a BrowserWorker rendered recipe proof. Native scraping is
+  not a maintainable default without a stable legal API boundary.
 
 ## Task Strategy
 

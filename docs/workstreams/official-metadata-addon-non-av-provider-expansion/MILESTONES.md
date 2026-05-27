@@ -1,6 +1,6 @@
 # Official Metadata Addon Non-AV Provider Expansion - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-27
 
 ## M0 - Scope
@@ -26,9 +26,14 @@ Last updated: 2026-05-27
 
 ## M4 - New Providers
 
-- Active: AniList first-wave provider.
-- Pending: TVDB/MAL/IMDb split decision.
+- Done: AniList first-wave provider with GraphQL search/direct lookup, MAL ID
+  crosswalk, anime fields, artwork, score facts, config, manifest, and docs.
+- Done: TVDB/MAL/IMDb split decision. TVDB waits for typed episodic protocol
+  fields, MAL remains a follow-up behind AniList's crosswalk, and IMDb starts as
+  a BrowserWorker recipe unless a stable legal API path is selected.
 
 ## M5 - Closeout
 
-- Pending: full gates, docs, commit, and follow-up split.
+- Done: full package, format, JSON, and diff hygiene gates passed. README,
+  manifest example, and workstream evidence are updated. TVDB/MAL/IMDb are
+  explicit follow-ups instead of unfinished in-lane tasks.

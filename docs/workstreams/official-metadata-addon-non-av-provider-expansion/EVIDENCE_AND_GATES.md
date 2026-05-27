@@ -1,6 +1,6 @@
 # Official Metadata Addon Non-AV Provider Expansion - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-27
 
 ## Planned Gates
@@ -10,11 +10,11 @@ Last updated: 2026-05-27
 | TMDB provider | `cargo nextest run -p nako-metadata-scraper tmdb --no-fail-fast` | Pass | 2026-05-27: 38 passed, 222 skipped. Movie regression plus TV additions. |
 | Bangumi provider | `cargo nextest run -p nako-metadata-scraper bangumi --no-fail-fast` | Pass | 2026-05-27: 28 passed, 233 skipped. Anime enrichment. |
 | BrowserWorker rendered | `cargo nextest run -p nako-metadata-scraper browser_worker rendered --no-fail-fast` | Pass | 2026-05-27: 23 passed, 240 skipped. Recipe layer. |
-| AniList/config/manifest | `cargo nextest run -p nako-metadata-scraper anilist config registry manifest --no-fail-fast` | Pending | First new provider. |
-| Full package | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | Pending | Regression gate. |
-| Rust fmt | `cargo fmt -p nako-metadata-scraper -- --check` | Pending | Formatting gate. |
-| Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json` | Pending | Workstream metadata validity. |
-| Diff hygiene | `git diff --check` | Pending | Whitespace hygiene. |
+| AniList/config/manifest | `cargo nextest run -p nako-metadata-scraper anilist config registry manifest routes --no-fail-fast` | Pass | 2026-05-27: 48 passed, 218 skipped. First new provider plus diagnostics. |
+| Full package | `cargo nextest run -p nako-metadata-scraper --no-fail-fast` | Pass | 2026-05-27: 263 passed, 3 skipped. |
+| Rust fmt | `cargo fmt -p nako-metadata-scraper -- --check` | Pass | 2026-05-27. |
+| Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json` | Pass | 2026-05-27. |
+| Diff hygiene | `git diff --check` | Pass | 2026-05-27. |
 
 ## Evidence Log
 
@@ -47,3 +47,22 @@ Last updated: 2026-05-27
   passed: 23 passed, 240 skipped.
 - 2026-05-27: `cargo nextest run -p nako-metadata-scraper config registry manifest routes browser_worker rendered --no-fail-fast`
   passed: 66 passed, 197 skipped.
+- 2026-05-27: OMANV-060 added AniList as the first new non-AV provider. It
+  supports official GraphQL anime search, direct AniList ID lookup, direct MAL
+  ID lookup, optional bearer token, proxy configuration, title variants,
+  description cleanup, release date/year, episodes, runtime, genres, spoiler-
+  filtered tags, studios, score facts, poster/backdrop artwork, AniList/MAL URL
+  external IDs, manifest toggles, and redaction-safe provider outcomes.
+- 2026-05-27: `cargo nextest run -p nako-metadata-scraper anilist config registry manifest routes --no-fail-fast`
+  passed: 48 passed, 218 skipped.
+- 2026-05-27: OMANV-070 split TVDB, MAL, and IMDb out of this lane. TVDB should
+  wait for typed episodic protocol fields; MAL should remain a follow-up unless
+  its API adds fields not already covered by AniList's MAL crosswalk; IMDb
+  should start as a BrowserWorker recipe instead of native scraping unless a
+  stable legal API path is selected.
+- 2026-05-27: OMANV-080 closed the lane after docs and manifest updates.
+  `cargo nextest run -p nako-metadata-scraper --no-fail-fast` passed: 263
+  passed, 3 skipped.
+- 2026-05-27: `cargo fmt -p nako-metadata-scraper -- --check`,
+  `python -m json.tool docs/workstreams/official-metadata-addon-non-av-provider-expansion/WORKSTREAM.json`,
+  and `git diff --check` passed.
