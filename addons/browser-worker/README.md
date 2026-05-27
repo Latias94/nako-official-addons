@@ -162,13 +162,19 @@ $env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES = $cases
 npm --prefix addons/browser-worker run live:render-drift
 ```
 
-Provider-owned cases currently cover Douban search, JavBus detail, and
-JavLibrary search. Set
+Provider-owned cases currently cover Douban search, DMM search, JavBus detail,
+JavLibrary search, XCity search, AirAV search, AVSox search, and MGStage
+detail. Set
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DOUBAN_TITLE`,
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER`, or
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER` to override
-the default samples. Safe render defaults such as `proxy_policy` are emitted;
-session keys, cookies, and header values are not.
+first-wave samples. DMM, XCity, AirAV, and AVSox use
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER` unless their
+provider-specific sample env var is set. MGStage defaults to a known MGStage
+style number and can be overridden with
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`. Safe render
+defaults such as `proxy_policy` are emitted; session keys, cookies, and header
+values are not.
 
 ## Test
 

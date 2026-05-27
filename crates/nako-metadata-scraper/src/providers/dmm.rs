@@ -17,6 +17,7 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
@@ -144,6 +145,26 @@ fn build_provider(config: &Config) -> ProviderBuildStatus {
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    config: &DmmProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    BrowserWorkerRenderDriftCase::new(
+        "dmm-search",
+        format!(
+            "{}/search/=/searchstr={}/",
+            config.base_url.trim_end_matches('/'),
+            client::percent_encode_query(av_number)
+        ),
+    )
+    .with_selector("a[href*=\"cid=\"]")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
 }
 
 #[derive(Clone, Debug)]

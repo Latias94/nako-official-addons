@@ -4,8 +4,9 @@ use crate::{
     Config,
     config::ProviderId,
     providers::{
-        douban, javbus, javlibrary,
+        airav, avsox, dmm, douban, javbus, javlibrary, mgstage,
         rendered_page::{RenderedPageProxyPolicy, RenderedPageSupportConfig},
+        rendered_search_av, xcity,
     },
 };
 
@@ -17,9 +18,20 @@ pub const RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER_ENV_VAR: &str =
     "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER";
 pub const RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER_ENV_VAR: &str =
     "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_DMM_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DMM_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_XCITY_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_XCITY_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER";
+pub const RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER_ENV_VAR: &str =
+    "NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER";
 
 const DEFAULT_SAMPLE_AV_NUMBER: &str = "SSNI-644";
 const DEFAULT_SAMPLE_DOUBAN_TITLE: &str = "千与千寻";
+const DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER: &str = "300MIUM-382";
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BrowserWorkerRenderDriftCase {
@@ -208,21 +220,45 @@ pub fn browser_worker_render_drift_cases_from_lookup(
     config: &Config,
     mut lookup: impl FnMut(&str) -> Option<String>,
 ) -> Vec<BrowserWorkerRenderDriftCase> {
-    let sample_av_number = first_non_empty(
-        lookup(RENDER_DRIFT_SAMPLE_AV_NUMBER_ENV_VAR),
-        DEFAULT_SAMPLE_AV_NUMBER,
-    );
+    let sample_av_number = non_empty(lookup(RENDER_DRIFT_SAMPLE_AV_NUMBER_ENV_VAR));
     let sample_douban_title = first_non_empty(
         lookup(RENDER_DRIFT_SAMPLE_DOUBAN_TITLE_ENV_VAR),
         DEFAULT_SAMPLE_DOUBAN_TITLE,
     );
-    let sample_javbus_av_number = first_non_empty(
+    let sample_javbus_av_number = sample_av_number_with_default(
         lookup(RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER_ENV_VAR),
-        &sample_av_number,
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
     );
-    let sample_javlibrary_av_number = first_non_empty(
+    let sample_javlibrary_av_number = sample_av_number_with_default(
         lookup(RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER_ENV_VAR),
-        &sample_av_number,
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
+    );
+    let sample_dmm_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_DMM_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
+    );
+    let sample_mgstage_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER,
+    );
+    let sample_xcity_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_XCITY_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
+    );
+    let sample_airav_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_AIRAV_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
+    );
+    let sample_avsox_av_number = sample_av_number_with_default(
+        lookup(RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER_ENV_VAR),
+        sample_av_number.as_deref(),
+        DEFAULT_SAMPLE_AV_NUMBER,
     );
 
     let mut cases = Vec::new();
@@ -232,6 +268,13 @@ pub fn browser_worker_render_drift_cases_from_lookup(
             .and_then(|provider| provider.douban_config())
     {
         cases.push(douban::render_drift_case(provider, &sample_douban_title));
+    }
+    if config.provider_enabled(ProviderId::Dmm)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Dmm)
+            .and_then(|provider| provider.dmm_config())
+    {
+        cases.push(dmm::render_drift_case(provider, &sample_dmm_av_number));
     }
     if config.provider_enabled(ProviderId::Javbus)
         && let Some(provider) = config
@@ -253,15 +296,71 @@ pub fn browser_worker_render_drift_cases_from_lookup(
             &sample_javlibrary_av_number,
         ));
     }
+    if config.provider_enabled(ProviderId::Xcity)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Xcity)
+            .and_then(|provider| provider.xcity_config())
+    {
+        cases.push(rendered_search_av::render_drift_case(
+            &xcity::XCITY_SITE,
+            provider,
+            &sample_xcity_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::Airav)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Airav)
+            .and_then(|provider| provider.airav_config())
+    {
+        cases.push(rendered_search_av::render_drift_case(
+            &airav::AIRAV_SITE,
+            provider,
+            &sample_airav_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::Avsox)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Avsox)
+            .and_then(|provider| provider.avsox_config())
+    {
+        cases.push(rendered_search_av::render_drift_case(
+            &avsox::AVSOX_SITE,
+            provider,
+            &sample_avsox_av_number,
+        ));
+    }
+    if config.provider_enabled(ProviderId::Mgstage)
+        && let Some(provider) = config
+            .provider_config(ProviderId::Mgstage)
+            .and_then(|provider| provider.mgstage_config())
+    {
+        cases.push(mgstage::render_drift_case(
+            provider,
+            &sample_mgstage_av_number,
+        ));
+    }
 
     cases
 }
 
-fn first_non_empty(value: Option<String>, fallback: &str) -> String {
+fn sample_av_number_with_default(
+    provider_value: Option<String>,
+    generic_value: Option<&str>,
+    fallback: &str,
+) -> String {
+    non_empty(provider_value)
+        .or_else(|| generic_value.map(str::to_owned))
+        .unwrap_or_else(|| fallback.to_owned())
+}
+
+fn non_empty(value: Option<String>) -> Option<String> {
     value
         .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| fallback.to_owned())
+}
+
+fn first_non_empty(value: Option<String>, fallback: &str) -> String {
+    non_empty(value).unwrap_or_else(|| fallback.to_owned())
 }
 
 fn is_false(value: &bool) -> bool {
@@ -357,6 +456,102 @@ mod tests {
         let rendered = serde_json::to_string(&cases).unwrap();
         assert!(!rendered.contains("age=verified"));
         assert!(!rendered.contains("session-key-should-not-emit"));
+    }
+
+    #[test]
+    fn render_drift_cases_include_wave2_rendered_av_presets() {
+        let config = Config::from_env_lookup(|name| match name {
+            AV_PROVIDER_PRESET_ENV_VAR => Some("manual".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_DMM_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_XCITY_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AIRAV_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_AVSOX_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_DMM_BASE_URL" => Some("https://dmm.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_XCITY_BASE_URL" => Some("https://xcity.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_AIRAV_BASE_URL" => Some("https://airav.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_AVSOX_BASE_URL" => Some("https://avsox.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
+            "NAKO_METADATA_SCRAPER_BROWSER_WORKER_PROXY_POLICY" => Some("direct".to_owned()),
+            _ => None,
+        });
+
+        let cases = browser_worker_render_drift_cases_from_lookup(&config, |name| match name {
+            RENDER_DRIFT_SAMPLE_AV_NUMBER_ENV_VAR => Some("ABP-123".to_owned()),
+            RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER_ENV_VAR => Some("300MIUM-382".to_owned()),
+            RENDER_DRIFT_SAMPLE_AVSOX_AV_NUMBER_ENV_VAR => Some("FC2-1723984".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(cases.len(), 5);
+        assert_eq!(
+            serde_json::to_value(&cases).unwrap(),
+            json!([
+                {
+                    "id": "dmm-search",
+                    "url": "https://dmm.example/search/=/searchstr=ABP-123/",
+                    "selector": "a[href*=\"cid=\"]",
+                    "proxy_policy": "direct",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "xcity-search",
+                    "url": "https://xcity.example/result_published/?q=ABP123",
+                    "selector": "a[href], .item a[href], .video-item a[href], table a[href]",
+                    "proxy_policy": "direct",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "airav-search",
+                    "url": "https://airav.example/?search=ABP-123",
+                    "selector": "a[href], .item a[href], .video-item a[href], table a[href]",
+                    "proxy_policy": "direct",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "avsox-search",
+                    "url": "https://avsox.example/cn/search/FC2-1723984",
+                    "selector": "a[href], .item a[href], .video-item a[href], table a[href]",
+                    "proxy_policy": "direct",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                },
+                {
+                    "id": "mgstage-detail",
+                    "url": "https://mgstage.example/product/product_detail/300MIUM-382/",
+                    "selector": "h1, .product_title, .detail_title, .detail, .product_detail",
+                    "proxy_policy": "direct",
+                    "render_timeout_ms": 10000,
+                    "min_text_bytes": 100,
+                    "min_html_bytes": 500
+                }
+            ])
+        );
+    }
+
+    #[test]
+    fn render_drift_cases_use_provider_specific_mgstage_default() {
+        let config = Config::from_env_lookup(|name| match name {
+            AV_PROVIDER_PRESET_ENV_VAR => Some("manual".to_owned()),
+            "NAKO_METADATA_SCRAPER_PROVIDER_MGSTAGE_ENABLED" => Some("true".to_owned()),
+            "NAKO_METADATA_SCRAPER_MGSTAGE_BASE_URL" => Some("https://mgstage.example".to_owned()),
+            _ => None,
+        });
+
+        let cases = browser_worker_render_drift_cases_from_lookup(&config, |_| None);
+
+        assert_eq!(cases.len(), 1);
+        assert_eq!(
+            cases[0].url,
+            "https://mgstage.example/product/product_detail/300MIUM-382/"
+        );
     }
 
     #[test]

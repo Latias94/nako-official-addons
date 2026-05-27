@@ -21,6 +21,7 @@ use crate::{
             ReqwestProviderHttpTransport,
         },
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -144,6 +145,27 @@ fn build_provider(config: &Config) -> ProviderBuildStatus {
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    config: &MgstageProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    let id = normalize_mgstage_id(av_number).unwrap_or_else(|| av_number.trim().to_owned());
+    BrowserWorkerRenderDriftCase::new(
+        "mgstage-detail",
+        format!(
+            "{}/product/product_detail/{}/",
+            config.base_url.trim_end_matches('/'),
+            rendered_av::percent_encode(&id)
+        ),
+    )
+    .with_selector("h1, .product_title, .detail_title, .detail, .product_detail")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
 }
 
 #[derive(Clone, Debug)]

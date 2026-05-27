@@ -20,6 +20,7 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpResult, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        render_drift::BrowserWorkerRenderDriftCase,
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -201,6 +202,30 @@ pub(crate) fn build_provider(
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    site: &'static RenderedSearchAvSite,
+    config: &RenderedSearchAvProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    let av = facts_from_text(av_number, AvNumberSource::AvNumber).unwrap_or(AvQueryFacts {
+        number: av_number.trim().to_owned(),
+        route: AvNumberRoute::Unknown,
+        source: AvNumberSource::AvNumber,
+        search_terms: Vec::new(),
+    });
+
+    BrowserWorkerRenderDriftCase::new(
+        format!("{}-search", site.provider_id),
+        site.search_url(config, &av),
+    )
+    .with_selector("a[href], .item a[href], .video-item a[href], table a[href]")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
 }
 
 #[derive(Clone, Debug)]

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "slug": "official-browser-worker-render-drift-preset-wave2",
+  "title": "Official Browser Worker Render Drift Preset Wave2",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OBWRDW2",
+  "current_task": null,
+  "completed_tasks": [
+    "OBWRDW2-010",
+    "OBWRDW2-020",
+    "OBWRDW2-030"
+  ],
+  "problem": "More rendered AV providers need provider-owned Browser Worker live drift cases instead of hand-written operator JSON.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave2/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave2/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-browser-worker-render-drift-preset-wave2/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper render_drift --no-fail-fast",
+    "cargo run -q -p nako-metadata-scraper -- render-drift-cases",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "npm test",
+    "python -m json.tool docs/workstreams/official-browser-worker-render-drift-preset-wave2/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/render_drift.rs",
+    "crates/nako-metadata-scraper/src/providers/rendered_search_av.rs",
+    "crates/nako-metadata-scraper/src/providers/dmm.rs",
+    "crates/nako-metadata-scraper/src/providers/mgstage.rs",
+    "addons/browser-worker/README.md"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "close_when_gates_pass",
+    "notes": "Follow-ups should add remaining rendered providers or create an IMDb provider/recipe before adding IMDb presets."
+  }
+}
