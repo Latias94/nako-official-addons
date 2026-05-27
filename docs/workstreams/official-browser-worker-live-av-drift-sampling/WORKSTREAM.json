@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "slug": "official-browser-worker-live-av-drift-sampling",
+  "title": "Official Browser Worker Live AV Drift Sampling",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OBWLADS",
+  "current_task": null,
+  "completed_tasks": [
+    "OBWLADS-010",
+    "OBWLADS-020",
+    "OBWLADS-030",
+    "OBWLADS-040"
+  ],
+  "problem": "Generated rendered AV provider drift cases need real live sampling to reveal selector, proxy, age-gate, and regional behavior.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-browser-worker-live-av-drift-sampling/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-browser-worker-live-av-drift-sampling/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-browser-worker-live-av-drift-sampling/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo run -q -p nako-metadata-scraper -- render-drift-cases",
+    "npm --prefix addons/browser-worker run live:render-drift",
+    "cargo nextest run -p nako-metadata-scraper render_drift --no-fail-fast",
+    "npm test",
+    "python -m json.tool docs/workstreams/official-browser-worker-live-av-drift-sampling/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "addons/browser-worker/src/crawlee-render-adapter.mjs",
+    "addons/browser-worker/test/app.test.mjs",
+    "docs/workstreams/official-browser-worker-live-av-drift-sampling/EVIDENCE_AND_GATES.md"
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Follow-up should tune provider-specific live samples, selectors, and optional operator cookies for failing live cases."
+  }
+}

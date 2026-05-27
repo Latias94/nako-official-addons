@@ -80,6 +80,40 @@ test('render endpoint rejects non-http URLs before browser work', async () => {
   });
 });
 
+test('render endpoint reports blocked requests with redaction-safe failure class', async (t) => {
+  const targetServer = createServer((_request, response) => {
+    response.statusCode = 403;
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    response.end('<!doctype html><title>blocked sensitive page</title>');
+  });
+  await new Promise((resolve) => targetServer.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    await new Promise((resolve) => targetServer.close(resolve));
+  });
+  const targetAddress = targetServer.address();
+  assert.ok(targetAddress && typeof targetAddress === 'object');
+
+  const app = createApp();
+  await withApp(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        url: `http://127.0.0.1:${targetAddress.port}/SSNI-644`,
+        selector: '#secret-selector',
+      }),
+    });
+
+    assert.equal(response.status, 502);
+    const body = await response.json();
+    assert.equal(body.safe_error_code, 'render_request_blocked');
+    assert.equal(body.failure_kind, 'auth_or_forbidden');
+    const rendered = JSON.stringify(body);
+    assert.doesNotMatch(rendered, /SSNI-644/);
+    assert.doesNotMatch(rendered, /secret-selector/);
+  });
+});
+
 test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', () => {
   const options = normalizeRenderOptions({
     wait_for: { state: 'domcontentloaded', selector: '#status', timeout_ms: 1000 },

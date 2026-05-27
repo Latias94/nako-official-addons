@@ -13,6 +13,7 @@ import {
 
 process.env.CRAWLEE_STORAGE_DIR ??= path.join(os.tmpdir(), 'nako-browser-worker');
 process.env.CRAWLEE_PURGE_ON_START ??= 'true';
+process.env.CRAWLEE_LOG_LEVEL ??= 'OFF';
 
 const { PlaywrightCrawler, ProxyConfiguration, RequestList } = await import('crawlee');
 
@@ -37,6 +38,54 @@ function proxyConfigurationFor(options, env) {
   return new ProxyConfiguration({ proxyUrls });
 }
 
+function safeRenderErrorFromCrawlerError(error) {
+  if (error instanceof RenderWorkerError) {
+    return error;
+  }
+
+  const message = String(error?.message ?? '').toLowerCase();
+  if (message.includes('403') || message.includes('blocked')) {
+    return renderWorkerError({
+      message: 'Rendered page request was blocked',
+      safeErrorCode: 'render_request_blocked',
+      failureKind: 'auth_or_forbidden',
+      status: 502,
+      cause: error,
+    });
+  }
+  if (message.includes('timeout')) {
+    return renderWorkerError({
+      message: 'Rendered page request timed out',
+      safeErrorCode: 'render_timeout',
+      failureKind: 'render_timeout',
+      status: 502,
+      cause: error,
+    });
+  }
+  if (
+    message.includes('err_connection_closed')
+    || message.includes('err_tunnel_connection_failed')
+    || message.includes('err_proxy')
+    || message.includes('net::')
+  ) {
+    return renderWorkerError({
+      message: 'Rendered page network request failed',
+      safeErrorCode: 'render_network_failed',
+      failureKind: 'provider_error',
+      status: 502,
+      cause: error,
+    });
+  }
+
+  return renderWorkerError({
+    message: 'Rendered page browser execution failed',
+    safeErrorCode: 'render_browser_failed',
+    failureKind: 'browser_execution_failed',
+    status: 502,
+    cause: error,
+  });
+}
+
 export class CrawleeRenderAdapter {
   async renderPage({ url, options, env }) {
     const requestList = await RequestList.open(`nako-browser-worker-${randomUUID()}`, [
@@ -52,10 +101,12 @@ export class CrawleeRenderAdapter {
     const proxyConfiguration = proxyConfigurationFor(options, env);
     const useSessionPool = Boolean(options.sessionKey);
     const timeoutSecs = Math.ceil(options.renderTimeoutMs / 1000);
+    let failedCrawlerError = null;
 
     const crawler = new PlaywrightCrawler({
       requestList,
       maxRequestsPerCrawl: 1,
+      maxRequestRetries: 0,
       requestHandlerTimeoutSecs: timeoutSecs,
       navigationTimeoutSecs: timeoutSecs,
       ...(proxyConfiguration ? { proxyConfiguration } : {}),
@@ -70,6 +121,9 @@ export class CrawleeRenderAdapter {
         await runPageActions(page, options.actions);
         extracted = await extractRenderedSnapshot(page, request);
       },
+      failedRequestHandler(_context, error) {
+        failedCrawlerError = error;
+      },
     });
 
     try {
@@ -78,18 +132,13 @@ export class CrawleeRenderAdapter {
       if (error instanceof RenderWorkerError) {
         throw error;
       }
-      throw renderWorkerError({
-        message: 'Rendered page browser execution failed',
-        safeErrorCode: 'render_browser_failed',
-        failureKind: error.message?.toLowerCase().includes('timeout')
-          ? 'render_timeout'
-          : 'browser_execution_failed',
-        status: 502,
-        cause: error,
-      });
+      throw safeRenderErrorFromCrawlerError(error);
     }
 
     if (!extracted) {
+      if (failedCrawlerError) {
+        throw safeRenderErrorFromCrawlerError(failedCrawlerError);
+      }
       throw renderWorkerError({
         message: 'No rendered page was extracted',
         safeErrorCode: 'render_extraction_empty',

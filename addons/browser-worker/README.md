@@ -93,7 +93,8 @@ Error responses are redaction-safe. They keep the existing `error` and
 `safe_error_code` fields and also return `failure_kind`, for example
 `invalid_request`, `invalid_options`, `selector_timeout`, `action_failed`,
 `operator_action`, `render_timeout`, `browser_execution_failed`,
-`extraction_failed`, or `response_too_large`. They never include target URLs,
+`auth_or_forbidden`, `provider_error`, `extraction_failed`, or
+`response_too_large`. They never include target URLs,
 selectors, cookies, proxy URLs, or credentials.
 
 ## Local run
@@ -145,6 +146,9 @@ booleans, byte counts, HTTP status, `safe_error_code`, and `failure_kind`; they
 do not echo URLs, selectors, raw page text, headers, cookies, proxy URLs,
 credentials, or session keys. Set `NAKO_BROWSER_WORKER_PROXY_URL` or
 `NAKO_BROWSER_WORKER_PROXY_LIST` normally when a live case needs a proxy.
+Crawlee/Playwright third-party logs are disabled by default so failed live
+cases do not print target URLs; set `CRAWLEE_LOG_LEVEL` explicitly only for a
+local debugging session where URL disclosure is acceptable.
 
 The metadata scraper can generate provider-owned live case JSON for enabled
 rendered providers, so operators do not need to hand-write provider URLs or
