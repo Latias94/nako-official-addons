@@ -23,7 +23,7 @@ use crate::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig,
             ProviderHttpTransport, ReqwestProviderHttpTransport,
         },
-        registry::ProviderCatalogEntry,
+        registry::{ProviderCatalogEntry, ProviderDefaultFieldPreference},
         rendered_av,
     },
 };
@@ -73,6 +73,13 @@ const THEPORNDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &["file_phash"],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(10),
+    ProviderDefaultFieldPreference::outline(10),
+    ProviderDefaultFieldPreference::actors(10),
+    ProviderDefaultFieldPreference::thumb(10),
+    ProviderDefaultFieldPreference::poster(10),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -135,6 +142,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "theporndb_official_api",
         ],
         field_quality: ProviderFieldQualityDescriptor::new(700, 700, 750, 700),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             ThePornDbProviderConfig::secret_field_id(),
             "ThePornDB API Token",

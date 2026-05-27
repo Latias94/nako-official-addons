@@ -166,6 +166,7 @@ pub(crate) fn catalog_entry(
         enabled_env_var: site.enabled_env_var,
         capabilities: site.capabilities,
         field_quality: site.field_quality,
+        default_field_preferences: &[],
         secret_reference: None,
         external_id_capabilities,
         load_config,

@@ -106,6 +106,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: Default::default(),
+        default_field_preferences: &[],
         secret_reference: None,
         external_id_capabilities: DOUBAN_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

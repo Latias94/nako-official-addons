@@ -107,6 +107,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             BROWSER_WORKER_RENDERED_RECIPE_CAPABILITY,
         ],
         field_quality: Default::default(),
+        default_field_preferences: &[],
         secret_reference: None,
         external_id_capabilities: BROWSER_WORKER_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

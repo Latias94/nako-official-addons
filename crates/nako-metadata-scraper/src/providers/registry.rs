@@ -76,70 +76,131 @@ impl ProviderRenderedPageSupport {
     }
 }
 
-const DEFAULT_TITLE_PROVIDER_ORDER: &[&str] = &[
-    "theporndb",
-    "mgstage",
-    "dmm",
-    "javbus",
-    "jav321",
-    "javlibrary",
-];
-const DEFAULT_OUTLINE_PROVIDER_ORDER: &[&str] = &["theporndb", "dmm", "jav321"];
-const DEFAULT_ACTOR_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus", "javlibrary", "javdb"];
-const DEFAULT_THUMB_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
-const DEFAULT_POSTER_PROVIDER_ORDER: &[&str] = &["theporndb", "javbus"];
-const DEFAULT_EXTRAFANART_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_TRAILER_PROVIDER_ORDER: &[&str] = &["mgstage", "dmm"];
-const DEFAULT_TAG_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_RELEASE_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_RUNTIME_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_SCORE_PROVIDER_ORDER: &[&str] = &["jav321", "javlibrary", "javdb"];
-const DEFAULT_SCORE_VOTE_PROVIDER_ORDER: &[&str] = &["javlibrary", "javdb"];
-const DEFAULT_DIRECTOR_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_SERIES_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_STUDIO_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_PUBLISHER_PROVIDER_ORDER: &[&str] = &["javbus"];
-const DEFAULT_WANTED_PROVIDER_ORDER: &[&str] = &["javlibrary", "javdb"];
+const TITLE_FIELDS: &[&str] = &["title", "original_title", "sort_title"];
+const OUTLINE_FIELDS: &[&str] = &["overview", "outline", "tagline"];
+const TAG_FIELDS: &[&str] = &["genres", "tags", "tag"];
+const RELEASE_FIELDS: &[&str] = &["release_date", "release"];
+const RUNTIME_FIELDS: &[&str] = &["runtime_minutes", "runtime"];
+const DIRECTOR_FIELDS: &[&str] = &["directors", "director"];
+const SERIES_FIELDS: &[&str] = &["series"];
+const STUDIO_FIELDS: &[&str] = &["studio"];
+const PUBLISHER_FIELDS: &[&str] = &["publisher", "maker", "label"];
+const ACTOR_FIELDS: &[&str] = &["actors", "actor", "all_actors"];
+const WANTED_FIELDS: &[&str] = &["wanted_count", "wanted"];
+const SCORE_FIELDS: &[&str] = &["community_score_milli", "score"];
+const SCORE_VOTE_FIELDS: &[&str] = &["community_vote_count"];
+const THUMB_FIELDS: &[&str] = &["thumb_url", "thumb"];
+const POSTER_FIELDS: &[&str] = &["poster", "backdrop", "artwork"];
+const EXTRAFANART_FIELDS: &[&str] = &["extrafanart_urls", "extrafanart"];
+const TRAILER_FIELDS: &[&str] = &["trailer_url", "trailer"];
 
-const DEFAULT_FIELD_PROVIDER_PREFERENCES: &[(&str, &[&str])] = &[
-    ("title", DEFAULT_TITLE_PROVIDER_ORDER),
-    ("original_title", DEFAULT_TITLE_PROVIDER_ORDER),
-    ("sort_title", DEFAULT_TITLE_PROVIDER_ORDER),
-    ("overview", DEFAULT_OUTLINE_PROVIDER_ORDER),
-    ("outline", DEFAULT_OUTLINE_PROVIDER_ORDER),
-    ("tagline", DEFAULT_OUTLINE_PROVIDER_ORDER),
-    ("genres", DEFAULT_TAG_PROVIDER_ORDER),
-    ("tags", DEFAULT_TAG_PROVIDER_ORDER),
-    ("tag", DEFAULT_TAG_PROVIDER_ORDER),
-    ("release_date", DEFAULT_RELEASE_PROVIDER_ORDER),
-    ("release", DEFAULT_RELEASE_PROVIDER_ORDER),
-    ("runtime_minutes", DEFAULT_RUNTIME_PROVIDER_ORDER),
-    ("runtime", DEFAULT_RUNTIME_PROVIDER_ORDER),
-    ("directors", DEFAULT_DIRECTOR_PROVIDER_ORDER),
-    ("director", DEFAULT_DIRECTOR_PROVIDER_ORDER),
-    ("series", DEFAULT_SERIES_PROVIDER_ORDER),
-    ("studio", DEFAULT_STUDIO_PROVIDER_ORDER),
-    ("publisher", DEFAULT_PUBLISHER_PROVIDER_ORDER),
-    ("maker", DEFAULT_PUBLISHER_PROVIDER_ORDER),
-    ("label", DEFAULT_PUBLISHER_PROVIDER_ORDER),
-    ("actors", DEFAULT_ACTOR_PROVIDER_ORDER),
-    ("actor", DEFAULT_ACTOR_PROVIDER_ORDER),
-    ("all_actors", DEFAULT_ACTOR_PROVIDER_ORDER),
-    ("wanted_count", DEFAULT_WANTED_PROVIDER_ORDER),
-    ("wanted", DEFAULT_WANTED_PROVIDER_ORDER),
-    ("community_score_milli", DEFAULT_SCORE_PROVIDER_ORDER),
-    ("score", DEFAULT_SCORE_PROVIDER_ORDER),
-    ("community_vote_count", DEFAULT_SCORE_VOTE_PROVIDER_ORDER),
-    ("thumb_url", DEFAULT_THUMB_PROVIDER_ORDER),
-    ("thumb", DEFAULT_THUMB_PROVIDER_ORDER),
-    ("poster", DEFAULT_POSTER_PROVIDER_ORDER),
-    ("backdrop", DEFAULT_POSTER_PROVIDER_ORDER),
-    ("artwork", DEFAULT_POSTER_PROVIDER_ORDER),
-    ("extrafanart_urls", DEFAULT_EXTRAFANART_PROVIDER_ORDER),
-    ("extrafanart", DEFAULT_EXTRAFANART_PROVIDER_ORDER),
-    ("trailer_url", DEFAULT_TRAILER_PROVIDER_ORDER),
-    ("trailer", DEFAULT_TRAILER_PROVIDER_ORDER),
-];
+#[derive(Clone, Copy)]
+pub(crate) struct ProviderDefaultFieldPreference {
+    order: u16,
+    fields: &'static [&'static str],
+}
+
+impl ProviderDefaultFieldPreference {
+    #[must_use]
+    const fn new(order: u16, fields: &'static [&'static str]) -> Self {
+        Self { order, fields }
+    }
+
+    #[must_use]
+    pub(crate) const fn title(order: u16) -> Self {
+        Self::new(order, TITLE_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn outline(order: u16) -> Self {
+        Self::new(order, OUTLINE_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn tags(order: u16) -> Self {
+        Self::new(order, TAG_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn release(order: u16) -> Self {
+        Self::new(order, RELEASE_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn runtime(order: u16) -> Self {
+        Self::new(order, RUNTIME_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn directors(order: u16) -> Self {
+        Self::new(order, DIRECTOR_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn series(order: u16) -> Self {
+        Self::new(order, SERIES_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn studio(order: u16) -> Self {
+        Self::new(order, STUDIO_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn publisher(order: u16) -> Self {
+        Self::new(order, PUBLISHER_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn actors(order: u16) -> Self {
+        Self::new(order, ACTOR_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn wanted(order: u16) -> Self {
+        Self::new(order, WANTED_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn score(order: u16) -> Self {
+        Self::new(order, SCORE_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn score_votes(order: u16) -> Self {
+        Self::new(order, SCORE_VOTE_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn thumb(order: u16) -> Self {
+        Self::new(order, THUMB_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn poster(order: u16) -> Self {
+        Self::new(order, POSTER_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn extrafanart(order: u16) -> Self {
+        Self::new(order, EXTRAFANART_FIELDS)
+    }
+
+    #[must_use]
+    pub(crate) const fn trailer(order: u16) -> Self {
+        Self::new(order, TRAILER_FIELDS)
+    }
+
+    #[must_use]
+    fn order(self) -> u16 {
+        self.order
+    }
+
+    #[must_use]
+    fn fields(self) -> &'static [&'static str] {
+        self.fields
+    }
+}
 
 impl ProviderRegistry {
     #[must_use]
@@ -256,9 +317,39 @@ impl ProviderRegistry {
 
     #[must_use]
     fn default_av_provider_field_policy() -> ProviderFieldPolicy {
-        ProviderFieldPolicy::from_field_provider_preferences(
-            DEFAULT_FIELD_PROVIDER_PREFERENCES.iter().copied(),
-        )
+        let mut provider_preferences =
+            BTreeMap::<&'static str, Vec<(u16, usize, &'static str)>>::new();
+
+        for (catalog_index, entry) in Self::catalog().into_iter().enumerate() {
+            for preference in entry.default_field_preferences {
+                for field in preference.fields() {
+                    let providers = provider_preferences.entry(*field).or_default();
+                    if !providers
+                        .iter()
+                        .any(|(_, _, provider)| provider.eq_ignore_ascii_case(entry.id.as_str()))
+                    {
+                        providers.push((preference.order(), catalog_index, entry.id.as_str()));
+                    }
+                }
+            }
+        }
+
+        let preferences = provider_preferences
+            .into_iter()
+            .map(|(field, mut providers)| {
+                providers
+                    .sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+                (
+                    field,
+                    providers
+                        .into_iter()
+                        .map(|(_, _, provider)| provider)
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        ProviderFieldPolicy::from_field_provider_preferences(preferences)
     }
 
     #[must_use]
@@ -346,6 +437,7 @@ pub struct ProviderCatalogEntry {
     pub(crate) enabled_env_var: &'static str,
     pub(crate) capabilities: &'static [&'static str],
     pub(crate) field_quality: ProviderFieldQualityDescriptor,
+    pub(crate) default_field_preferences: &'static [ProviderDefaultFieldPreference],
     pub(crate) secret_reference: Option<AddonSecretReferenceFieldDeclaration>,
     pub(crate) external_id_capabilities: &'static [ProviderExternalIdCapability],
     pub(crate) load_config: for<'a> fn(ProviderConfigInput<'a>) -> ProviderConfig,

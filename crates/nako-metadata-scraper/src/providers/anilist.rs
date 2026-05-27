@@ -111,6 +111,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_ANILIST_ENABLED",
         capabilities: &["metadata_suggestion", "anime_search", "graphql_api"],
         field_quality: Default::default(),
+        default_field_preferences: &[],
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             AniListProviderConfig::secret_field_id(),
             "AniList Access Token",

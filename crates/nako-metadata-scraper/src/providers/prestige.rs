@@ -94,6 +94,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "prestige_official_api",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(650, 450, 650, 650),
+        default_field_preferences: &[],
         secret_reference: None,
         external_id_capabilities: PRESTIGE_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

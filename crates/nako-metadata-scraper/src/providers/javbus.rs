@@ -19,7 +19,9 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        registry::{
+            ProviderCatalogEntry, ProviderDefaultFieldPreference, ProviderRenderedPageSupport,
+        },
         render_drift::{
             BrowserWorkerRenderDriftAction, BrowserWorkerRenderDriftCase,
             BrowserWorkerRenderDriftWaitFor, DEFAULT_SAMPLE_AV_NUMBER,
@@ -62,6 +64,20 @@ const JAVBUS_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &[],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(40),
+    ProviderDefaultFieldPreference::tags(10),
+    ProviderDefaultFieldPreference::release(10),
+    ProviderDefaultFieldPreference::runtime(10),
+    ProviderDefaultFieldPreference::directors(10),
+    ProviderDefaultFieldPreference::series(10),
+    ProviderDefaultFieldPreference::studio(10),
+    ProviderDefaultFieldPreference::publisher(10),
+    ProviderDefaultFieldPreference::actors(20),
+    ProviderDefaultFieldPreference::thumb(20),
+    ProviderDefaultFieldPreference::poster(20),
+    ProviderDefaultFieldPreference::extrafanart(10),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -133,6 +149,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(400, 400, 400, 200),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             JavbusProviderConfig::secret_field_id(),
             "JavBus Cookie",

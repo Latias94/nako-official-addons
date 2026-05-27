@@ -114,6 +114,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
         enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED",
         capabilities: &["metadata_suggestion", "subject_search", "anime_search"],
         field_quality: Default::default(),
+        default_field_preferences: &[],
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             BangumiProviderConfig::secret_field_id(),
             "Bangumi Access Token",

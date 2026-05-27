@@ -20,7 +20,7 @@ use crate::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig,
             ProviderHttpTransport, ReqwestProviderHttpTransport,
         },
-        registry::ProviderCatalogEntry,
+        registry::{ProviderCatalogEntry, ProviderDefaultFieldPreference},
         rendered_av,
     },
 };
@@ -52,6 +52,11 @@ const JAV321_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &[],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(50),
+    ProviderDefaultFieldPreference::outline(30),
+    ProviderDefaultFieldPreference::score(10),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -103,6 +108,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "raw_html_parse",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(450, 550, 350, 250),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: None,
         external_id_capabilities: JAV321_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

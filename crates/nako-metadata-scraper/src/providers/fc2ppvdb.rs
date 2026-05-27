@@ -121,6 +121,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(430, 450, 450, 350),
+        default_field_preferences: &[],
         secret_reference: None,
         external_id_capabilities: FC2PPVDB_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

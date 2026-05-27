@@ -20,7 +20,9 @@ use crate::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
             ReqwestProviderHttpTransport,
         },
-        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        registry::{
+            ProviderCatalogEntry, ProviderDefaultFieldPreference, ProviderRenderedPageSupport,
+        },
         render_drift::{
             BrowserWorkerRenderDriftCase, DEFAULT_SAMPLE_AV_NUMBER,
             ProviderRenderDriftCaseDescriptor, RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER_ENV_VAR,
@@ -57,6 +59,13 @@ const JAVLIBRARY_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &[],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(60),
+    ProviderDefaultFieldPreference::actors(30),
+    ProviderDefaultFieldPreference::wanted(10),
+    ProviderDefaultFieldPreference::score(20),
+    ProviderDefaultFieldPreference::score_votes(10),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -132,6 +141,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(350, 600, 0, 0),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: None,
         external_id_capabilities: JAVLIBRARY_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

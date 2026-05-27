@@ -16,7 +16,9 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        registry::{
+            ProviderCatalogEntry, ProviderDefaultFieldPreference, ProviderRenderedPageSupport,
+        },
         render_drift::{
             BrowserWorkerRenderDriftCase, DEFAULT_SAMPLE_AV_NUMBER,
             ProviderRenderDriftCaseDescriptor, RENDER_DRIFT_SAMPLE_JAVDB_AV_NUMBER_ENV_VAR,
@@ -48,6 +50,12 @@ const JAVDB_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &["av_number"],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::actors(40),
+    ProviderDefaultFieldPreference::wanted(20),
+    ProviderDefaultFieldPreference::score(30),
+    ProviderDefaultFieldPreference::score_votes(20),
 ];
 
 fn javdb_search_url(base_url: &str, av_number: &str) -> String {
@@ -118,6 +126,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(500, 550, 500, 400),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: None,
         external_id_capabilities: JAVDB_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

@@ -20,7 +20,9 @@ use crate::{
             ProviderHttpResult, ProviderHttpRuntime, ProviderHttpTransport,
             ReqwestProviderHttpTransport,
         },
-        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        registry::{
+            ProviderCatalogEntry, ProviderDefaultFieldPreference, ProviderRenderedPageSupport,
+        },
         render_drift::{
             BrowserWorkerRenderDriftCase, DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER,
             ProviderRenderDriftCaseDescriptor, RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER_ENV_VAR,
@@ -57,6 +59,10 @@ const MGSTAGE_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &[],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(20),
+    ProviderDefaultFieldPreference::trailer(10),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -120,6 +126,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(550, 450, 550, 600),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: None,
         external_id_capabilities: MGSTAGE_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,

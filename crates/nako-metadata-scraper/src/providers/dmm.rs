@@ -17,7 +17,9 @@ use crate::{
     providers::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
-        registry::{ProviderCatalogEntry, ProviderRenderedPageSupport},
+        registry::{
+            ProviderCatalogEntry, ProviderDefaultFieldPreference, ProviderRenderedPageSupport,
+        },
         render_drift::{
             BrowserWorkerRenderDriftCase, DEFAULT_SAMPLE_AV_NUMBER,
             ProviderRenderDriftCaseDescriptor, RENDER_DRIFT_SAMPLE_DMM_AV_NUMBER_ENV_VAR,
@@ -61,6 +63,11 @@ const DMM_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
         &[],
         false,
     ),
+];
+const DEFAULT_FIELD_PREFERENCES: &[ProviderDefaultFieldPreference] = &[
+    ProviderDefaultFieldPreference::title(30),
+    ProviderDefaultFieldPreference::outline(20),
+    ProviderDefaultFieldPreference::trailer(20),
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -134,6 +141,7 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(600, 500, 600, 500),
+        default_field_preferences: DEFAULT_FIELD_PREFERENCES,
         secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
             DmmProviderConfig::secret_field_id(),
             "DMM Cookie",
