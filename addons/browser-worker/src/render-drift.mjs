@@ -1,6 +1,8 @@
 const SUITE_SCHEMA = 'nako.browser-worker.render-drift.suite.v1';
 const CASE_SCHEMA = 'nako.browser-worker.render-drift.case-health.v1';
 const CASE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,80}$/;
+const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+const ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -115,7 +117,42 @@ function normalizeWaitFor(value, selector, timeoutMs) {
   };
 }
 
-function normalizeRenderDriftCase(value, index) {
+function normalizeHeadersFromEnv(value, env) {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('render drift headers_from_env must be an object');
+  }
+
+  const headers = {};
+  for (const [rawName, rawEnvVar] of Object.entries(value)) {
+    const name = nonEmpty(rawName)?.toLowerCase();
+    const envVar = nonEmpty(rawEnvVar);
+    if (!name || !HEADER_NAME_PATTERN.test(name) || !envVar || !ENV_VAR_NAME_PATTERN.test(envVar)) {
+      throw new Error('render drift headers_from_env has an invalid header or env var');
+    }
+
+    const envValue = nonEmpty(env[envVar]);
+    if (envValue) {
+      headers[name] = envValue;
+    }
+  }
+  return headers;
+}
+
+function normalizeLiteralHeaders(value) {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('render drift headers must be an object');
+  }
+
+  return value;
+}
+
+function normalizeRenderDriftCase(value, index, env) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`render drift case ${index} must be an object`);
   }
@@ -136,6 +173,10 @@ function normalizeRenderDriftCase(value, index) {
     undefined,
   );
   const waitFor = normalizeWaitFor(value.wait_for ?? value.waitFor, selector, selectorTimeoutMs);
+  const headers = {
+    ...normalizeLiteralHeaders(value.headers),
+    ...normalizeHeadersFromEnv(value.headers_from_env ?? value.headersFromEnv, env),
+  };
 
   const requestBody = {
     url,
@@ -155,7 +196,7 @@ function normalizeRenderDriftCase(value, index) {
       : value.sessionKey !== undefined
         ? { session_key: value.sessionKey }
         : {}),
-    ...(value.headers !== undefined ? { headers: value.headers } : {}),
+    ...(Object.keys(headers).length ? { headers } : {}),
     ...(value.actions !== undefined ? { actions: value.actions } : {}),
   };
 
@@ -172,14 +213,14 @@ function normalizeRenderDriftCase(value, index) {
   };
 }
 
-export function parseRenderDriftCases(value) {
+export function parseRenderDriftCases(value, env = process.env) {
   if (!nonEmpty(value)) {
     return [];
   }
 
   const parsed = parseJson(value, 'NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES');
   const cases = Array.isArray(parsed) ? parsed : [parsed];
-  return cases.map(normalizeRenderDriftCase);
+  return cases.map((caseDef, index) => normalizeRenderDriftCase(caseDef, index, env));
 }
 
 export function renderDriftCasesFromEnv(env = process.env, { baseUrl }) {
@@ -190,7 +231,7 @@ export function renderDriftCasesFromEnv(env = process.env, { baseUrl }) {
   }
 
   if (liveRenderDriftEnabled(env)) {
-    cases.push(...parseRenderDriftCases(env.NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES));
+    cases.push(...parseRenderDriftCases(env.NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES, env));
   }
 
   return cases;

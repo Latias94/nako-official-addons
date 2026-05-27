@@ -49,7 +49,7 @@ impl RenderedPageSupportConfig {
         url: impl Into<String>,
     ) -> RenderedPageIntent {
         self.intent_defaults
-            .apply(RenderedPageIntent::new(path, url))
+            .apply(RenderedPageIntent::new(path, url).with_render_timeout_ms(self.timeout_ms))
     }
 
     #[must_use]
@@ -132,6 +132,7 @@ pub(crate) struct RenderedPageIntent {
     wait_for: Option<RenderedPageWaitFor>,
     proxy_policy: Option<RenderedPageProxyPolicy>,
     session_key: Option<String>,
+    render_timeout_ms: Option<u64>,
     headers: Vec<(String, String)>,
     actions: Vec<RenderedPageAction>,
 }
@@ -145,6 +146,7 @@ impl RenderedPageIntent {
             wait_for: None,
             proxy_policy: None,
             session_key: None,
+            render_timeout_ms: None,
             headers: Vec::new(),
             actions: Vec::new(),
         }
@@ -178,6 +180,14 @@ impl RenderedPageIntent {
         if !name.trim().is_empty() && !value.trim().is_empty() {
             self.headers
                 .push((name.trim().to_ascii_lowercase(), value.trim().to_owned()));
+        }
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_render_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        if timeout_ms > 0 {
+            self.render_timeout_ms = Some(timeout_ms);
         }
         self
     }
@@ -428,6 +438,8 @@ struct RenderedPageRequest {
     proxy_policy: Option<RenderedPageProxyPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
     session_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    render_timeout_ms: Option<u64>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     headers: BTreeMap<String, String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -441,6 +453,7 @@ impl From<RenderedPageIntent> for RenderedPageRequest {
             wait_for: intent.wait_for,
             proxy_policy: intent.proxy_policy,
             session_key: intent.session_key,
+            render_timeout_ms: intent.render_timeout_ms,
             headers: intent.headers.into_iter().collect(),
             actions: intent.actions,
         }
@@ -724,7 +737,8 @@ mod tests {
                     "timeout_ms": 2000
                 },
                 "proxy_policy": "direct",
-                "session_key": "operator-session"
+                "session_key": "operator-session",
+                "render_timeout_ms": 10000
             })
         );
     }

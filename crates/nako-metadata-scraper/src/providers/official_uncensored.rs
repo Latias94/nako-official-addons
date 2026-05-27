@@ -19,7 +19,10 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpResult, ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
-        render_drift::BrowserWorkerRenderDriftCase,
+        render_drift::{
+            BrowserWorkerRenderDriftCase, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
+            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
+        },
         rendered_av,
         rendered_page::{RenderedHtmlPage, RenderedPageRuntime, RenderedPageSupportConfig},
     },
@@ -33,7 +36,7 @@ pub struct OfficialUncensoredProviderConfig {
 }
 
 impl OfficialUncensoredProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+    pub const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
     #[must_use]
     pub(crate) fn new(
@@ -97,6 +100,7 @@ pub(crate) struct OfficialUncensoredSite {
 pub(crate) enum OfficialUncensoredDetailPath {
     CaribbeanMoviepages,
     Movies,
+    MoviesDirectory,
 }
 
 impl OfficialUncensoredSite {
@@ -117,20 +121,27 @@ impl OfficialUncensoredSite {
                 config.base_url.trim_end_matches('/'),
                 rendered_av::percent_encode(&site_number)
             ),
+            OfficialUncensoredDetailPath::MoviesDirectory => format!(
+                "{}/movies/{}/",
+                config.base_url.trim_end_matches('/'),
+                rendered_av::percent_encode(&site_number)
+            ),
         }
     }
 
     pub(crate) fn site_number(self, av_number: &str) -> String {
         match self.detail_path {
             OfficialUncensoredDetailPath::CaribbeanMoviepages => av_number.replace('_', "-"),
-            OfficialUncensoredDetailPath::Movies => av_number.replace('-', "_"),
+            OfficialUncensoredDetailPath::Movies
+            | OfficialUncensoredDetailPath::MoviesDirectory => av_number.replace('-', "_"),
         }
     }
 
     fn url_number(self, detail_url: &str) -> Option<String> {
         let marker = match self.detail_path {
             OfficialUncensoredDetailPath::CaribbeanMoviepages => "/moviepages/",
-            OfficialUncensoredDetailPath::Movies => "/movies/",
+            OfficialUncensoredDetailPath::Movies
+            | OfficialUncensoredDetailPath::MoviesDirectory => "/movies/",
         };
         let start = detail_url.find(marker)? + marker.len();
         let rest = &detail_url[start..];
@@ -203,13 +214,22 @@ pub(crate) fn render_drift_case(
     config: &OfficialUncensoredProviderConfig,
     av_number: &str,
 ) -> BrowserWorkerRenderDriftCase {
+    let render_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS);
+    let selector_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS);
     BrowserWorkerRenderDriftCase::new(
         format!("{}-detail", site.provider_id),
         site.detail_url(config, av_number),
     )
     .with_selector("article, main, .movie-info, .detail, .info, h1, h2")
+    .with_selector_timeout_ms(selector_timeout_ms)
     .with_rendered_page_defaults(&config.rendered_pages)
-    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_render_timeout_ms(render_timeout_ms)
     .with_min_text_bytes(100)
     .with_min_html_bytes(500)
 }
@@ -761,7 +781,7 @@ mod tests {
     async fn official_1pondo_provider_uses_browser_worker_render_contract_for_uncensored_detail() {
         let transport = RenderedAvFixtureTransport::new(ONEPONDO_SITE.provider_id);
         transport.push_rendered_html(
-            "https://1pondo.example/movies/010116_001/index.html",
+            "https://1pondo.example/movies/010116_001/",
             "010116_001 Official Uncensored Title",
             &detail_html("010116_001 Official Uncensored Title"),
         );
@@ -781,14 +801,11 @@ mod tests {
             "1pondo",
             "1pondo:movie:010116_001",
             "010116_001",
-            "https://1pondo.example/movies/010116_001/index.html",
+            "https://1pondo.example/movies/010116_001/",
             ProviderOutcome::OnePondoRenderedHtmlParsed,
         );
         let body = request_json_body(&transport.requests()[0]);
-        assert_eq!(
-            body["url"],
-            "https://1pondo.example/movies/010116_001/index.html"
-        );
+        assert_eq!(body["url"], "https://1pondo.example/movies/010116_001/");
     }
 
     #[tokio::test]

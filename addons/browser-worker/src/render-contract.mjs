@@ -3,6 +3,8 @@ import { normalizeRenderUrl, renderSafetyPolicyFromEnv, byteLength } from './ren
 
 const DEFAULT_WAIT_STATE = 'networkidle';
 const ALLOWED_WAIT_STATES = new Set(['load', 'domcontentloaded', 'networkidle']);
+const DEFAULT_SELECTOR_STATE = 'attached';
+const ALLOWED_SELECTOR_STATES = new Set(['attached', 'visible']);
 const ALLOWED_PROXY_POLICIES = new Set(['default', 'direct', 'required']);
 const ALLOWED_ACTION_TYPES = new Set(['check', 'click']);
 const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
@@ -27,13 +29,19 @@ function normalizeWaitFor(value) {
   }
 
   const selector = nonEmpty(value.selector);
-  const timeoutMs = Number.isInteger(value.timeout_ms) && value.timeout_ms > 0
-    ? value.timeout_ms
+  const timeoutInput = value.timeout_ms ?? value.timeoutMs;
+  const timeoutMs = Number.isInteger(timeoutInput) && timeoutInput > 0
+    ? timeoutInput
     : undefined;
+  const selectorState = nonEmpty(value.selector_state ?? value.selectorState)?.toLowerCase()
+    ?? DEFAULT_SELECTOR_STATE;
+  if (selector && !ALLOWED_SELECTOR_STATES.has(selectorState)) {
+    return null;
+  }
 
   return {
     state,
-    ...(selector ? { selector } : {}),
+    ...(selector ? { selector, selectorState } : {}),
     ...(timeoutMs ? { timeoutMs } : {}),
   };
 }

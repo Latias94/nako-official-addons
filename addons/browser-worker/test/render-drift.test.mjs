@@ -42,11 +42,15 @@ test('render drift cases parse live JSON only when explicitly enabled', () => {
           url: 'https://sensitive.example/SSNI-644',
           selector: '#movie',
           selector_timeout_ms: 1500,
+          headers_from_env: {
+            cookie: 'NAKO_TEST_JAVBUS_COOKIE',
+          },
           proxy_policy: 'required',
           min_text_bytes: 100,
           min_html_bytes: 500,
         },
       ]),
+      NAKO_TEST_JAVBUS_COOKIE: 'age=verified',
     },
     { baseUrl: 'http://127.0.0.1:3000' },
   );
@@ -63,6 +67,9 @@ test('render drift cases parse live JSON only when explicitly enabled', () => {
         timeout_ms: 1500,
       },
       proxy_policy: 'required',
+      headers: {
+        cookie: 'age=verified',
+      },
     },
     selectorRequired: true,
     minHtmlBytes: 500,
@@ -84,7 +91,11 @@ test('render drift failure reports never echo target URL or selector', async () 
       id: 'sensitive-case',
       url: 'https://sensitive.example/SSNI-644',
       selector: '#movie',
+      headers_from_env: {
+        cookie: 'NAKO_TEST_SECRET_COOKIE',
+      },
     }),
+    { NAKO_TEST_SECRET_COOKIE: 'age=verified' },
   );
 
   const report = await runRenderDriftCase(caseDef, {
@@ -106,6 +117,7 @@ test('render drift failure reports never echo target URL or selector', async () 
   assert.doesNotMatch(rendered, /sensitive\.example/);
   assert.doesNotMatch(rendered, /SSNI-644/);
   assert.doesNotMatch(rendered, /#movie/);
+  assert.doesNotMatch(rendered, /age=verified/);
 });
 
 test('render drift suite passes the default fixture through the worker app', async () => {

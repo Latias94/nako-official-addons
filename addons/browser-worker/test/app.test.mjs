@@ -100,7 +100,7 @@ test('render endpoint reports blocked requests with redaction-safe failure class
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         url: `http://127.0.0.1:${targetAddress.port}/SSNI-644`,
-        selector: '#secret-selector',
+        wait_for: { state: 'domcontentloaded', selector: '#secret-selector' },
       }),
     });
 
@@ -116,7 +116,7 @@ test('render endpoint reports blocked requests with redaction-safe failure class
 
 test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', () => {
   const options = normalizeRenderOptions({
-    wait_for: { state: 'domcontentloaded', selector: '#status', timeout_ms: 1000 },
+    wait_for: { state: 'domcontentloaded', selector: '#status', timeoutMs: 1000 },
     session_key: 'javdb:ssni-644',
     proxy_policy: 'required',
     headers: {
@@ -128,7 +128,7 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
         type: 'click',
         selector: '#ageVerify #submit',
         optional: true,
-        wait_for: { state: 'domcontentloaded', timeout_ms: 2000 },
+        wait_for: { state: 'domcontentloaded', timeoutMs: 2000 },
       },
     ],
   });
@@ -137,6 +137,7 @@ test('normalizeRenderOptions accepts wait, session, and proxy policy aliases', (
     waitFor: {
       state: 'domcontentloaded',
       selector: '#status',
+      selectorState: 'attached',
       timeoutMs: 1000,
     },
     proxyPolicy: 'required',

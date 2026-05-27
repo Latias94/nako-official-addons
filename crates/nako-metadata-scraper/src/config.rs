@@ -1101,7 +1101,8 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(dmm.render_path, "/render");
-        assert_eq!(dmm.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(dmm.rendered_pages.timeout_ms, 30_000);
+        assert_eq!(dmm.cookie.as_deref(), Some("age_check_done=1"));
         let xcity_provider = config.provider_config(ProviderId::Xcity).unwrap();
         assert!(!xcity_provider.enabled);
         let xcity = xcity_provider.xcity_config().unwrap();
@@ -1121,7 +1122,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(fc2.render_path, "/render");
-        assert_eq!(fc2.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(fc2.rendered_pages.timeout_ms, 60_000);
         let fc2ppvdb_provider = config.provider_config(ProviderId::Fc2ppvdb).unwrap();
         assert!(!fc2ppvdb_provider.enabled);
         let fc2ppvdb = fc2ppvdb_provider.fc2ppvdb_config().unwrap();
@@ -1141,7 +1142,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(caribbean.render_path, "/render");
-        assert_eq!(caribbean.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(caribbean.rendered_pages.timeout_ms, 60_000);
         let onepondo_provider = config.provider_config(ProviderId::OnePondo).unwrap();
         assert!(!onepondo_provider.enabled);
         let onepondo = onepondo_provider.onepondo_config().unwrap();
@@ -1151,7 +1152,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(onepondo.render_path, "/render");
-        assert_eq!(onepondo.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(onepondo.rendered_pages.timeout_ms, 60_000);
         let tenmusume_provider = config.provider_config(ProviderId::TenMusume).unwrap();
         assert!(!tenmusume_provider.enabled);
         let tenmusume = tenmusume_provider.tenmusume_config().unwrap();
@@ -1161,7 +1162,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(tenmusume.render_path, "/render");
-        assert_eq!(tenmusume.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(tenmusume.rendered_pages.timeout_ms, 60_000);
         let jav321_provider = config.provider_config(ProviderId::Jav321).unwrap();
         assert!(!jav321_provider.enabled);
         let jav321 = jav321_provider.jav321_config().unwrap();
@@ -1177,7 +1178,7 @@ mod tests {
             "http://nako-browser-worker:3000"
         );
         assert_eq!(javbus.render_path, "/render");
-        assert_eq!(javbus.rendered_pages.timeout_ms, 10_000);
+        assert_eq!(javbus.rendered_pages.timeout_ms, 30_000);
         let javlibrary_provider = config.provider_config(ProviderId::Javlibrary).unwrap();
         assert!(!javlibrary_provider.enabled);
         let javlibrary = javlibrary_provider.javlibrary_config().unwrap();
@@ -1346,6 +1347,7 @@ mod tests {
             "NAKO_METADATA_SCRAPER_JAVDB_TIMEOUT_MS" => Some("5500".to_owned()),
             "NAKO_METADATA_SCRAPER_DMM_BASE_URL" => Some("https://dmm.example".to_owned()),
             "NAKO_METADATA_SCRAPER_DMM_TIMEOUT_MS" => Some("3500".to_owned()),
+            "NAKO_METADATA_SCRAPER_DMM_COOKIE" => Some(" custom_dmm_cookie=1 ".to_owned()),
             "NAKO_METADATA_SCRAPER_XCITY_BASE_URL" => Some("https://xcity.example".to_owned()),
             "NAKO_METADATA_SCRAPER_XCITY_TIMEOUT_MS" => Some("3600".to_owned()),
             "NAKO_METADATA_SCRAPER_FC2_BASE_URL" => Some("https://fc2.example".to_owned()),
@@ -1515,6 +1517,7 @@ mod tests {
         );
         assert_eq!(dmm.render_path, "/render");
         assert_eq!(dmm.rendered_pages.timeout_ms, 3500);
+        assert_eq!(dmm.cookie.as_deref(), Some("custom_dmm_cookie=1"));
         assert!(config.provider_enabled(ProviderId::Xcity));
         let xcity = config
             .provider_config(ProviderId::Xcity)

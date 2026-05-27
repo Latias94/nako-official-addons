@@ -123,7 +123,9 @@ npm run live:render-drift
 Set `NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT=1` to add live cases through
 `NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES`. The value is JSON, either one
 object or an array. Each case accepts the same render request controls as
-`POST /render`, plus health thresholds:
+`POST /render`, plus health thresholds. `selector` waits for an element to be
+attached to the DOM by default, which is the safer scrape health signal for
+pages whose result links are parseable but not visibly laid out.
 
 ```bash
 NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT=1 \
@@ -132,6 +134,7 @@ NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES='[
     "id": "provider-detail-sample",
     "url": "https://example.test/detail",
     "selector": "#movie",
+    "selector_timeout_ms": 15000,
     "proxy_policy": "default",
     "render_timeout_ms": 30000,
     "min_text_bytes": 100,
@@ -139,6 +142,20 @@ NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES='[
   }
 ]' \
 npm run live:render-drift
+```
+
+Live cases can reference sensitive headers through environment variables
+without storing the values in case JSON:
+
+```json
+{
+  "id": "provider-cookie-sample",
+  "url": "https://example.test/detail",
+  "selector": "#movie",
+  "headers_from_env": {
+    "cookie": "NAKO_METADATA_SCRAPER_PROVIDER_COOKIE"
+  }
+}
 ```
 
 Reports are intentionally redaction-safe. They include case id, source,
@@ -159,6 +176,7 @@ $env:NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER = 'SSNI-644'
+$env:NAKO_METADATA_SCRAPER_DMM_COOKIE = 'age_check_done=1'
 $cases = cargo run -q -p nako-metadata-scraper -- render-drift-cases
 
 $env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT = '1'
@@ -186,8 +204,10 @@ uncensored sites use
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER`,
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER`, and
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER`. Safe render
-defaults such as `proxy_policy` are emitted; session keys, cookies, and header
-values are not.
+defaults such as `proxy_policy` are emitted. Session keys, cookies, and header
+values are not emitted; cookie-aware cases emit `headers_from_env` references
+such as `NAKO_METADATA_SCRAPER_DMM_COOKIE` or
+`NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` instead.
 
 ## Test
 

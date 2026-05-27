@@ -31,7 +31,7 @@ pub(crate) const ONEPONDO_SITE: OfficialUncensoredSite = OfficialUncensoredSite 
         "browser_worker_rendered_html",
     ],
     field_quality: crate::engine::ProviderFieldQualityDescriptor::new(620, 400, 620, 620),
-    detail_path: OfficialUncensoredDetailPath::Movies,
+    detail_path: OfficialUncensoredDetailPath::MoviesDirectory,
     outcome: crate::engine::ProviderOutcome::OnePondoRenderedHtmlParsed,
     tagline: "1Pondo uncensored AV title",
 };

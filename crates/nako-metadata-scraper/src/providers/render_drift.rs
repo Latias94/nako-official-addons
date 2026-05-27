@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 
 use crate::{
@@ -44,9 +46,13 @@ pub const RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR: &str =
 
 const DEFAULT_SAMPLE_AV_NUMBER: &str = "SSNI-644";
 const DEFAULT_SAMPLE_FC2_AV_NUMBER: &str = "FC2-1723984";
-const DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER: &str = "010116-001";
+const DEFAULT_SAMPLE_CARIBBEAN_AV_NUMBER: &str = "052226-001";
+const DEFAULT_SAMPLE_1PONDO_AV_NUMBER: &str = "080616_355";
+const DEFAULT_SAMPLE_10MUSUME_AV_NUMBER: &str = "010116_001";
 const DEFAULT_SAMPLE_DOUBAN_TITLE: &str = "千与千寻";
 const DEFAULT_SAMPLE_MGSTAGE_AV_NUMBER: &str = "300MIUM-382";
+pub(crate) const SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS: u64 = 30_000;
+pub(crate) const SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS: u64 = 15_000;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BrowserWorkerRenderDriftCase {
@@ -55,10 +61,14 @@ pub struct BrowserWorkerRenderDriftCase {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub selector: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub selector_timeout_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub proxy_policy: Option<BrowserWorkerRenderDriftProxyPolicy>,
     pub render_timeout_ms: u64,
     pub min_text_bytes: usize,
     pub min_html_bytes: usize,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub headers_from_env: BTreeMap<String, String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<BrowserWorkerRenderDriftAction>,
 }
@@ -70,10 +80,12 @@ impl BrowserWorkerRenderDriftCase {
             id: id.into(),
             url: url.into(),
             selector: None,
+            selector_timeout_ms: None,
             proxy_policy: None,
             render_timeout_ms: 10_000,
             min_text_bytes: 1,
             min_html_bytes: 1,
+            headers_from_env: BTreeMap::new(),
             actions: Vec::new(),
         }
     }
@@ -81,6 +93,14 @@ impl BrowserWorkerRenderDriftCase {
     #[must_use]
     pub(crate) fn with_selector(mut self, selector: impl Into<String>) -> Self {
         self.selector = Some(selector.into());
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_selector_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        if timeout_ms > 0 {
+            self.selector_timeout_ms = Some(timeout_ms);
+        }
         self
     }
 
@@ -112,6 +132,21 @@ impl BrowserWorkerRenderDriftCase {
     #[must_use]
     pub(crate) fn with_min_html_bytes(mut self, min_html_bytes: usize) -> Self {
         self.min_html_bytes = min_html_bytes;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_header_from_env(
+        mut self,
+        name: impl Into<String>,
+        env_var: impl Into<String>,
+    ) -> Self {
+        let name = name.into();
+        let env_var = env_var.into();
+        if !name.trim().is_empty() && !env_var.trim().is_empty() {
+            self.headers_from_env
+                .insert(name.trim().to_ascii_lowercase(), env_var.trim().to_owned());
+        }
         self
     }
 
@@ -293,17 +328,17 @@ pub fn browser_worker_render_drift_cases_from_lookup(
     let sample_caribbean_av_number = sample_av_number_with_default(
         lookup(RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER_ENV_VAR),
         None,
-        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+        DEFAULT_SAMPLE_CARIBBEAN_AV_NUMBER,
     );
     let sample_1pondo_av_number = sample_av_number_with_default(
         lookup(RENDER_DRIFT_SAMPLE_1PONDO_AV_NUMBER_ENV_VAR),
-        Some(&sample_caribbean_av_number),
-        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+        None,
+        DEFAULT_SAMPLE_1PONDO_AV_NUMBER,
     );
     let sample_10musume_av_number = sample_av_number_with_default(
         lookup(RENDER_DRIFT_SAMPLE_10MUSUME_AV_NUMBER_ENV_VAR),
-        Some(&sample_caribbean_av_number),
-        DEFAULT_SAMPLE_UNCENSORED_AV_NUMBER,
+        None,
+        DEFAULT_SAMPLE_10MUSUME_AV_NUMBER,
     );
 
     let mut cases = Vec::new();
@@ -523,10 +558,14 @@ mod tests {
                     "id": "javbus-detail",
                     "url": "https://javbus.example/ABP-123",
                     "selector": "h3, .info, #movie, .movie",
+                    "selector_timeout_ms": 30000,
                     "proxy_policy": "required",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 30000,
                     "min_text_bytes": 100,
                     "min_html_bytes": 500,
+                    "headers_from_env": {
+                        "cookie": "NAKO_METADATA_SCRAPER_JAVBUS_COOKIE"
+                    },
                     "actions": [
                         {
                             "type": "check",
@@ -539,7 +578,7 @@ mod tests {
                             "optional": true,
                             "wait_for": {
                                 "state": "domcontentloaded",
-                                "timeout_ms": 10000
+                                "timeout_ms": 30000
                             }
                         }
                     ]
@@ -593,10 +632,14 @@ mod tests {
                     "id": "dmm-search",
                     "url": "https://dmm.example/search/=/searchstr=ABP-123/",
                     "selector": "a[href*=\"cid=\"]",
+                    "selector_timeout_ms": 30000,
                     "proxy_policy": "direct",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 30000,
                     "min_text_bytes": 100,
-                    "min_html_bytes": 500
+                    "min_html_bytes": 500,
+                    "headers_from_env": {
+                        "cookie": "NAKO_METADATA_SCRAPER_DMM_COOKIE"
+                    }
                 },
                 {
                     "id": "xcity-search",
@@ -712,8 +755,9 @@ mod tests {
                     "id": "fc2-detail",
                     "url": "https://fc2.example/article/1723984/",
                     "selector": "h1, .items_article_info, .items_article_HeadInfo",
+                    "selector_timeout_ms": 60000,
                     "proxy_policy": "required",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 60000,
                     "min_text_bytes": 100,
                     "min_html_bytes": 500
                 },
@@ -730,17 +774,19 @@ mod tests {
                     "id": "caribbean-detail",
                     "url": "https://caribbean.example/moviepages/010116-001/index.html",
                     "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "selector_timeout_ms": 60000,
                     "proxy_policy": "required",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 60000,
                     "min_text_bytes": 100,
                     "min_html_bytes": 500
                 },
                 {
                     "id": "1pondo-detail",
-                    "url": "https://1pondo.example/movies/010116_002/index.html",
+                    "url": "https://1pondo.example/movies/010116_002/",
                     "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "selector_timeout_ms": 60000,
                     "proxy_policy": "required",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 60000,
                     "min_text_bytes": 100,
                     "min_html_bytes": 500
                 },
@@ -748,8 +794,9 @@ mod tests {
                     "id": "10musume-detail",
                     "url": "https://10musume.example/movies/010116_03/index.html",
                     "selector": "article, main, .movie-info, .detail, .info, h1, h2",
+                    "selector_timeout_ms": 60000,
                     "proxy_policy": "required",
-                    "render_timeout_ms": 10000,
+                    "render_timeout_ms": 60000,
                     "min_text_bytes": 100,
                     "min_html_bytes": 500
                 }
@@ -784,12 +831,9 @@ mod tests {
         assert_eq!(cases[0].url, "https://fc2.example/article/1723984/");
         assert_eq!(
             cases[1].url,
-            "https://caribbean.example/moviepages/010116-001/index.html"
+            "https://caribbean.example/moviepages/052226-001/index.html"
         );
-        assert_eq!(
-            cases[2].url,
-            "https://1pondo.example/movies/010116_001/index.html"
-        );
+        assert_eq!(cases[2].url, "https://1pondo.example/movies/080616_355/");
         assert_eq!(
             cases[3].url,
             "https://10musume.example/movies/010116_001/index.html"

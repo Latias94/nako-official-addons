@@ -13,6 +13,7 @@ export async function waitForPage(page, waitFor) {
   if (waitFor.selector) {
     try {
       await page.waitForSelector(waitFor.selector, {
+        state: waitFor.selectorState ?? 'attached',
         timeout: waitFor.timeoutMs ?? 5000,
       });
     } catch (error) {

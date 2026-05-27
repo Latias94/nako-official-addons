@@ -17,7 +17,10 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
-        render_drift::BrowserWorkerRenderDriftCase,
+        render_drift::{
+            BrowserWorkerRenderDriftCase, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
+            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
+        },
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
@@ -59,7 +62,7 @@ pub struct Fc2ProviderConfig {
 }
 
 impl Fc2ProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+    pub const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
     #[must_use]
     pub(crate) fn new(
@@ -148,10 +151,19 @@ pub(crate) fn render_drift_case(
 ) -> BrowserWorkerRenderDriftCase {
     let article_id = parser::article_id_from_av_number(av_number)
         .unwrap_or_else(|| av_number.trim().trim_start_matches("FC2-").to_owned());
+    let render_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS);
+    let selector_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS);
     BrowserWorkerRenderDriftCase::new("fc2-detail", fc2_detail_url(&config.base_url, &article_id))
         .with_selector("h1, .items_article_info, .items_article_HeadInfo")
+        .with_selector_timeout_ms(selector_timeout_ms)
         .with_rendered_page_defaults(&config.rendered_pages)
-        .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+        .with_render_timeout_ms(render_timeout_ms)
         .with_min_text_bytes(100)
         .with_min_html_bytes(500)
 }

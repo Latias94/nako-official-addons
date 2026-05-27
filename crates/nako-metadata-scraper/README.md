@@ -330,6 +330,7 @@ $env:NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED = 'true'
 $env:NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER = 'SSNI-644'
+$env:NAKO_METADATA_SCRAPER_DMM_COOKIE = 'age_check_done=1'
 cargo run -q -p nako-metadata-scraper -- render-drift-cases
 ```
 
@@ -343,8 +344,10 @@ sample variables such as
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_MGSTAGE_AV_NUMBER`,
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_FC2_AV_NUMBER`, or
 `NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_CARIBBEAN_AV_NUMBER`. Safe render
-defaults such as `proxy_policy` are emitted; session keys, cookies, and header
-values are not.
+defaults such as `proxy_policy` are emitted. Session keys, cookies, and header
+values are not emitted; cookie-aware cases emit `headers_from_env` references
+such as `NAKO_METADATA_SCRAPER_DMM_COOKIE` or
+`NAKO_METADATA_SCRAPER_JAVBUS_COOKIE` instead.
 
 Version `0.1.0-alpha.2` targets Nako Addon Protocol `0.1.0-alpha.1` and
 `nako-addon-protocol` Rust crate `0.1.0-alpha.2`.

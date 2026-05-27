@@ -4,6 +4,7 @@ mod mapper;
 mod parser;
 
 use async_trait::async_trait;
+use nako_addon_protocol::AddonSecretReferenceFieldDeclaration;
 
 use crate::{
     Config,
@@ -17,7 +18,10 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
-        render_drift::BrowserWorkerRenderDriftCase,
+        render_drift::{
+            BrowserWorkerRenderDriftCase, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
+            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
+        },
         rendered_page::{RenderedPageRuntime, RenderedPageSupportConfig},
     },
 };
@@ -29,6 +33,8 @@ use nako_addon_protocol::AddonArtworkKind;
 
 pub const DMM_PROVIDER_ID: &str = "dmm";
 pub(super) const DMM_URL_EXTERNAL_ID_PROVIDER: &str = "dmm_url";
+pub(crate) const DMM_COOKIE_ENV_VAR: &str = "NAKO_METADATA_SCRAPER_DMM_COOKIE";
+const DEFAULT_DMM_COOKIE: &str = "age_check_done=1";
 const DMM_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
     ProviderExternalIdCapability::new(
         DMM_PROVIDER_ID,
@@ -61,10 +67,11 @@ pub struct DmmProviderConfig {
     pub(crate) base_url: String,
     pub(crate) rendered_pages: RenderedPageSupportConfig,
     pub(crate) render_path: String,
+    pub(crate) cookie: Option<String>,
 }
 
 impl DmmProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+    pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
     #[must_use]
     pub(crate) fn new(
@@ -77,6 +84,7 @@ impl DmmProviderConfig {
             base_url,
             rendered_pages: RenderedPageSupportConfig::new(browser_worker_base_url, timeout_ms),
             render_path,
+            cookie: Some(DEFAULT_DMM_COOKIE.to_owned()),
         }
     }
 
@@ -99,7 +107,15 @@ impl DmmProviderConfig {
 
         let mut config = Self::new(base_url, browser_worker_base_url, render_path, timeout_ms);
         config.rendered_pages = config.rendered_pages.with_env_defaults(|name| lookup(name));
+        config.cookie = lookup(DMM_COOKIE_ENV_VAR)
+            .and_then(non_empty_trimmed)
+            .or_else(|| config.cookie.clone());
         config
+    }
+
+    #[must_use]
+    pub const fn secret_field_id() -> &'static str {
+        "dmm_cookie"
     }
 }
 
@@ -117,7 +133,15 @@ pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
             "browser_worker_rendered_html",
         ],
         field_quality: crate::engine::ProviderFieldQualityDescriptor::new(600, 500, 600, 500),
-        secret_reference: None,
+        secret_reference: Some(AddonSecretReferenceFieldDeclaration::new(
+            DmmProviderConfig::secret_field_id(),
+            "DMM Cookie",
+            Some(
+                "Optional Secret Reference for FANZA/DMM age confirmation or regional access. The default provider cookie only confirms age; custom values are sent only to the browser worker as a Cookie header."
+                    .to_owned(),
+            ),
+            false,
+        )),
         external_id_capabilities: DMM_EXTERNAL_ID_CAPABILITIES,
         load_config: load_config,
         proxy_configured: |_| false,
@@ -152,6 +176,14 @@ pub(crate) fn render_drift_case(
     config: &DmmProviderConfig,
     av_number: &str,
 ) -> BrowserWorkerRenderDriftCase {
+    let render_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS);
+    let selector_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS);
     BrowserWorkerRenderDriftCase::new(
         "dmm-search",
         format!(
@@ -161,8 +193,10 @@ pub(crate) fn render_drift_case(
         ),
     )
     .with_selector("a[href*=\"cid=\"]")
+    .with_selector_timeout_ms(selector_timeout_ms)
+    .with_header_from_env("cookie", DMM_COOKIE_ENV_VAR)
     .with_rendered_page_defaults(&config.rendered_pages)
-    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_render_timeout_ms(render_timeout_ms)
     .with_min_text_bytes(100)
     .with_min_html_bytes(500)
 }
@@ -370,6 +404,8 @@ mod tests {
             detail_body["url"],
             "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/"
         );
+        assert_eq!(search_body["headers"]["cookie"], "age_check_done=1");
+        assert_eq!(detail_body["headers"]["cookie"], "age_check_done=1");
     }
 
     #[tokio::test]
@@ -438,6 +474,7 @@ mod tests {
             body["url"],
             "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/"
         );
+        assert_eq!(body["headers"]["cookie"], "age_check_done=1");
     }
 
     #[tokio::test]
@@ -451,12 +488,16 @@ mod tests {
             transport.clone(),
         );
         let provider = DmmMetadataProvider::with_runtime(
-            DmmProviderConfig::new(
-                "https://dmm.example".to_owned(),
-                "http://browser-worker.example".to_owned(),
-                "/render".to_owned(),
-                10_000,
-            ),
+            {
+                let mut config = DmmProviderConfig::new(
+                    "https://dmm.example".to_owned(),
+                    "http://browser-worker.example".to_owned(),
+                    "/render".to_owned(),
+                    10_000,
+                );
+                config.cookie = None;
+                config
+            },
             runtime,
         );
 
@@ -470,5 +511,50 @@ mod tests {
 
         assert!(candidates.is_empty());
         assert!(transport.requests().is_empty());
+    }
+
+    #[tokio::test]
+    async fn dmm_provider_can_disable_default_cookie_for_tests() {
+        let transport = RenderedAvFixtureTransport::new(DMM_PROVIDER_ID);
+        transport.push_rendered_html(
+            "https://dmm.example/digital/videoa/-/detail/=/cid=ssni00644/",
+            "SSNI-644 Direct DMM Title",
+            r#"
+<!doctype html>
+<html>
+<body><h1 id="title">SSNI-644 Direct DMM Title</h1></body>
+</html>"#,
+        );
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let mut config = DmmProviderConfig::new(
+            "https://dmm.example".to_owned(),
+            "http://browser-worker.example".to_owned(),
+            "/render".to_owned(),
+            10_000,
+        );
+        config.cookie = None;
+        let provider = DmmMetadataProvider::with_runtime(config, runtime);
+
+        provider
+            .suggest(&MetadataQuery {
+                title: "SSNI-644".to_owned(),
+                year: None,
+                language: "zh-CN".to_owned(),
+                external_ids: vec![QueryExternalId {
+                    provider: "dmm".to_owned(),
+                    value: "ssni00644".to_owned(),
+                }],
+            })
+            .await
+            .unwrap();
+
+        let body = request_json_body(&transport.requests()[0]);
+        assert!(body.get("headers").is_none());
     }
 }

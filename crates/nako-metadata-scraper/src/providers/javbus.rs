@@ -22,7 +22,8 @@ use crate::{
         registry::ProviderCatalogEntry,
         render_drift::{
             BrowserWorkerRenderDriftAction, BrowserWorkerRenderDriftCase,
-            BrowserWorkerRenderDriftWaitFor,
+            BrowserWorkerRenderDriftWaitFor, SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS,
+            SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS,
         },
         rendered_av,
         rendered_page::{
@@ -33,6 +34,7 @@ use crate::{
 };
 
 pub const JAVBUS_PROVIDER_ID: &str = "javbus";
+pub(crate) const JAVBUS_COOKIE_ENV_VAR: &str = "NAKO_METADATA_SCRAPER_JAVBUS_COOKIE";
 const JAVBUS_URL_EXTERNAL_ID_PROVIDER: &str = "javbus_url";
 const JAVBUS_EXTERNAL_ID_CAPABILITIES: &[ProviderExternalIdCapability] = &[
     ProviderExternalIdCapability::new(
@@ -70,7 +72,7 @@ pub struct JavbusProviderConfig {
 }
 
 impl JavbusProviderConfig {
-    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+    pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
     #[must_use]
     pub(crate) fn new(
@@ -106,7 +108,7 @@ impl JavbusProviderConfig {
 
         let mut config = Self::new(base_url, browser_worker_base_url, render_path, timeout_ms);
         config.rendered_pages = config.rendered_pages.with_env_defaults(|name| lookup(name));
-        config.cookie = lookup("NAKO_METADATA_SCRAPER_JAVBUS_COOKIE").and_then(non_empty_trimmed);
+        config.cookie = lookup(JAVBUS_COOKIE_ENV_VAR).and_then(non_empty_trimmed);
         config
     }
 
@@ -173,6 +175,14 @@ pub(crate) fn render_drift_case(
     config: &JavbusProviderConfig,
     av_number: &str,
 ) -> BrowserWorkerRenderDriftCase {
+    let render_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_TIMEOUT_MS);
+    let selector_timeout_ms = config
+        .rendered_pages
+        .timeout_ms
+        .max(SLOW_LIVE_RENDER_DRIFT_SELECTOR_TIMEOUT_MS);
     BrowserWorkerRenderDriftCase::new(
         "javbus-detail",
         format!(
@@ -182,8 +192,10 @@ pub(crate) fn render_drift_case(
         ),
     )
     .with_selector("h3, .info, #movie, .movie")
+    .with_selector_timeout_ms(selector_timeout_ms)
+    .with_header_from_env("cookie", JAVBUS_COOKIE_ENV_VAR)
     .with_rendered_page_defaults(&config.rendered_pages)
-    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_render_timeout_ms(render_timeout_ms)
     .with_min_text_bytes(100)
     .with_min_html_bytes(500)
     .with_action(
@@ -194,7 +206,7 @@ pub(crate) fn render_drift_case(
             .optional()
             .with_wait_for(
                 BrowserWorkerRenderDriftWaitFor::domcontentloaded()
-                    .with_timeout_ms(config.rendered_pages.timeout_ms),
+                    .with_timeout_ms(selector_timeout_ms),
             ),
     )
 }

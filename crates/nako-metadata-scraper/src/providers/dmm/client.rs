@@ -64,10 +64,13 @@ where
     }
 
     pub(super) async fn render(&self, url: String) -> anyhow::Result<RenderedHtmlPage> {
-        let intent = self
+        let mut intent = self
             .config
             .rendered_pages
             .intent(&self.config.render_path, url);
+        if let Some(cookie) = self.config.cookie.as_ref() {
+            intent = intent.with_header("cookie", cookie);
+        }
         self.rendered_pages
             .render_html(DMM_PROVIDER_ID, "render page", intent)
             .await

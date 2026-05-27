@@ -95,7 +95,9 @@ mod tests {
         ProviderConfig, ProviderId, TmdbProviderConfig,
     };
     use crate::engine::bulk::{BULK_METADATA_SCRAPE_TASK_ID, BULK_METADATA_SCRAPE_TASK_PATH};
-    use crate::providers::{javbus::JavbusProviderConfig, theporndb::ThePornDbProviderConfig};
+    use crate::providers::{
+        dmm::DmmProviderConfig, javbus::JavbusProviderConfig, theporndb::ThePornDbProviderConfig,
+    };
 
     #[test]
     fn addon_manifest_is_valid() {
@@ -306,7 +308,7 @@ mod tests {
             schema["properties"]["providers"]["properties"]["anilist"]["default"],
             true
         );
-        assert_eq!(manifest.secret_reference_fields.len(), 5);
+        assert_eq!(manifest.secret_reference_fields.len(), 6);
         assert_eq!(
             manifest.secret_reference_fields[0].id,
             TmdbProviderConfig::secret_field_id()
@@ -319,19 +321,24 @@ mod tests {
         assert!(!manifest.secret_reference_fields[1].required);
         assert_eq!(
             manifest.secret_reference_fields[2].id,
-            JavbusProviderConfig::secret_field_id()
+            DmmProviderConfig::secret_field_id()
         );
         assert!(!manifest.secret_reference_fields[2].required);
         assert_eq!(
             manifest.secret_reference_fields[3].id,
-            ThePornDbProviderConfig::secret_field_id()
+            JavbusProviderConfig::secret_field_id()
         );
-        assert!(manifest.secret_reference_fields[3].required);
+        assert!(!manifest.secret_reference_fields[3].required);
         assert_eq!(
             manifest.secret_reference_fields[4].id,
+            ThePornDbProviderConfig::secret_field_id()
+        );
+        assert!(manifest.secret_reference_fields[4].required);
+        assert_eq!(
+            manifest.secret_reference_fields[5].id,
             AniListProviderConfig::secret_field_id()
         );
-        assert!(!manifest.secret_reference_fields[4].required);
+        assert!(!manifest.secret_reference_fields[5].required);
     }
 
     #[test]
