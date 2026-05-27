@@ -109,6 +109,43 @@ npm start
 npm run smoke
 ```
 
+## Live render drift
+
+`npm run live:render-drift` starts an ephemeral worker and checks rendered-page
+health. By default it runs only the local fixture, so it is safe for offline CI
+and does not access external sites:
+
+```bash
+npm run live:render-drift
+```
+
+Set `NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT=1` to add live cases through
+`NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES`. The value is JSON, either one
+object or an array. Each case accepts the same render request controls as
+`POST /render`, plus health thresholds:
+
+```bash
+NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT=1 \
+NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES='[
+  {
+    "id": "provider-detail-sample",
+    "url": "https://example.test/detail",
+    "selector": "#movie",
+    "proxy_policy": "default",
+    "render_timeout_ms": 30000,
+    "min_text_bytes": 100,
+    "min_html_bytes": 500
+  }
+]' \
+npm run live:render-drift
+```
+
+Reports are intentionally redaction-safe. They include case id, source,
+booleans, byte counts, HTTP status, `safe_error_code`, and `failure_kind`; they
+do not echo URLs, selectors, raw page text, headers, cookies, proxy URLs,
+credentials, or session keys. Set `NAKO_BROWSER_WORKER_PROXY_URL` or
+`NAKO_BROWSER_WORKER_PROXY_LIST` normally when a live case needs a proxy.
+
 ## Test
 
 ```bash
