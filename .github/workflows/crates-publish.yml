@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish nako-metadata-scraper to crates.io after dry-run succeeds"
+        description: "Publish official addon crates to crates.io after dry-run succeeds"
         required: true
         type: boolean
         default: false
@@ -17,6 +17,7 @@ permissions:
 
 env:
   RUST_VERSION: "1.95"
+  OFFICIAL_ADDON_CRATES: "nako-notification-bridge nako-metadata-scraper nako-chromecast-renderer"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
@@ -24,8 +25,17 @@ jobs:
     name: crates.io dry-run
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout official addons
         uses: actions/checkout@v6
+        with:
+          path: nako-official-addons
+
+      - name: Checkout Nako mainline
+        uses: actions/checkout@v6
+        with:
+          repository: Latias94/nako
+          path: nako
+          token: ${{ secrets.NAKO_REPO_TOKEN || github.token }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
@@ -35,9 +45,17 @@ jobs:
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nako-official-addons -> target
 
       - name: Check publish readiness
-        run: cargo publish -p nako-metadata-scraper --locked --dry-run
+        working-directory: nako-official-addons
+        run: |
+          set -euo pipefail
+          for crate in $OFFICIAL_ADDON_CRATES; do
+            cargo publish -p "$crate" --locked --dry-run
+          done
 
   publish:
     name: crates.io publish
@@ -46,8 +64,17 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.publish == true
     environment: crates-io
     steps:
-      - name: Checkout
+      - name: Checkout official addons
         uses: actions/checkout@v6
+        with:
+          path: nako-official-addons
+
+      - name: Checkout Nako mainline
+        uses: actions/checkout@v6
+        with:
+          repository: Latias94/nako
+          path: nako
+          token: ${{ secrets.NAKO_REPO_TOKEN || github.token }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
@@ -57,8 +84,16 @@ jobs:
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nako-official-addons -> target
 
-      - name: Publish crate
+      - name: Publish crates
+        working-directory: nako-official-addons
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p nako-metadata-scraper --locked
+        run: |
+          set -euo pipefail
+          for crate in $OFFICIAL_ADDON_CRATES; do
+            cargo publish -p "$crate" --locked
+          done

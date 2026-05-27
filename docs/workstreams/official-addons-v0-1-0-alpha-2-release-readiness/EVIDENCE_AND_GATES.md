@@ -2,7 +2,7 @@
 
 Status: Blocked on publish approval
 Last updated: 2026-05-24
-Last refreshed: 2026-05-25
+Last refreshed: 2026-05-27
 
 ## Gates
 
@@ -12,6 +12,7 @@ cargo nextest run -p nako-metadata-scraper manifest routes task bulk nako_runtim
 cargo fmt --all -- --check
 cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty
 cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty
+cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty
 git diff --check
 ```
 
@@ -73,5 +74,6 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 - `../nako` has unrelated dirty files; stage only files touched for this lane.
 - Publish order after approval: `nako-addon-protocol 0.1.0-alpha.2`, then
   `nako-addon-client 0.1.0-alpha.2` and `nako-official-addon-catalog
-  0.1.0-alpha.2`, then `nako-notification-bridge 0.1.0-alpha.2` and
-  `nako-metadata-scraper 0.1.0-alpha.2`.
+  0.1.0-alpha.2`, then `nako-notification-bridge 0.1.0-alpha.2`,
+  `nako-metadata-scraper 0.1.0-alpha.2`, and
+  `nako-chromecast-renderer 0.1.0-alpha.2`.

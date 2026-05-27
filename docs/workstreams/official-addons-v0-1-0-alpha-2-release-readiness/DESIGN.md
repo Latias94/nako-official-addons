@@ -1,14 +1,15 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness
 
 Status: Blocked on publish approval
-Last updated: 2026-05-25
+Last updated: 2026-05-27
 
 ## Problem
 
 The post-alpha.1 official addon refactors moved Addon Task envelopes and
 protected-write runtime helpers into public Nako SDK crates. Notification
-bridge work also added a second official addon package that depends on the
-public Addon Protocol crate. Local path builds pass, but
+bridge and Chromecast renderer work also added more official addon packages
+that depend on the public Addon Protocol and official catalog crates. Local
+path builds pass, but
 `cargo publish --dry-run` verifies against the already published
 `0.1.0-alpha.1` crates and fails because those crates do not contain the new
 SDK surface.
@@ -21,12 +22,13 @@ environment has the Docker CLI installed without a reachable Docker daemon.
 - `nako-addon-protocol`, `nako-addon-client`, and
   `nako-official-addon-catalog` crate package versions can be published as
   `0.1.0-alpha.2`.
-- `nako-metadata-scraper` and `nako-notification-bridge` package/addon
-  versions advance to `0.1.0-alpha.2`.
+- `nako-metadata-scraper`, `nako-notification-bridge`, and
+  `nako-chromecast-renderer` package/addon versions advance to
+  `0.1.0-alpha.2`.
 - Addon Protocol runtime compatibility remains `0.1.0-alpha.1` unless the
   actual wire compatibility version is intentionally changed.
-- `cargo publish --dry-run` proves both official addon packages can verify
-  against registry-shaped SDK dependencies.
+- `cargo publish --dry-run` proves all official addon packages can verify
+  against registry-shaped SDK/catalog dependencies.
 - The official E2E smoke preflight fails early when Docker daemon is not
   reachable instead of reporting a misleading green preflight.
 

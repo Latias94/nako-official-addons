@@ -3,6 +3,8 @@ services:
     build:
       context: ../..
       dockerfile: addons/metadata-scraper/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
     image: ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.2
     restart: unless-stopped
     environment:

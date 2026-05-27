@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "slug": "official-addons-mainline-contract-sentinels",
+  "title": "Official Addons Mainline Contract Sentinels",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "problem": "The addon repo depends on a moving private main Nako repo, but release gates and packaging still allow official addon catalog, CI, Docker, and publish automation drift.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-addons-mainline-contract-sentinels/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-addons-mainline-contract-sentinels/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-addons-mainline-contract-sentinels/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo metadata --format-version 1 --no-deps",
+    "cargo nextest run -p nako-notification-bridge manifest routes --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-27",
+      "summary": "Opened lane after inspecting main repo movement, local path SDK dependencies, metadata-only release gate smoke, and Dockerfiles that copy only the addon repository."
+    },
+    {
+      "date": "2026-05-27",
+      "summary": "OAMC-020 moved notification bridge official manifest facts to nako-official-addon-catalog and passed notification manifest/routes tests."
+    },
+    {
+      "date": "2026-05-27",
+      "summary": "OAMC-030 hardened release-gate and Docker build context contracts for all three official sidecars; local Docker build/smoke remains blocked by daemon availability."
+    },
+    {
+      "date": "2026-05-27",
+      "summary": "OAMC-040 updated crates-publish and alpha.2 release-readiness docs to include notification bridge, metadata scraper, and Chromecast renderer."
+    },
+    {
+      "date": "2026-05-27",
+      "summary": "OAMC-050 passed cargo metadata, fmt, workspace nextest, and diff hygiene; publish dry-runs remain blocked by upstream alpha.2 crates not yet published to crates.io."
+    }
+  ],
+  "adr_refs": [],
+  "continue_policy": {
+    "default_action": "await_trigger",
+    "notes": "Lane is complete. Reopen or split a follow-on only after upstream alpha.2 SDK/catalog crates are published, Docker daemon evidence is available, or mainline Nako changes an addon-facing contract."
+  }
+}

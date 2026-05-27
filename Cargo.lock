@@ -855,6 +855,7 @@ dependencies = [
  "anyhow",
  "axum",
  "nako-addon-protocol",
+ "nako-official-addon-catalog",
  "reqwest",
  "serde",
  "serde_json",

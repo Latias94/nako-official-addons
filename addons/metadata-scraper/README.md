@@ -262,11 +262,13 @@ layers are reused when only provider or route code changes. `cargo chef cook`
 and the final `cargo build` both run from `/src/nako-official-addons`, which is
 required for the cached `target` directory to remain useful.
 
-The Docker build uses this repository as its build context because
-`nako-addon-protocol` is consumed from crates.io:
+The Docker build uses this repository as its primary build context and the
+main Nako repository as a named BuildKit context because the alpha workspace
+still uses local `../nako` SDK path dependencies:
 
 ```bash
 docker buildx build \
+  --build-context nako=../nako \
   -f addons/metadata-scraper/Dockerfile \
   -t ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.2 \
   .

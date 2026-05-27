@@ -3,6 +3,8 @@ services:
     build:
       context: ../..
       dockerfile: addons/chromecast-renderer/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
     image: ghcr.io/latias94/nako-chromecast-renderer:0.1.0-alpha.2
     restart: unless-stopped
     environment:

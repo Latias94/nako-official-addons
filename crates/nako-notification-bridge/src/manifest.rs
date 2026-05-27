@@ -1,89 +1,33 @@
-use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, AddonAuth, AddonEventSubscriptionDeclaration,
-    AddonHostedPageDeclaration, AddonManifest, AddonResource, AddonResourceDeclaration, AddonScope,
-};
+use nako_addon_protocol::AddonManifest;
+use nako_official_addon_catalog::notification_bridge;
 
 use crate::Config;
 
-pub const ADDON_ID: &str = "nako.official.notification-bridge";
-pub const ADDON_NAME: &str = "Nako Notification Bridge";
 pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_CONTAINER_BASE_URL: &str = "http://nako-notification-bridge:9110";
-pub const DESCRIPTION: &str = "Official Nako notification bridge sidecar. The first proof acknowledges scheduled Addon Events without provider fan-out.";
-pub const LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID: &str = "library-scanned-notification";
-pub const LIBRARY_SCANNED_EVENT_KIND: &str = "library.scanned";
-pub const LIBRARY_SCANNED_EVENT_PATH: &str = "/events/library-scanned";
-pub const WEBHOOK_RESOURCE_PATH: &str = "/events/library-scanned";
-pub const WEBHOOK_REQUEST_SCHEMA: &str = "nako.addon.event.library-scanned.request.v1";
-pub const WEBHOOK_RESPONSE_SCHEMA: &str =
-    "nako.official.notification-bridge.library-scanned.event.v1";
-pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
-pub const DIAGNOSTICS_LABEL: &str = "Notification Bridge Diagnostics";
-pub const DIAGNOSTICS_PATH: &str = "/ui/diagnostics";
 pub const PROVIDER_TEST_SEND_PATH: &str = "/providers/test-send";
 pub const PROVIDER_TEST_SEND_RESPONSE_SCHEMA: &str =
     "nako.official.notification-bridge.provider-test-send.v1";
-pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
-pub const DEFAULT_MAX_ATTEMPTS: u32 = 2;
+
+pub use notification_bridge::{
+    ADDON_ID, ADDON_NAME, DEFAULT_CONTAINER_BASE_URL, DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS,
+    DESCRIPTION, DIAGNOSTICS_HOSTED_PAGE_ID, DIAGNOSTICS_LABEL, DIAGNOSTICS_PATH,
+    LIBRARY_SCANNED_EVENT_KIND, LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID,
+    WEBHOOK_REQUEST_SCHEMA, WEBHOOK_RESOURCE_PATH, WEBHOOK_RESPONSE_SCHEMA,
+};
 
 #[must_use]
 pub fn addon_manifest(config: &Config) -> AddonManifest {
-    manifest_with_version(ADDON_VERSION, config.base_url.clone())
+    notification_bridge::manifest_with_version(ADDON_VERSION, config.base_url.clone())
 }
 
 #[must_use]
 pub fn container_manifest() -> AddonManifest {
-    manifest_with_version(ADDON_VERSION, DEFAULT_CONTAINER_BASE_URL)
-}
-
-#[must_use]
-pub fn manifest_with_version(
-    version: impl Into<String>,
-    base_url: impl Into<String>,
-) -> AddonManifest {
-    AddonManifest {
-        id: ADDON_ID.to_owned(),
-        name: ADDON_NAME.to_owned(),
-        version: version.into(),
-        protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-        base_url: base_url.into(),
-        description: Some(DESCRIPTION.to_owned()),
-        resources: vec![AddonResourceDeclaration {
-            kind: AddonResource::Webhook,
-            path: WEBHOOK_RESOURCE_PATH.to_owned(),
-            input_schema: Some(WEBHOOK_REQUEST_SCHEMA.to_owned()),
-            output_schema: Some(WEBHOOK_RESPONSE_SCHEMA.to_owned()),
-            required_scopes: vec![AddonScope::WebhookEventRead],
-            timeout_ms: Some(DEFAULT_TIMEOUT_MS),
-            max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        }],
-        entry_points: Vec::new(),
-        hosted_pages: vec![AddonHostedPageDeclaration {
-            id: DIAGNOSTICS_HOSTED_PAGE_ID.to_owned(),
-            title: DIAGNOSTICS_LABEL.to_owned(),
-            path: DIAGNOSTICS_PATH.to_owned(),
-            required_scopes: vec![AddonScope::WebhookEventRead],
-        }],
-        configuration_schema: None,
-        secret_reference_fields: Vec::new(),
-        event_subscriptions: vec![AddonEventSubscriptionDeclaration::new(
-            LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID,
-            LIBRARY_SCANNED_EVENT_KIND,
-            LIBRARY_SCANNED_EVENT_PATH,
-            vec![AddonScope::WebhookEventRead],
-            serde_json::Value::Null,
-        )],
-        tasks: Vec::new(),
-        auth: AddonAuth::None,
-        default_timeout_ms: Some(DEFAULT_TIMEOUT_MS),
-        default_max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        scopes: vec![AddonScope::WebhookEventRead],
-    }
+    notification_bridge::manifest_with_version(ADDON_VERSION, DEFAULT_CONTAINER_BASE_URL)
 }
 
 #[cfg(test)]
 mod tests {
-    use nako_addon_protocol::validate_manifest;
+    use nako_addon_protocol::{AddonResource, AddonScope, validate_manifest};
 
     use super::*;
 
@@ -121,7 +65,7 @@ mod tests {
             "../../../addons/notification-bridge/manifest.example.json"
         ))
         .unwrap();
-        let runtime_manifest = manifest_with_version(ADDON_VERSION, DEFAULT_CONTAINER_BASE_URL);
+        let runtime_manifest = container_manifest();
 
         assert_eq!(example_manifest, runtime_manifest);
     }

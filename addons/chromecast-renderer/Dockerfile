@@ -9,7 +9,10 @@ WORKDIR /src
 RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_VERSION}
 
 FROM chef AS planner
+# Build with `--build-context nako=../nako` so local SDK path dependencies
+# resolve in the same sibling layout used by developers and CI.
 COPY . ./nako-official-addons
+COPY --from=nako . ./nako
 WORKDIR /src/nako-official-addons
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -21,6 +24,7 @@ RUN cargo chef cook --release --locked --package nako-chromecast-renderer --reci
 FROM chef AS builder
 WORKDIR /src
 COPY . ./nako-official-addons
+COPY --from=nako . ./nako
 WORKDIR /src/nako-official-addons
 COPY --from=cacher /src/nako-official-addons/target ./target
 COPY --from=cacher /usr/local/cargo/registry /usr/local/cargo/registry

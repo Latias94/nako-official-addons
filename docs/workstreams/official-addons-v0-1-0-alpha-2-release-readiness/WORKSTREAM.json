@@ -3,7 +3,7 @@
   "slug": "official-addons-v0-1-0-alpha-2-release-readiness",
   "title": "Official Addons v0.1.0-alpha.2 Release Readiness",
   "status": "blocked",
-  "updated": "2026-05-25",
+  "updated": "2026-05-27",
   "scope_kind": "release_readiness",
   "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages that local path builds can see, but package verification against published alpha.1 SDK crates cannot.",
   "task_prefix": "OAR2",
@@ -41,6 +41,7 @@
     "cargo fmt --all -- --check",
     "cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty",
     "cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty",
+    "cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty",
     "focused ../nako SDK package dry-runs",
     "git diff --check"
   ],
@@ -69,6 +70,11 @@
       "date": "2026-05-25",
       "task": "OAR2-030",
       "summary": "Refreshed release-readiness evidence after notification bridge provider work. Workspace metadata, fmt, diff, and nextest passed; metadata scraper and notification bridge dry-runs remain blocked until alpha.2 SDK crates are actually published. Publish order now includes nako-official-addon-catalog."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OAR2-030",
+      "summary": "Refreshed release-readiness docs after the Chromecast renderer package joined the official addon crate set. Publish and dry-run lists now include nako-chromecast-renderer."
     }
   ],
   "adr_refs": [
@@ -88,6 +94,6 @@
   "continue_policy": {
     "default_action": "await_user_approval",
     "next_task": "OAR2-030",
-    "notes": "Publish order requires user approval: nako-addon-protocol 0.1.0-alpha.2, then nako-addon-client 0.1.0-alpha.2 plus nako-official-addon-catalog 0.1.0-alpha.2, then nako-notification-bridge 0.1.0-alpha.2 and nako-metadata-scraper 0.1.0-alpha.2. Live E2E smoke also requires Docker daemon availability."
+    "notes": "Publish order requires user approval: nako-addon-protocol 0.1.0-alpha.2, then nako-addon-client 0.1.0-alpha.2 plus nako-official-addon-catalog 0.1.0-alpha.2, then nako-notification-bridge 0.1.0-alpha.2, nako-metadata-scraper 0.1.0-alpha.2, and nako-chromecast-renderer 0.1.0-alpha.2. Live E2E smoke also requires Docker daemon availability."
   }
 }

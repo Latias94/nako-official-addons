@@ -2,7 +2,7 @@
 
 Status: Blocked on publish approval
 Last updated: 2026-05-24
-Last refreshed: 2026-05-25
+Last refreshed: 2026-05-27
 
 Task IDs use the `OAR2` prefix.
 
@@ -36,10 +36,10 @@ Task IDs use the `OAR2` prefix.
 
 ## M2 - Package Verification
 
-- [ ] OAR2-030 [owner=codex] [deps=OAR2-020] [scope=crates/nako-metadata-scraper,../nako/crates/nako-addon-client,../nako/crates/nako-addon-protocol]
-  Goal: Prove metadata scraper packaging verifies against registry-shaped SDK
-  dependencies.
-  Validation: `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty`.
+- [ ] OAR2-030 [owner=codex] [deps=OAR2-020] [scope=crates/nako-metadata-scraper,crates/nako-notification-bridge,crates/nako-chromecast-renderer,../nako/crates/nako-addon-client,../nako/crates/nako-addon-protocol,../nako/crates/nako-official-addon-catalog]
+  Goal: Prove official addon packaging verifies against registry-shaped SDK and
+  official catalog dependencies.
+  Validation: `cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty`; `cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty`; `cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty`.
   Review: If SDK crates are not yet published, record the exact blocker and
   verify the SDK crate dry-runs separately.
   Evidence: Package dry-run output.
@@ -53,10 +53,14 @@ Task IDs use the `OAR2` prefix.
   crates.io. The metadata scraper dry-run is blocked until
   `nako-addon-client 0.1.0-alpha.2` and `nako-official-addon-catalog
   0.1.0-alpha.2` exist on crates.io.
+  Refresh 2026-05-27: publish and dry-run lists now include
+  `nako-chromecast-renderer`, which requires `nako-addon-protocol
+  0.1.0-alpha.2` and `nako-official-addon-catalog 0.1.0-alpha.2`.
   Refresh 2026-05-25: workspace nextest passed 183/183 with 2 skipped;
   metadata/fmt/diff checks passed.
   Handoff: Publish order is protocol first; then client and official addon
-  catalog; then notification bridge and metadata scraper after user approval.
+  catalog; then notification bridge, metadata scraper, and Chromecast renderer
+  after user approval.
 
 ## M3 - Smoke And Closeout
 
