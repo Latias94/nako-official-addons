@@ -1,8 +1,8 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Handoff
 
-Status: Published; Docker live smoke blocked
-Last updated: 2026-05-24
-Last refreshed: 2026-05-27
+Status: Complete
+Last updated: 2026-05-28
+Last refreshed: 2026-05-28
 
 ## Current State
 
@@ -14,7 +14,8 @@ readiness follow-ons:
 
 The first E2E preflight passed before Docker daemon availability was checked.
 A direct `docker version` command then proved the daemon was not reachable.
-The E2E script now has a daemon preflight guard.
+The E2E script now has a daemon preflight guard. On 2026-05-28 the daemon was
+reachable and the hosted smoke passed.
 
 `cargo publish --dry-run` for `nako-metadata-scraper`,
 `nako-notification-bridge`, and `nako-chromecast-renderer` now verifies against
@@ -26,20 +27,16 @@ then published and are visible in crates.io search.
 
 ## Active Task
 
-- OAR2-030: package verification and official addon crate publication are
-  complete.
+- None. OAR2-030 package verification/publication and OAR2-040 live
+  Docker/server smoke are complete.
 
 ## Next Commands
 
-After Docker daemon is available, re-run live smoke:
-
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\SourceCodes\Rust\nako-official-addons -AddonBinarySource workspace
-```
+No required release-readiness commands remain for this lane.
 
 ## Blockers
 
-- Full live Docker/server smoke is blocked until Docker daemon is running.
+None for this lane.
 
 ## Evidence
 
@@ -68,6 +65,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 - `cargo publish -p nako-chromecast-renderer --locked` published
   `0.1.0-alpha.2`.
 - `cargo search` reports all three official addon crates at `0.1.0-alpha.2`.
+- `docker version --format '{{.Server.Version}}'` reported `25.0.3`.
+- `official-addon-e2e-smoke.ps1 -PreflightOnly` passed.
+- Full `official-addon-e2e-smoke.ps1` passed against
+  `ghcr.io/latias94/nako-server:0.1.0-alpha.2`, with logs under
+  `../nako/target/oae2e-alpha2-hosted/20260528-000651/logs`.
 - `npm test` in `addons/browser-worker` passed: 1 passed.
 - `cargo fmt --all -- --check` passed in both repositories.
 - `git diff --check` passed in both repositories with LF/CRLF warnings.
@@ -76,5 +78,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 
 - `nako-official-addons` is ahead of `origin/main` with committed release,
   notification-bridge, Chromecast renderer, and mainline contract sentinel work.
-- `../nako` has CI publish-script changes plus unrelated workstream changes.
-  Stage only the publish-script/checklist files for this lane.
+- `../nako` has the committed CI publish-script change plus unrelated
+  workstream changes.

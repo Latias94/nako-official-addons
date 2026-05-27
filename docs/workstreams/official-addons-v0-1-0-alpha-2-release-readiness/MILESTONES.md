@@ -1,8 +1,8 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Milestones
 
-Status: Published; Docker live smoke blocked
-Last updated: 2026-05-24
-Last refreshed: 2026-05-27
+Status: Complete
+Last updated: 2026-05-28
+Last refreshed: 2026-05-28
 
 ## M0 - Lane Open
 
@@ -44,5 +44,10 @@ Exit criteria:
   availability.
 - Handoff states the next release action.
 
-Status: Done for local gates and package publication 2026-05-27. Live
-Docker/server smoke remains blocked by Docker daemon availability.
+Status: Done 2026-05-28.
+
+Hosted Docker/server smoke passed against
+`ghcr.io/latias94/nako-server:0.1.0-alpha.2` with the workspace metadata
+scraper sidecar. The run proved container health, sidecar manifest/resource
+paths, Nako registration/enabling, routing plan sync, direct Addon Task, and
+manager plan confirmation.

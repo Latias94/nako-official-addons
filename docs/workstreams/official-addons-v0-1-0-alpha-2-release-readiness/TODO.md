@@ -1,8 +1,8 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - TODO
 
-Status: Published; Docker live smoke blocked
-Last updated: 2026-05-24
-Last refreshed: 2026-05-27
+Status: Complete
+Last updated: 2026-05-28
+Last refreshed: 2026-05-28
 
 Task IDs use the `OAR2` prefix.
 
@@ -64,8 +64,8 @@ Task IDs use the `OAR2` prefix.
   Refresh 2026-05-27 after user approval: `nako-notification-bridge`,
   `nako-metadata-scraper`, and `nako-chromecast-renderer` `0.1.0-alpha.2`
   were published and are visible in crates.io search.
-  Handoff: All alpha.2 crates are published. Re-run live Docker/server smoke
-  after a Docker daemon is available.
+  Handoff: All alpha.2 crates are published and live Docker/server smoke has
+  passed.
 
 ## M3 - Smoke And Closeout
 
@@ -75,8 +75,12 @@ Task IDs use the `OAR2` prefix.
   daemon is reachable.
   Review: Docker daemon absence is an environment blocker, not a code pass.
   Evidence: EVIDENCE_AND_GATES.md.
-  Result: DONE 2026-05-24.
-  Evidence: PowerShell parser check passed. E2E preflight now fails early with
-  a Docker daemon diagnostic because Docker is not reachable on
-  `//./pipe/docker_engine`.
-  Handoff: Re-run live E2E smoke after Docker daemon is available.
+  Result: DONE 2026-05-28 after Docker live smoke passed.
+  Evidence: PowerShell parser check passed. E2E preflight fails early with a
+  Docker daemon diagnostic when Docker is not reachable. After Docker became
+  reachable, `docker version --format '{{.Server.Version}}'` reported `25.0.3`;
+  preflight passed; full hosted smoke passed with Nako health, metadata
+  scraper manifest/health/resource/event checks, Nako registration/enabling,
+  resource diagnostic, routing plan sync, direct Addon Task, and manager plan
+  confirmation.
+  Handoff: Lane is complete.

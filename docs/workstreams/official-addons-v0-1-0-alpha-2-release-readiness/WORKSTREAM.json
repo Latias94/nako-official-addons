@@ -2,12 +2,12 @@
   "schema_version": 1,
   "slug": "official-addons-v0-1-0-alpha-2-release-readiness",
   "title": "Official Addons v0.1.0-alpha.2 Release Readiness",
-  "status": "published_docker_smoke_blocked",
-  "updated": "2026-05-27",
+  "status": "complete",
+  "updated": "2026-05-28",
   "scope_kind": "release_readiness",
-  "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages. The SDK/catalog crates and official addon crates are now published at alpha.2; remaining release proof is live Docker/server smoke after a Docker daemon is available.",
+  "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages. The SDK/catalog crates and official addon crates are published at alpha.2, and hosted Docker/server smoke has passed.",
   "task_prefix": "OAR2",
-  "current_task": "await-docker-live-smoke",
+  "current_task": "none",
   "completed_tasks": [
     "OAR2-010",
     "OAR2-020",
@@ -44,6 +44,8 @@
     "cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty",
     "cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty",
     "python scripts/publish_crates.py --mode dry-run --allow-dirty in ../nako",
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\\SourceCodes\\Rust\\nako-official-addons -AddonBinarySource workspace -PreflightOnly",
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\\SourceCodes\\Rust\\nako-official-addons -AddonBinarySource workspace",
     "git diff --check"
   ],
   "evidence": [
@@ -86,6 +88,11 @@
       "date": "2026-05-27",
       "task": "OAR2-030",
       "summary": "Published nako-notification-bridge, nako-metadata-scraper, and nako-chromecast-renderer 0.1.0-alpha.2 to crates.io after user approval. cargo search reports all three at 0.1.0-alpha.2."
+    },
+    {
+      "date": "2026-05-28",
+      "task": "OAR2-040",
+      "summary": "Docker daemon server version 25.0.3 was reachable. Official addon E2E preflight and full hosted smoke passed against ghcr.io/latias94/nako-server:0.1.0-alpha.2 with the workspace metadata scraper sidecar."
     }
   ],
   "adr_refs": [
@@ -102,8 +109,8 @@
     "splitting official addons into multiple installable sidecars"
   ],
   "continue_policy": {
-    "default_action": "await_docker_daemon",
-    "next_task": "await-docker-live-smoke",
-    "notes": "All alpha.2 Rust crates in this release line are published and visible on crates.io. Live E2E smoke requires Docker daemon availability."
+    "default_action": "closed",
+    "next_task": "none",
+    "notes": "All alpha.2 Rust crates in this release line are published and visible on crates.io. Hosted live E2E smoke passed on 2026-05-28."
   }
 }

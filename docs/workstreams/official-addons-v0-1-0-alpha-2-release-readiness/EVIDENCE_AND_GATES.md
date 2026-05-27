@@ -1,8 +1,8 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Evidence And Gates
 
-Status: Published; Docker live smoke blocked
-Last updated: 2026-05-24
-Last refreshed: 2026-05-27
+Status: Complete
+Last updated: 2026-05-28
+Last refreshed: 2026-05-28
 
 ## Gates
 
@@ -74,12 +74,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 | 2026-05-27 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked` | Published `nako-metadata-scraper 0.1.0-alpha.2` and waited for crates.io availability. |
 | 2026-05-27 | OAR2-030 | `cargo publish -p nako-chromecast-renderer --locked` | Published `nako-chromecast-renderer 0.1.0-alpha.2` and waited for crates.io availability. |
 | 2026-05-27 | OAR2-030 | `cargo search nako-notification-bridge --limit 1`; `cargo search nako-metadata-scraper --limit 1`; `cargo search nako-chromecast-renderer --limit 1` | Pass: all three crates report `0.1.0-alpha.2`. |
+| 2026-05-28 | OAR2-040 | `docker version --format '{{.Server.Version}}'` | Pass: Docker daemon is reachable; server version `25.0.3`. |
+| 2026-05-28 | OAR2-040 | `pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\SourceCodes\Rust\nako-official-addons -AddonBinarySource workspace -PreflightOnly` | Pass: preflight completed for Nako image `ghcr.io/latias94/nako-server:0.1.0-alpha.2`, port `30130`, sidecar port `19100`. |
+| 2026-05-28 | OAR2-040 | `pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\SourceCodes\Rust\nako-official-addons -AddonBinarySource workspace` | Pass: hosted smoke completed. Nako health, metadata scraper manifest/health/resource/event checks, Nako registration/enabling, resource diagnostic, routing plan sync, direct Addon Task, and manager plan confirmation passed. Logs: `../nako/target/oae2e-alpha2-hosted/20260528-000651/logs`. |
 
 ## Known Constraints
 
 - Do not push images without user approval.
 - Do not change `ADDON_PROTOCOL_VERSION` unless runtime wire compatibility is
   intentionally changed.
-- Docker live smoke requires a reachable Docker daemon.
 - `../nako` has unrelated dirty files; stage only files touched for this lane.
 - All alpha.2 Rust crates in this release line are published.
+- No release-readiness blockers remain for this lane.
