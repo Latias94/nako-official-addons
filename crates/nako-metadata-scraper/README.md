@@ -322,6 +322,26 @@ NAKO_METADATA_SCRAPER_LIVE_PROVIDER_DRIFT=1 cargo test -p nako-metadata-scraper 
 TMDB requires `NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN` to be set in the
 environment before that command can do anything useful.
 
+Rendered provider live render drift cases can be generated from provider-owned
+URL, selector, and action presets:
+
+```powershell
+$env:NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER = 'SSNI-644'
+cargo run -q -p nako-metadata-scraper -- render-drift-cases
+```
+
+The command prints the JSON array expected by Browser Worker
+`NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES`. It currently emits cases for
+enabled Douban, JavBus, and JavLibrary providers; override samples with
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DOUBAN_TITLE`,
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER`, or
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER`. Safe render
+defaults such as `proxy_policy` are emitted; session keys, cookies, and header
+values are not.
+
 Version `0.1.0-alpha.2` targets Nako Addon Protocol `0.1.0-alpha.1` and
 `nako-addon-protocol` Rust crate `0.1.0-alpha.2`.
 

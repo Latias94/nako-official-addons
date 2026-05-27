@@ -24,6 +24,7 @@ mod official_uncensored;
 pub mod onepondo;
 pub mod prestige;
 mod registry;
+pub mod render_drift;
 mod rendered_av;
 #[cfg(test)]
 pub(crate) mod rendered_av_fixture;
@@ -41,6 +42,11 @@ pub use registry::{
     ProviderRegistry, ProviderStatus,
 };
 pub(crate) use registry::{ProviderCatalogEntry, ProviderConfigInput};
+pub use render_drift::{
+    BrowserWorkerRenderDriftAction, BrowserWorkerRenderDriftCase,
+    BrowserWorkerRenderDriftProxyPolicy, BrowserWorkerRenderDriftWaitFor,
+    browser_worker_render_drift_cases_from_env, browser_worker_render_drift_cases_from_lookup,
+};
 
 #[must_use]
 pub(crate) fn provider_catalog() -> Vec<ProviderCatalogEntry> {

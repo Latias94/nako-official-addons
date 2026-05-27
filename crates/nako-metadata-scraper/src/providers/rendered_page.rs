@@ -58,6 +58,11 @@ impl RenderedPageSupportConfig {
     }
 
     #[must_use]
+    pub(crate) const fn proxy_policy(&self) -> Option<RenderedPageProxyPolicy> {
+        self.intent_defaults.proxy_policy
+    }
+
+    #[must_use]
     pub(crate) fn session_key_configured(&self) -> bool {
         self.intent_defaults.session_key.is_some()
     }

@@ -391,6 +391,26 @@ Jav321 uses the Rust HTTP runtime directly; set
 `NAKO_METADATA_SCRAPER_JAV321_PROXY_URL` when it must use an operator-managed
 proxy.
 
+For the lower-level Browser Worker render drift harness, metadata-scraper can
+generate provider-owned live case JSON for enabled rendered providers:
+
+```powershell
+$env:NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER = 'SSNI-644'
+$cases = cargo run -q -p nako-metadata-scraper -- render-drift-cases
+
+$env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT = '1'
+$env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES = $cases
+npm --prefix addons/browser-worker run live:render-drift
+```
+
+This avoids hand-writing provider URLs, selectors, and JavBus age-gate actions.
+The generated cases currently cover Douban search, JavBus detail, and
+JavLibrary search. Safe render defaults such as `proxy_policy` are emitted;
+session keys, cookies, and header values are not.
+
 Metadata requests may provide explicit `external_ids` or top-level aliases:
 `tmdb_id`, `tmdb_tv_id`, `imdb_id`, `bangumi_id`, `bgm_id`, `anilist_id`,
 `mal_id`, `browser_worker_url`, `browser_worker_recipe_url`, `javdb_id`,

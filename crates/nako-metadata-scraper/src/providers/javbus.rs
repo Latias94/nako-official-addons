@@ -20,6 +20,10 @@ use crate::{
         MetadataProvider, ProviderBuildStatus, ProviderConfigInput,
         http_runtime::{ProviderHttpTransport, ReqwestProviderHttpTransport},
         registry::ProviderCatalogEntry,
+        render_drift::{
+            BrowserWorkerRenderDriftAction, BrowserWorkerRenderDriftCase,
+            BrowserWorkerRenderDriftWaitFor,
+        },
         rendered_av,
         rendered_page::{
             RenderedPageAction, RenderedPageLoadState, RenderedPageRuntime,
@@ -162,6 +166,37 @@ fn build_provider(config: &Config) -> ProviderBuildStatus {
         Ok(provider) => ProviderBuildStatus::Ready(Box::new(provider)),
         Err(_) => ProviderBuildStatus::Unavailable,
     }
+}
+
+#[must_use]
+pub(crate) fn render_drift_case(
+    config: &JavbusProviderConfig,
+    av_number: &str,
+) -> BrowserWorkerRenderDriftCase {
+    BrowserWorkerRenderDriftCase::new(
+        "javbus-detail",
+        format!(
+            "{}/{}",
+            config.base_url.trim_end_matches('/'),
+            url_path_segment(av_number)
+        ),
+    )
+    .with_selector("h3, .info, #movie, .movie")
+    .with_rendered_page_defaults(&config.rendered_pages)
+    .with_render_timeout_ms(config.rendered_pages.timeout_ms)
+    .with_min_text_bytes(100)
+    .with_min_html_bytes(500)
+    .with_action(
+        BrowserWorkerRenderDriftAction::check("#ageVerify input[type=\"checkbox\"]").optional(),
+    )
+    .with_action(
+        BrowserWorkerRenderDriftAction::click("#ageVerify #submit")
+            .optional()
+            .with_wait_for(
+                BrowserWorkerRenderDriftWaitFor::domcontentloaded()
+                    .with_timeout_ms(config.rendered_pages.timeout_ms),
+            ),
+    )
 }
 
 #[derive(Clone, Debug)]

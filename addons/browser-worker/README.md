@@ -146,6 +146,30 @@ do not echo URLs, selectors, raw page text, headers, cookies, proxy URLs,
 credentials, or session keys. Set `NAKO_BROWSER_WORKER_PROXY_URL` or
 `NAKO_BROWSER_WORKER_PROXY_LIST` normally when a live case needs a proxy.
 
+The metadata scraper can generate provider-owned live case JSON for enabled
+rendered providers, so operators do not need to hand-write provider URLs or
+selectors. From the repo root:
+
+```powershell
+$env:NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVBUS_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_PROVIDER_JAVLIBRARY_ENABLED = 'true'
+$env:NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_AV_NUMBER = 'SSNI-644'
+$cases = cargo run -q -p nako-metadata-scraper -- render-drift-cases
+
+$env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT = '1'
+$env:NAKO_BROWSER_WORKER_LIVE_RENDER_DRIFT_CASES = $cases
+npm --prefix addons/browser-worker run live:render-drift
+```
+
+Provider-owned cases currently cover Douban search, JavBus detail, and
+JavLibrary search. Set
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_DOUBAN_TITLE`,
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVBUS_AV_NUMBER`, or
+`NAKO_METADATA_SCRAPER_RENDER_DRIFT_SAMPLE_JAVLIBRARY_AV_NUMBER` to override
+the default samples. Safe render defaults such as `proxy_policy` are emitted;
+session keys, cookies, and header values are not.
+
 ## Test
 
 ```bash
