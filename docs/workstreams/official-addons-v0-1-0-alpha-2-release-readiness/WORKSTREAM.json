@@ -2,12 +2,12 @@
   "schema_version": 1,
   "slug": "official-addons-v0-1-0-alpha-2-release-readiness",
   "title": "Official Addons v0.1.0-alpha.2 Release Readiness",
-  "status": "ready_for_addon_publish",
+  "status": "published_docker_smoke_blocked",
   "updated": "2026-05-27",
   "scope_kind": "release_readiness",
-  "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages. The SDK/catalog crates are now published at alpha.2 and official addon package verification passes; remaining release action is explicit approval to publish the addon crates.",
+  "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages. The SDK/catalog crates and official addon crates are now published at alpha.2; remaining release proof is live Docker/server smoke after a Docker daemon is available.",
   "task_prefix": "OAR2",
-  "current_task": "await-addon-publish-approval",
+  "current_task": "await-docker-live-smoke",
   "completed_tasks": [
     "OAR2-010",
     "OAR2-020",
@@ -81,6 +81,11 @@
       "date": "2026-05-27",
       "task": "OAR2-030",
       "summary": "Published nako-official-addon-catalog 0.1.0-alpha.2 from the main repo after protocol/client/nako were already available on crates.io. Main repo publish script dry-run verifies protocol/client/catalog/nako. Notification bridge, metadata scraper, and Chromecast renderer dry-runs now pass."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OAR2-030",
+      "summary": "Published nako-notification-bridge, nako-metadata-scraper, and nako-chromecast-renderer 0.1.0-alpha.2 to crates.io after user approval. cargo search reports all three at 0.1.0-alpha.2."
     }
   ],
   "adr_refs": [
@@ -92,14 +97,13 @@
     "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep"
   ],
   "non_goals": [
-    "publishing remaining addon crates without approval",
     "pushing container images",
     "changing Addon Protocol runtime compatibility version",
     "splitting official addons into multiple installable sidecars"
   ],
   "continue_policy": {
-    "default_action": "await_user_approval",
-    "next_task": "await-addon-publish-approval",
-    "notes": "SDK/catalog alpha.2 crates are published and official addon package dry-runs pass. Real publication now requires user approval for nako-notification-bridge 0.1.0-alpha.2, nako-metadata-scraper 0.1.0-alpha.2, and nako-chromecast-renderer 0.1.0-alpha.2. Live E2E smoke also requires Docker daemon availability."
+    "default_action": "await_docker_daemon",
+    "next_task": "await-docker-live-smoke",
+    "notes": "All alpha.2 Rust crates in this release line are published and visible on crates.io. Live E2E smoke requires Docker daemon availability."
   }
 }

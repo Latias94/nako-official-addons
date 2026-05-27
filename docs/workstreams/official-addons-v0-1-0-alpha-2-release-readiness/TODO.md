@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - TODO
 
-Status: Ready for addon publish approval
+Status: Published; Docker live smoke blocked
 Last updated: 2026-05-24
 Last refreshed: 2026-05-27
 
@@ -61,8 +61,11 @@ Task IDs use the `OAR2` prefix.
   `nako-chromecast-renderer`.
   Refresh 2026-05-25: workspace nextest passed 183/183 with 2 skipped;
   metadata/fmt/diff checks passed.
-  Handoff: SDK/catalog crates are published. Continue with addon crate publish
-  only after explicit user approval.
+  Refresh 2026-05-27 after user approval: `nako-notification-bridge`,
+  `nako-metadata-scraper`, and `nako-chromecast-renderer` `0.1.0-alpha.2`
+  were published and are visible in crates.io search.
+  Handoff: All alpha.2 crates are published. Re-run live Docker/server smoke
+  after a Docker daemon is available.
 
 ## M3 - Smoke And Closeout
 

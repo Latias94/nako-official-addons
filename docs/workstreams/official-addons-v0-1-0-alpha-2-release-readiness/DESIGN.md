@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness
 
-Status: Ready for addon publish approval
+Status: Published; Docker live smoke blocked
 Last updated: 2026-05-27
 
 ## Problem
@@ -13,7 +13,8 @@ path builds passed before the public crate line was complete. On 2026-05-27,
 `nako-addon-protocol`, `nako-addon-client`, `nako`, and
 `nako-official-addon-catalog` `0.1.0-alpha.2` were visible on crates.io, and
 all official addon package dry-runs passed against registry-shaped
-dependencies.
+dependencies. `nako-notification-bridge`, `nako-metadata-scraper`, and
+`nako-chromecast-renderer` `0.1.0-alpha.2` were then published to crates.io.
 
 Live Docker/server smoke also remains a release proof, but the current local
 environment has the Docker CLI installed without a reachable Docker daemon.

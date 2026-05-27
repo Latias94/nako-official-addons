@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Evidence And Gates
 
-Status: Ready for addon publish approval
+Status: Published; Docker live smoke blocked
 Last updated: 2026-05-24
 Last refreshed: 2026-05-27
 
@@ -70,14 +70,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e
 | 2026-05-27 | OAR2-030 | `cargo publish -p nako-notification-bridge --locked --dry-run` | Pass. |
 | 2026-05-27 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked --dry-run` | Pass. |
 | 2026-05-27 | OAR2-030 | `cargo publish -p nako-chromecast-renderer --locked --dry-run` | Pass. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-notification-bridge --locked` | Published `nako-notification-bridge 0.1.0-alpha.2` and waited for crates.io availability. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-metadata-scraper --locked` | Published `nako-metadata-scraper 0.1.0-alpha.2` and waited for crates.io availability. |
+| 2026-05-27 | OAR2-030 | `cargo publish -p nako-chromecast-renderer --locked` | Published `nako-chromecast-renderer 0.1.0-alpha.2` and waited for crates.io availability. |
+| 2026-05-27 | OAR2-030 | `cargo search nako-notification-bridge --limit 1`; `cargo search nako-metadata-scraper --limit 1`; `cargo search nako-chromecast-renderer --limit 1` | Pass: all three crates report `0.1.0-alpha.2`. |
 
 ## Known Constraints
 
-- Do not publish remaining addon crates or push images without user approval.
+- Do not push images without user approval.
 - Do not change `ADDON_PROTOCOL_VERSION` unless runtime wire compatibility is
   intentionally changed.
 - Docker live smoke requires a reachable Docker daemon.
 - `../nako` has unrelated dirty files; stage only files touched for this lane.
-- Remaining publish order after approval: `nako-notification-bridge
-  0.1.0-alpha.2`, `nako-metadata-scraper 0.1.0-alpha.2`, and
-  `nako-chromecast-renderer 0.1.0-alpha.2`.
+- All alpha.2 Rust crates in this release line are published.

@@ -1,6 +1,6 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Handoff
 
-Status: Ready for addon publish approval
+Status: Published; Docker live smoke blocked
 Last updated: 2026-05-24
 Last refreshed: 2026-05-27
 
@@ -20,29 +20,26 @@ The E2E script now has a daemon preflight guard.
 `nako-notification-bridge`, and `nako-chromecast-renderer` now verifies against
 published SDK/catalog crates. `nako-official-addon-catalog 0.1.0-alpha.2` was
 published on 2026-05-27 after `nako-addon-protocol`, `nako-addon-client`, and
-`nako` were already visible on crates.io.
+`nako` were already visible on crates.io. `nako-notification-bridge`,
+`nako-metadata-scraper`, and `nako-chromecast-renderer` `0.1.0-alpha.2` were
+then published and are visible in crates.io search.
 
 ## Active Task
 
-- OAR2-030: package verification is complete. Remaining action is explicit
-  approval to publish the three official addon crates.
+- OAR2-030: package verification and official addon crate publication are
+  complete.
 
 ## Next Commands
 
-After user approval, publish in this order:
+After Docker daemon is available, re-run live smoke:
 
 ```powershell
-cargo publish -p nako-notification-bridge --locked
-cargo publish -p nako-metadata-scraper --locked
-cargo publish -p nako-chromecast-renderer --locked
+pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\SourceCodes\Rust\nako-official-addons -AddonBinarySource workspace
 ```
-
-Then re-run official addon package dry-runs or publish verification.
 
 ## Blockers
 
 - Full live Docker/server smoke is blocked until Docker daemon is running.
-- Real addon crate publication still requires explicit user approval.
 
 ## Evidence
 
@@ -64,6 +61,13 @@ Then re-run official addon package dry-runs or publish verification.
 - `cargo publish -p nako-notification-bridge --locked --dry-run` passed.
 - `cargo publish -p nako-metadata-scraper --locked --dry-run` passed.
 - `cargo publish -p nako-chromecast-renderer --locked --dry-run` passed.
+- `cargo publish -p nako-notification-bridge --locked` published
+  `0.1.0-alpha.2`.
+- `cargo publish -p nako-metadata-scraper --locked` published
+  `0.1.0-alpha.2`.
+- `cargo publish -p nako-chromecast-renderer --locked` published
+  `0.1.0-alpha.2`.
+- `cargo search` reports all three official addon crates at `0.1.0-alpha.2`.
 - `npm test` in `addons/browser-worker` passed: 1 passed.
 - `cargo fmt --all -- --check` passed in both repositories.
 - `git diff --check` passed in both repositories with LF/CRLF warnings.

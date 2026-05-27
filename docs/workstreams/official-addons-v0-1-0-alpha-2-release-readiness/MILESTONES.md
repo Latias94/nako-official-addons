@@ -1,8 +1,8 @@
 # Official Addons v0.1.0-alpha.2 Release Readiness - Milestones
 
-Status: Blocked on publish approval
+Status: Published; Docker live smoke blocked
 Last updated: 2026-05-24
-Last refreshed: 2026-05-25
+Last refreshed: 2026-05-27
 
 ## M0 - Lane Open
 
@@ -25,16 +25,15 @@ Status: Done 2026-05-24.
 
 Exit criteria:
 
-- SDK crate package dry-runs pass or are blocked by a concrete publish-order
-  constraint.
-- Metadata scraper and notification bridge package dry-runs pass once
+- SDK/catalog crate package dry-runs pass or are published.
+- Metadata scraper, notification bridge, and Chromecast renderer package dry-runs pass once
   registry-shaped dependencies are available.
 
-Status: Blocked 2026-05-24; refreshed 2026-05-25.
+Status: Done 2026-05-27.
 
-The protocol crate dry-run passes. The client, official addon catalog,
-notification bridge, and metadata scraper package dry-runs require publishing
-upstream alpha.2 crates first.
+The protocol, client, official addon catalog, notification bridge, metadata
+scraper, and Chromecast renderer alpha.2 crates are published and visible on
+crates.io.
 
 ## M3 - Release Evidence
 
@@ -45,6 +44,5 @@ Exit criteria:
   availability.
 - Handoff states the next release action.
 
-Status: Done for local gates 2026-05-24; refreshed 2026-05-25 with workspace
-nextest 183/183 passing. Live Docker/server smoke remains blocked by Docker
-daemon availability.
+Status: Done for local gates and package publication 2026-05-27. Live
+Docker/server smoke remains blocked by Docker daemon availability.
