@@ -70,16 +70,9 @@ impl ResourceSearchRuntime {
         &self,
         request: ResourceSearchRequest,
     ) -> Result<ResourceSearchResponse, ResourceSearchError> {
-        let query = ResourceSearchQuery {
-            query: request
-                .normalized_query()
-                .ok_or(ResourceSearchError::EmptyQuery)?,
-            limit: request.effective_limit(self.config.default_limit, self.config.max_limit),
-            sources: request.sources.clone(),
-            link_types: request.link_types.clone(),
-            refresh: request.refresh,
-            ext: request.ext.clone(),
-        };
+        let query = request
+            .to_query(self.config.default_limit, self.config.max_limit)
+            .ok_or(ResourceSearchError::EmptyQuery)?;
 
         let mut results = Vec::new();
         let mut provider_executions = Vec::new();
@@ -181,7 +174,7 @@ pub fn fuse_results(
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::{ResourceLink, ResourceSearchRequest};
+    use crate::{domain::ResourceSearchRequest, links::resource_link};
 
     use super::*;
 
@@ -305,7 +298,7 @@ mod tests {
             content: None,
             links: links
                 .into_iter()
-                .map(|url| ResourceLink::new(url, source).unwrap())
+                .map(|url| resource_link(url, source).unwrap())
                 .collect(),
             tags: Vec::new(),
             images: Vec::new(),

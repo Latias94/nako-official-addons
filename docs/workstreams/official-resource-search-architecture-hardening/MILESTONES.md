@@ -2,6 +2,8 @@
 
 ## M1 - Search Language Is Stable
 
+Status: complete via ORSAH-020.
+
 Exit criteria:
 
 - Search intent names are documented.

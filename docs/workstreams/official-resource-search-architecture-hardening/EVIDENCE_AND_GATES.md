@@ -16,6 +16,16 @@
   lanes.
 - Refactor brief recorded in `DESIGN.md`.
 
-Not run yet:
+### 2026-05-28 - ORSAH-020
 
-- Code validation for this lane. No code changes yet.
+- Split `domain.rs` into `domain::query`, `domain::link`, and
+  `domain::result`.
+- Added internal `ResourceSearchIntent` inference for free text, media title,
+  external id, and exact link searches without changing alpha request/response
+  payloads.
+- Moved `ResourceLink` construction to `links` while keeping classification and
+  normalization there.
+- `cargo fmt -p nako-resource-search -- --check`: passed.
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 31 tests.
+- `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.

@@ -18,7 +18,7 @@ Validation:
 
 ## ORSAH-020 - Deepen search domain and link taxonomy
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-010
 

@@ -1,4 +1,30 @@
-use crate::domain::ResourceLinkType;
+use crate::domain::{ResourceLink, ResourceLinkType};
+
+#[must_use]
+pub fn resource_link(url: impl Into<String>, source: impl Into<String>) -> Option<ResourceLink> {
+    let url = url.into();
+    let link_type = classify_resource_url(&url);
+    resource_link_with_type(url, link_type, source)
+}
+
+#[must_use]
+pub fn resource_link_with_type(
+    url: impl Into<String>,
+    link_type: ResourceLinkType,
+    source: impl Into<String>,
+) -> Option<ResourceLink> {
+    let url = url.into();
+    let normalized_url = normalize_resource_url(&url)?;
+
+    Some(ResourceLink {
+        url: url.trim().to_owned(),
+        normalized_url,
+        link_type,
+        source: source.into(),
+        password: None,
+        note: None,
+    })
+}
 
 #[must_use]
 pub fn classify_resource_url(raw_url: &str) -> ResourceLinkType {
@@ -130,5 +156,28 @@ mod tests {
             Some("magnet:?xt=urn:btih:abcdef")
         );
         assert_eq!(normalize_resource_url("   "), None);
+    }
+
+    #[test]
+    fn resource_link_classifies_and_normalizes_urls() {
+        let link = resource_link(" HTTPS://PAN.QUARK.CN/s/Demo#section ", "fixture").unwrap();
+
+        assert_eq!(link.url, "HTTPS://PAN.QUARK.CN/s/Demo#section");
+        assert_eq!(link.normalized_url, "https://pan.quark.cn/s/Demo");
+        assert_eq!(link.link_type, ResourceLinkType::Quark);
+        assert_eq!(link.source, "fixture");
+    }
+
+    #[test]
+    fn resource_link_with_type_keeps_explicit_provider_type() {
+        let link = resource_link_with_type(
+            "https://example.com/file",
+            ResourceLinkType::Magnet,
+            "provider",
+        )
+        .unwrap();
+
+        assert_eq!(link.link_type, ResourceLinkType::Magnet);
+        assert_eq!(link.normalized_url, "https://example.com/file");
     }
 }

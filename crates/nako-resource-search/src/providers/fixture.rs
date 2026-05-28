@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 
 use crate::{
-    domain::{ResourceLink, ResourceSearchQuery, ResourceSearchResult},
+    domain::{ResourceSearchQuery, ResourceSearchResult},
     engine::ResourceSearchProvider,
+    links::resource_link,
 };
 
 #[derive(Debug, Default)]
@@ -32,10 +33,10 @@ impl ResourceSearchProvider for FixtureResourceSearchProvider {
                 source: source.to_owned(),
                 content: Some("Deterministic fixture resource search result.".to_owned()),
                 links: vec![
-                    ResourceLink::new(format!("https://pan.quark.cn/s/{slug}"), source)
+                    resource_link(format!("https://pan.quark.cn/s/{slug}"), source)
                         .expect("fixture quark link is valid")
                         .with_password("nako"),
-                    ResourceLink::new("magnet:?xt=urn:btih:0123456789abcdef", source)
+                    resource_link("magnet:?xt=urn:btih:0123456789abcdef", source)
                         .expect("fixture magnet link is valid")
                         .with_note("fixture magnet candidate"),
                 ],
@@ -49,9 +50,9 @@ impl ResourceSearchProvider for FixtureResourceSearchProvider {
                 source: source.to_owned(),
                 content: Some("Second deterministic fixture result for fusion tests.".to_owned()),
                 links: vec![
-                    ResourceLink::new(format!("https://www.aliyundrive.com/s/{slug}"), source)
+                    resource_link(format!("https://www.aliyundrive.com/s/{slug}"), source)
                         .expect("fixture aliyun link is valid"),
-                    ResourceLink::new(format!("https://PAN.QUARK.CN/s/{slug}#duplicate"), source)
+                    resource_link(format!("https://PAN.QUARK.CN/s/{slug}#duplicate"), source)
                         .expect("fixture duplicate quark link is valid")
                         .with_password("nako"),
                 ],
@@ -90,14 +91,7 @@ mod tests {
     async fn fixture_provider_returns_classified_results() {
         let provider = FixtureResourceSearchProvider;
         let results = provider
-            .search(&ResourceSearchQuery {
-                query: "Demo Movie".to_owned(),
-                limit: 20,
-                sources: Vec::new(),
-                link_types: Vec::new(),
-                refresh: false,
-                ext: serde_json::Value::Null,
-            })
+            .search(&ResourceSearchQuery::free_text("Demo Movie", 20))
             .await
             .unwrap();
 

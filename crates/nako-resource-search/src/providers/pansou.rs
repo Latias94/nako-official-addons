@@ -8,7 +8,7 @@ use crate::{
     config::PansouProviderConfig,
     domain::{ResourceLink, ResourceLinkType, ResourceSearchQuery, ResourceSearchResult},
     engine::ResourceSearchProvider,
-    links::{classify_resource_url, normalize_resource_url},
+    links::{classify_resource_url, resource_link_with_type},
 };
 
 pub const PANSOU_COMPATIBLE_PROVIDER_ID: &str = "pansou_compatible";
@@ -289,7 +289,7 @@ fn map_pansou_merged_response(
 }
 
 fn map_pansou_link(link: PansouLink, source: &str) -> Option<ResourceLink> {
-    let mut mapped = resource_link_with_type(&link.url, &link.link_type, source)?;
+    let mut mapped = pansou_resource_link(&link.url, &link.link_type, source)?;
     if let Some(password) = non_empty_trimmed(&link.password) {
         mapped = mapped.with_password(password);
     }
@@ -305,7 +305,7 @@ fn map_pansou_merged_link(
     source: &str,
     link: &PansouMergedLink,
 ) -> Option<ResourceLink> {
-    let mut mapped = resource_link_with_type(&link.url, link_type, source)?;
+    let mut mapped = pansou_resource_link(&link.url, link_type, source)?;
     if let Some(password) = non_empty_trimmed(&link.password) {
         mapped = mapped.with_password(password);
     }
@@ -316,24 +316,11 @@ fn map_pansou_merged_link(
     Some(mapped)
 }
 
-fn resource_link_with_type(
-    url: &str,
-    pansou_link_type: &str,
-    source: &str,
-) -> Option<ResourceLink> {
-    let normalized_url = normalize_resource_url(url)?;
+fn pansou_resource_link(url: &str, pansou_link_type: &str, source: &str) -> Option<ResourceLink> {
     let link_type = pansou_link_type
         .parse::<ResourceLinkType>()
         .unwrap_or_else(|_| classify_resource_url(url));
-
-    Some(ResourceLink {
-        url: url.trim().to_owned(),
-        normalized_url,
-        link_type,
-        source: source.to_owned(),
-        password: None,
-        note: None,
-    })
+    resource_link_with_type(url, link_type, source)
 }
 
 fn source_from_channel(channel: &str) -> String {
@@ -374,21 +361,16 @@ mod tests {
             concurrency: Some(4),
             timeout_ms: 500,
         };
-        let request = build_pansou_request(
-            &config,
-            &ResourceSearchQuery {
-                query: "Demo Movie".to_owned(),
-                limit: 10,
-                sources: Vec::new(),
-                link_types: vec![
-                    ResourceLinkType::Quark,
-                    ResourceLinkType::Magnet,
-                    ResourceLinkType::Web,
-                ],
-                refresh: true,
-                ext: serde_json::json!({ "season": 1 }),
-            },
-        );
+        let mut query = ResourceSearchQuery::free_text("Demo Movie", 10);
+        query.link_types = vec![
+            ResourceLinkType::Quark,
+            ResourceLinkType::Magnet,
+            ResourceLinkType::Web,
+        ];
+        query.refresh = true;
+        query.ext = serde_json::json!({ "season": 1 });
+
+        let request = build_pansou_request(&config, &query);
 
         assert_eq!(request.keyword, "Demo Movie");
         assert_eq!(request.conc, Some(4));
@@ -456,13 +438,6 @@ mod tests {
     }
 
     fn query() -> ResourceSearchQuery {
-        ResourceSearchQuery {
-            query: "Demo Movie".to_owned(),
-            limit: 10,
-            sources: Vec::new(),
-            link_types: Vec::new(),
-            refresh: false,
-            ext: serde_json::Value::Null,
-        }
+        ResourceSearchQuery::free_text("Demo Movie", 10)
     }
 }
