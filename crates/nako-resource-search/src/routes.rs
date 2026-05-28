@@ -1,26 +1,25 @@
 use axum::{
     Json, Router,
     extract::State,
-    http::StatusCode,
     response::Html,
     routing::{get, post},
 };
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonHealthCheckRequest, AddonHealthCheckResponse,
-    AddonHealthManifestFacts, AddonHealthStatus, AddonResource, AddonResourceRequest,
-    AddonResourceResponse,
+    AddonHealthManifestFacts, AddonHealthStatus, AddonResourceRequest, AddonResourceResponse,
 };
 use tower_http::trace::TraceLayer;
 
 use crate::{
     Config,
-    domain::ResourceSearchRequest,
-    engine::{ResourceSearchError, ResourceSearchRuntime},
+    engine::ResourceSearchRuntime,
     manifest::{
         ADDON_ID, ADDON_NAME, ADDON_VERSION, DIAGNOSTICS_PATH, RESOURCE_SEARCH_RESOURCE_PATH,
         addon_manifest, container_manifest,
     },
 };
+
+mod resource_protocol;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -73,25 +72,17 @@ async fn health(
 async fn resource_search(
     State(state): State<AppState>,
     Json(request): Json<AddonResourceRequest>,
-) -> Result<Json<AddonResourceResponse>, (StatusCode, Json<serde_json::Value>)> {
-    validate_resource_envelope(&request)?;
-
-    let payload = serde_json::from_value::<ResourceSearchRequest>(request.payload.clone())
-        .map_err(|_| safe_bad_request("invalid_resource_search_payload"))?;
+) -> Result<Json<AddonResourceResponse>, resource_protocol::RouteError> {
+    let payload = resource_protocol::decode_search_request(&request)?;
     let response = state
         .runtime
         .search(payload)
         .await
-        .map_err(search_error_response)?;
+        .map_err(resource_protocol::search_error_response)?;
 
-    Ok(Json(AddonResourceResponse {
-        protocol_version: request.protocol_version,
-        addon_id: request.addon_id,
-        resource: request.resource,
-        request_id: request.request_id,
-        payload: serde_json::to_value(response).expect("resource search response serializes"),
-        artifacts: Vec::new(),
-    }))
+    Ok(Json(resource_protocol::encode_search_response(
+        request, response,
+    )?))
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
@@ -127,28 +118,6 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     ))
 }
 
-fn validate_resource_envelope(
-    request: &AddonResourceRequest,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if request.protocol_version != ADDON_PROTOCOL_VERSION {
-        return Err(safe_bad_request("invalid_protocol_version"));
-    }
-    if request.addon_id != ADDON_ID {
-        return Err(safe_bad_request("invalid_addon_id"));
-    }
-    if request.resource != AddonResource::Automation {
-        return Err(safe_bad_request("invalid_resource"));
-    }
-
-    Ok(())
-}
-
-fn search_error_response(error: ResourceSearchError) -> (StatusCode, Json<serde_json::Value>) {
-    match error {
-        ResourceSearchError::EmptyQuery => safe_bad_request("empty_query"),
-    }
-}
-
 fn diagnostics_payload(state: &AppState) -> serde_json::Value {
     serde_json::json!({
         "safe_note": "resource search sidecar is reachable",
@@ -178,20 +147,16 @@ const fn yes_no_label(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
 }
 
-fn safe_bad_request(safe_error_code: &str) -> (StatusCode, Json<serde_json::Value>) {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(serde_json::json!({
-            "safe_error_code": safe_error_code,
-            "retryable": false
-        })),
-    )
-}
-
 #[cfg(test)]
 mod tests {
-    use axum::{body::Body, http::Request};
-    use nako_addon_protocol::{AddonManifest, AddonScope, validate_manifest};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use nako_addon_protocol::{
+        AddonManifest, AddonResource, AddonResourceRequest, AddonResourceResponse, AddonScope,
+        validate_manifest,
+    };
     use tower::ServiceExt;
 
     use crate::domain::{
