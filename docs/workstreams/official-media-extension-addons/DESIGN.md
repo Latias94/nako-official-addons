@@ -1,6 +1,6 @@
 # Official Media Extension Addons - Design
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-28
 
 ## Problem

@@ -1,6 +1,6 @@
 # Official Media Extension Addons - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-28
 
 ## Gates
@@ -13,8 +13,9 @@ Last updated: 2026-05-28
 | Acquisition runner docs | Manual review; `git diff --check` | Pass | OMEA-040 records future action-addon contract only. |
 | Nako catalog sync | `cargo nextest run -p nako-official-addon-catalog --no-fail-fast`; `cargo nextest run -p nako-server addon_source_catalog --no-fail-fast`; `cargo check -p nako-official-addon-catalog -p nako-server --tests`; `cargo fmt --all -- --check`; `git diff --check` in `../nako` | Pass | Nako commit `52da469d`; no `../nako/web` changes. |
 | Package check | `cargo check -p nako-subtitle-provider --tests`; `cargo check -p nako-dlna-renderer --tests` | Pass | OMEA-020 and OMEA-030. |
-| Rust format | `cargo fmt --all -- --check` | Pass | OMEA-030. Final closeout gate still required. |
-| Diff hygiene | `git diff --check` | Pass | OMEA-030. Git warned Cargo.lock line endings may be normalised on next touch. |
+| Final focused tests | `cargo nextest run -p nako-subtitle-provider -p nako-dlna-renderer --no-fail-fast` | Pass | 26 passed on 2026-05-28. |
+| Rust format | `cargo fmt --all -- --check` | Pass | Final closeout gate passed. |
+| Diff hygiene | `git diff --check` | Pass | Final closeout gate passed. |
 
 ## Evidence Log
 
@@ -25,6 +26,7 @@ Last updated: 2026-05-28
 | 2026-05-28 | OMEA-030 | `cargo nextest run -p nako-dlna-renderer --no-fail-fast`; `cargo check -p nako-dlna-renderer --tests`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
 | 2026-05-28 | OMEA-040 | README and FOLLOW_ON_CONTRACTS manual review; `git diff --check`. | Pass |
 | 2026-05-28 | OMEA-050 | `../nako` commit `52da469d`; official catalog and server addon-source catalog gates. | Pass |
+| 2026-05-28 | OMEA-060 | `cargo nextest run -p nako-subtitle-provider -p nako-dlna-renderer --no-fail-fast`; `cargo check -p nako-subtitle-provider -p nako-dlna-renderer --tests`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
 
 ## Review Notes
 

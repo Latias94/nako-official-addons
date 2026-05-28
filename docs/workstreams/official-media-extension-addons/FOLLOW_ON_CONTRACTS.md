@@ -1,6 +1,6 @@
 # Official Media Extension Addons - Follow-On Contracts
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-28
 
 ## External Acquisition Runner

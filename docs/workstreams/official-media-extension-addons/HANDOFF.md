@@ -1,8 +1,8 @@
 # Official Media Extension Addons - Handoff
 
-Status: active.
+Status: complete.
 
-Current task: OMEA-060.
+Current task: none.
 
 Completed:
 
@@ -23,10 +23,13 @@ Completed:
   `nako-official-addon-catalog` and server catalog resolution now include
   `nako.official.subtitle-provider` and `nako.official.dlna-renderer`; no
   `../nako/web` changes were made.
+- OMEA-060 closed the lane with fresh plugin gates: subtitle + DLNA nextest,
+  double-package check, fmt check, and diff hygiene all passed.
 
 Next:
 
-- Close out the workstream with fresh gates and final evidence.
+- Future work should split DLNA live SSDP/UPnP, subtitle host import/write
+  product flow, and External Acquisition Runner into separate lanes.
 
 Watch points:
 

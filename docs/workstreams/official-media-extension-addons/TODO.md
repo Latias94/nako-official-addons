@@ -1,6 +1,6 @@
 # Official Media Extension Addons - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-28
 
 ## M0 - Scope And Evidence Freeze
@@ -70,9 +70,10 @@ Last updated: 2026-05-28
 
 ## M5 - Closeout
 
-- [ ] OMEA-060 [owner=codex] [deps=OMEA-020,OMEA-030,OMEA-040,OMEA-050] [scope=docs/workstreams/official-media-extension-addons]
+- [x] OMEA-060 [owner=codex] [deps=OMEA-020,OMEA-030,OMEA-040,OMEA-050] [scope=docs/workstreams/official-media-extension-addons]
   Goal: Run fresh gates, update evidence, and close or split remaining work.
   Validation: final package gates pass or blockers are concrete.
   Review: No blocking workstream or code-quality findings remain.
   Evidence: EVIDENCE_AND_GATES.md, WORKSTREAM.json, HANDOFF.md
-  Handoff: Summarize remaining risks and next addon priorities.
+  Handoff: DONE 2026-05-28. Fresh final gates passed; remaining work is split
+  into future lanes, not blocked in this workstream.
