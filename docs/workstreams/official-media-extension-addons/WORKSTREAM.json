@@ -5,7 +5,7 @@
   "created_at": "2026-05-28",
   "updated_at": "2026-05-28",
   "objective": "Add read-only Subtitle Provider and plan-only DLNA Renderer official addon foundations while recording External Acquisition Runner as a follow-on contract.",
-  "current_task": "OMEA-020",
+  "current_task": "OMEA-030",
   "owner": "Codex",
   "docs": {
     "design": "DESIGN.md",

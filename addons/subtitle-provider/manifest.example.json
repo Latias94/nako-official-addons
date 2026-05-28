@@ -1,0 +1,76 @@
+{
+  "id": "nako.official.subtitle-provider",
+  "name": "Nako Subtitle Provider",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-subtitle-provider:9140",
+  "description": "Official Nako subtitle provider sidecar for read-only subtitle candidate discovery.",
+  "resources": [
+    {
+      "kind": "subtitle",
+      "path": "/subtitle",
+      "input_schema": "nako.official.subtitle_provider.request.v1",
+      "output_schema": "nako.official.subtitle_provider.response.v1",
+      "required_scopes": ["subtitle_read"],
+      "timeout_ms": 10000,
+      "max_attempts": 1
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "subtitle-provider-diagnostics",
+      "kind": "diagnostics",
+      "label": "Subtitle Provider Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["subtitle_read"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "Subtitle Provider Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["subtitle_read"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.subtitle-provider.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "providers": {
+          "type": "object",
+          "properties": {
+            "fixture": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "default_language": {
+          "type": "string",
+          "default": "en"
+        },
+        "default_limit": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50
+        },
+        "max_limit": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 1,
+  "scopes": ["subtitle_read"]
+}

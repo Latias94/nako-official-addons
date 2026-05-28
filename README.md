@@ -24,6 +24,9 @@ as one suite later:
   and `resource_link_check`: fixture-backed search, link classification, result
   fusion, and conservative safe link checks with the read-only
   `acquisition_search_read` / `acquisition_link_check_read` scopes;
+- users can install `nako-subtitle-provider` for read-only fixture subtitle
+  candidate discovery through the `subtitle` resource and `subtitle_read`
+  scope;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -57,6 +60,8 @@ as one suite later:
 - `crates/nako-resource-search`: Rust HTTP sidecar that implements the
   first-class `resource_search` resource for external acquisition candidate
   discovery.
+- `crates/nako-subtitle-provider`: Rust HTTP sidecar that implements a
+  read-only `subtitle` resource foundation with fixture candidates.
 
 ## Development
 
@@ -67,6 +72,7 @@ cargo run -p nako-metadata-scraper
 cargo run -p nako-notification-bridge
 cargo run -p nako-chromecast-renderer
 cargo run -p nako-resource-search
+cargo run -p nako-subtitle-provider
 ```
 
 Default listen addresses:
@@ -75,6 +81,7 @@ Default listen addresses:
 - notification bridge: `127.0.0.1:9110`
 - Chromecast renderer: `127.0.0.1:9120`
 - resource search: `127.0.0.1:9130`
+- subtitle provider: `127.0.0.1:9140`
 
 Provider defaults:
 
@@ -143,6 +150,8 @@ Provider defaults:
   `NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED=1` plus
   `NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL` to query an externally managed
   PanSou-compatible `/api/search` service.
+- `subtitle_provider.fixture`: enabled by default. It returns deterministic
+  inline subtitle candidates for local smoke and never writes subtitle files.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -164,6 +173,9 @@ pwsh -File addons/chromecast-renderer/smoke.local.ps1 `
 
 pwsh -File addons/resource-search/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9130
+
+pwsh -File addons/subtitle-provider/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9140
 ```
 
 Optional notification provider live smoke is skipped by default and must be

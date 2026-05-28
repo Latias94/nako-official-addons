@@ -15,7 +15,7 @@ Last updated: 2026-05-28
 
 ## M1 - Read-Only Subtitle Provider Foundation
 
-- [ ] OMEA-020 [owner=codex] [deps=OMEA-010] [scope=crates/nako-subtitle-provider,addons/subtitle-provider,Cargo.toml,README.md]
+- [x] OMEA-020 [owner=codex] [deps=OMEA-010] [scope=crates/nako-subtitle-provider,addons/subtitle-provider,Cargo.toml,README.md]
   Goal: Add a fixture-backed official subtitle provider sidecar with a valid
   `AddonResource::Subtitle` manifest, `/subtitle`, `/manifest.json`, `/health`,
   diagnostics, checked-in manifest example, and local smoke script.
@@ -25,7 +25,8 @@ Last updated: 2026-05-28
   Review: The addon is read-only and must not write subtitle files or call live
   providers.
   Evidence: crates/nako-subtitle-provider/src/manifest.rs
-  Handoff: Mark DONE, DONE_WITH_CONCERNS, BLOCKED, or NEEDS_CONTEXT.
+  Handoff: DONE 2026-05-28. Added fixture-backed read-only subtitle provider,
+  checked-in manifest, packaging docs, and local smoke.
 
 ## M2 - Plan-Only DLNA Renderer Foundation
 
