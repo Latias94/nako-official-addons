@@ -1,0 +1,76 @@
+{
+  "id": "nako.official.dlna-renderer",
+  "name": "Nako DLNA Renderer",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-dlna-renderer:9150",
+  "description": "Official Nako DLNA renderer adapter sidecar. The foundation release validates host-owned renderer command envelopes and returns plan-only results.",
+  "resources": [
+    {
+      "kind": "renderer_adapter",
+      "path": "/renderer-adapter",
+      "input_schema": "nako.renderer-adapter.request.v1",
+      "output_schema": "nako.renderer-adapter.response.v1",
+      "required_scopes": ["renderer_adapter_read", "renderer_adapter_control"],
+      "timeout_ms": 10000,
+      "max_attempts": 1
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "dlna-renderer-diagnostics",
+      "kind": "diagnostics",
+      "label": "DLNA Renderer Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["renderer_adapter_read"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "DLNA Renderer Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["renderer_adapter_read"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.dlna-renderer.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "manual_devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stable_device_id", "display_name", "host"],
+            "properties": {
+              "stable_device_id": { "type": "string" },
+              "display_name": { "type": "string" },
+              "host": { "type": "string" },
+              "port": {
+                "type": "integer",
+                "default": 8200,
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "model": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "plan_only": {
+          "type": "boolean",
+          "default": true,
+          "description": "Foundation release validates commands but does not perform live DLNA control."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 1,
+  "scopes": ["renderer_adapter_read", "renderer_adapter_control"]
+}

@@ -20,6 +20,8 @@ as one suite later:
 - users can install `nako-chromecast-renderer` for the first official external
   renderer adapter proof: Chromecast target discovery plus host-owned,
   cast-safe command envelope translation;
+- users can install `nako-dlna-renderer` for a plan-only official DLNA renderer
+  adapter foundation with manual target discovery and safe command planning;
 - users can install `nako-resource-search` for first-class `resource_search`
   and `resource_link_check`: fixture-backed search, link classification, result
   fusion, and conservative safe link checks with the read-only
@@ -57,6 +59,8 @@ as one suite later:
 - `crates/nako-chromecast-renderer`: Rust HTTP sidecar that implements the
   first official Chromecast `renderer_adapter` resource, with optional live LAN
   discovery/control gates and redaction-safe diagnostics.
+- `crates/nako-dlna-renderer`: Rust HTTP sidecar that implements a plan-only
+  official DLNA `renderer_adapter` foundation with manual targets.
 - `crates/nako-resource-search`: Rust HTTP sidecar that implements the
   first-class `resource_search` resource for external acquisition candidate
   discovery.
@@ -71,6 +75,7 @@ cargo nextest run --workspace --no-fail-fast
 cargo run -p nako-metadata-scraper
 cargo run -p nako-notification-bridge
 cargo run -p nako-chromecast-renderer
+cargo run -p nako-dlna-renderer
 cargo run -p nako-resource-search
 cargo run -p nako-subtitle-provider
 ```
@@ -82,6 +87,7 @@ Default listen addresses:
 - Chromecast renderer: `127.0.0.1:9120`
 - resource search: `127.0.0.1:9130`
 - subtitle provider: `127.0.0.1:9140`
+- DLNA renderer: `127.0.0.1:9150`
 
 Provider defaults:
 
@@ -142,6 +148,9 @@ Provider defaults:
   LAN discovery or live device control only with
   `NAKO_CHROMECAST_RENDERER_LIVE_DISCOVERY_ENABLED=1` or
   `NAKO_CHROMECAST_RENDERER_LIVE_CONTROL_ENABLED=1`.
+- `dlna_renderer`: plan-only. Configure deterministic manual targets through
+  `NAKO_DLNA_RENDERER_MANUAL_DEVICES_JSON`. Live SSDP discovery and UPnP control
+  are follow-on work and are not implemented in the foundation release.
 - `resource_search.fixture`: enabled by default. It provides deterministic
   search results and deterministic fixture link checks for local smoke while
   live provider scraping, downloader hooks, and cloud-drive transfer are handled
@@ -170,6 +179,9 @@ pwsh -File addons/notification-bridge/smoke.local.ps1 `
 
 pwsh -File addons/chromecast-renderer/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9120
+
+pwsh -File addons/dlna-renderer/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9150
 
 pwsh -File addons/resource-search/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9130

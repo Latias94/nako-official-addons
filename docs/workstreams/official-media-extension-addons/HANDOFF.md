@@ -2,7 +2,7 @@
 
 Status: active.
 
-Current task: OMEA-030.
+Current task: OMEA-040.
 
 Completed:
 
@@ -12,12 +12,16 @@ Completed:
 - External Acquisition Runner is recorded as a follow-on contract only.
 - OMEA-020 added the read-only fixture-backed `nako-subtitle-provider`
   foundation, checked-in manifest, packaging docs, and local smoke script.
+- OMEA-030 added the plan-only `nako-dlna-renderer` foundation, manual target
+  discovery, command envelope validation, redaction-safe diagnostics,
+  checked-in manifest, packaging docs, and local smoke script.
 
 Next:
 
-- Implement `nako-dlna-renderer` foundation.
-- Keep it plan-only with manual targets only.
-- Do not add SSDP discovery or UPnP control.
+- Confirm OMEA-040 documentation is explicit enough for External Acquisition
+  Runner follow-on boundaries.
+- Decide whether Nako official catalog sync should stay split after manifests
+  stabilized.
 
 Watch points:
 

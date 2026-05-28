@@ -9,10 +9,10 @@ Last updated: 2026-05-28
 | --- | --- | --- | --- |
 | Workstream docs | Manual review | Pass | OMEA-010 opened the lane. |
 | Subtitle package tests | `cargo nextest run -p nako-subtitle-provider --no-fail-fast` | Pass | 10 passed on 2026-05-28. |
-| DLNA package tests | `cargo nextest run -p nako-dlna-renderer --no-fail-fast` | Pending | OMEA-030 |
-| Package check | `cargo check -p nako-subtitle-provider --tests` | Pass | OMEA-020. Combined check waits for OMEA-030. |
-| Rust format | `cargo fmt --all -- --check` | Pass | OMEA-020. Final gate still required. |
-| Diff hygiene | `git diff --check` | Pass | OMEA-020. Final gate still required. |
+| DLNA package tests | `cargo nextest run -p nako-dlna-renderer --no-fail-fast` | Pass | 16 passed on 2026-05-28. |
+| Package check | `cargo check -p nako-subtitle-provider --tests`; `cargo check -p nako-dlna-renderer --tests` | Pass | OMEA-020 and OMEA-030. |
+| Rust format | `cargo fmt --all -- --check` | Pass | OMEA-030. Final closeout gate still required. |
+| Diff hygiene | `git diff --check` | Pass | OMEA-030. Git warned Cargo.lock line endings may be normalised on next touch. |
 
 ## Evidence Log
 
@@ -20,6 +20,7 @@ Last updated: 2026-05-28
 | --- | --- | --- | --- |
 | 2026-05-28 | OMEA-010 | Workstream docs created for Subtitle Provider, DLNA Renderer, and External Acquisition Runner follow-on. | Pass |
 | 2026-05-28 | OMEA-020 | `cargo nextest run -p nako-subtitle-provider --no-fail-fast`; `cargo check -p nako-subtitle-provider --tests`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
+| 2026-05-28 | OMEA-030 | `cargo nextest run -p nako-dlna-renderer --no-fail-fast`; `cargo check -p nako-dlna-renderer --tests`; `cargo fmt --all -- --check`; `git diff --check`. | Pass |
 
 ## Review Notes
 

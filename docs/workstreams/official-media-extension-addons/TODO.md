@@ -30,7 +30,7 @@ Last updated: 2026-05-28
 
 ## M2 - Plan-Only DLNA Renderer Foundation
 
-- [ ] OMEA-030 [owner=codex] [deps=OMEA-010] [scope=crates/nako-dlna-renderer,addons/dlna-renderer,Cargo.toml,README.md]
+- [x] OMEA-030 [owner=codex] [deps=OMEA-010] [scope=crates/nako-dlna-renderer,addons/dlna-renderer,Cargo.toml,README.md]
   Goal: Add an official DLNA renderer adapter foundation that reuses the
   `renderer_adapter` protocol, supports manual target discovery, and returns
   redaction-safe plan-only command results without live SSDP/UPnP control.
@@ -39,7 +39,9 @@ Last updated: 2026-05-28
   `git diff --check`.
   Review: No live network discovery or control is implemented in this task.
   Evidence: crates/nako-dlna-renderer/src/manifest.rs
-  Handoff: Mark DONE, DONE_WITH_CONCERNS, BLOCKED, or NEEDS_CONTEXT.
+  Handoff: DONE 2026-05-28. Added plan-only DLNA renderer foundation with
+  manual target discovery, command envelope validation, redaction-safe
+  diagnostics, checked-in manifest, packaging docs, and local smoke script.
 
 ## M3 - Acquisition Runner Follow-On Contract
 
