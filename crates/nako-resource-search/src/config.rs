@@ -56,13 +56,6 @@ impl Config {
                 .unwrap_or(Self::DEFAULT_SEARCH_TIMEOUT_MS),
         }
     }
-
-    #[must_use]
-    pub fn enabled_provider_count(&self) -> usize {
-        let fixture = if self.fixture_provider_enabled { 1 } else { 0 };
-        let pansou = if self.pansou.is_active() { 1 } else { 0 };
-        fixture + pansou
-    }
 }
 
 impl Default for Config {
@@ -234,7 +227,6 @@ mod tests {
         assert_eq!(config.base_url, Config::DEFAULT_BASE_URL);
         assert!(config.fixture_provider_enabled);
         assert!(!config.pansou.is_active());
-        assert_eq!(config.enabled_provider_count(), 1);
         assert_eq!(config.default_limit, Config::DEFAULT_LIMIT);
         assert_eq!(config.max_limit, Config::DEFAULT_MAX_LIMIT);
     }
@@ -294,7 +286,6 @@ mod tests {
         );
         assert_eq!(config.pansou.concurrency, Some(4));
         assert_eq!(config.pansou.timeout_ms, 500);
-        assert_eq!(config.enabled_provider_count(), 2);
 
         let debug = format!("{config:?}");
         assert!(debug.contains("bearer_token_configured"));
@@ -310,6 +301,5 @@ mod tests {
         });
 
         assert!(!config.pansou.is_active());
-        assert_eq!(config.enabled_provider_count(), 1);
     }
 }

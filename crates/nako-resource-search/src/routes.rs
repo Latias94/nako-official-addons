@@ -107,7 +107,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
 </body>
 </html>"#,
         state.config.base_url,
-        state.config.enabled_provider_count(),
+        state.runtime.active_provider_count(),
         state.runtime.provider_count(),
         state.runtime.provider_ids().join(", "),
         yes_no_label(state.config.pansou.is_active()),
@@ -123,7 +123,7 @@ fn diagnostics_payload(state: &AppState) -> serde_json::Value {
         "safe_note": "resource search sidecar is reachable",
         "protocol_resource": "automation_alpha",
         "future_protocol_resource": "resource_search",
-        "configured_provider_count": state.config.enabled_provider_count(),
+        "configured_provider_count": state.runtime.active_provider_count(),
         "runtime_provider_count": state.runtime.provider_count(),
         "providers": state.runtime.provider_ids(),
         "provider_registry": state.runtime.provider_diagnostics(),

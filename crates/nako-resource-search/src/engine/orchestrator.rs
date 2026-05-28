@@ -39,6 +39,11 @@ impl ResourceSearchRuntime {
     }
 
     #[must_use]
+    pub fn active_provider_count(&self) -> usize {
+        self.provider_registry.active_provider_count()
+    }
+
+    #[must_use]
     pub fn provider_ids(&self) -> Vec<&'static str> {
         self.providers
             .iter()
