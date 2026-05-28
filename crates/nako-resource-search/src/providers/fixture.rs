@@ -3,10 +3,10 @@ use async_trait::async_trait;
 use super::descriptor::{
     ProviderCapability, ProviderConfigurationSchemaFragment, ProviderDescriptor,
 };
+use super::{ProviderSearchBatch, ResourceSearchProvider};
 use crate::{
     Config,
     domain::{ResourceSearchQuery, ResourceSearchResult},
-    engine::{ProviderSearchBatch, ResourceSearchProvider},
     links::resource_link,
     source_policy::SourcePolicy,
 };

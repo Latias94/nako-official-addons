@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use crate::{Config, engine::ResourceSearchProvider};
+use crate::Config;
 
 use super::{
     ProviderConfigurationSchemaFragment, ProviderDescriptor, ProviderDiagnostic,
+    ResourceSearchProvider,
     fixture::{FIXTURE_DESCRIPTOR, FixtureResourceSearchProvider},
     pansou::{PANSOU_DESCRIPTOR, PansouCompatibleProvider},
 };

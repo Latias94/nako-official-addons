@@ -1,8 +1,12 @@
+mod contract;
 mod descriptor;
 mod fixture;
 mod pansou;
 mod registry;
 
+pub use contract::{
+    ProviderSearchBatch, ProviderSearchFinality, ProviderSearchWarning, ResourceSearchProvider,
+};
 pub use descriptor::{
     ProviderCapability, ProviderConfigurationSchemaFragment, ProviderDescriptor, ProviderDiagnostic,
 };

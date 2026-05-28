@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 use super::descriptor::{
     ProviderCapability, ProviderConfigurationSchemaFragment, ProviderDescriptor,
 };
+use super::{ProviderSearchBatch, ResourceSearchProvider};
 use crate::{
     Config,
     config::PansouProviderConfig,
     domain::{ResourceLink, ResourceLinkType, ResourceSearchQuery, ResourceSearchResult},
-    engine::{ProviderSearchBatch, ResourceSearchProvider},
     links::{classify_resource_url, resource_link_with_type},
     source_policy::SourcePolicy,
 };
