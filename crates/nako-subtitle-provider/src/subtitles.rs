@@ -1,74 +1,16 @@
-use serde::{Deserialize, Serialize};
+use nako_addon_protocol::{
+    ADDON_SUBTITLE_RESPONSE_SCHEMA, AddonSubtitleCandidate, AddonSubtitleDelivery,
+    AddonSubtitleFormat, AddonSubtitleProviderExecution, AddonSubtitleProviderStatus,
+    AddonSubtitleSearchRequest, AddonSubtitleSearchResponse,
+};
 
-use crate::{Config, manifest::SUBTITLE_RESPONSE_SCHEMA};
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct SubtitleSearchRequest {
-    pub schema: String,
-    pub query: String,
-    #[serde(default)]
-    pub languages: Vec<String>,
-    #[serde(default)]
-    pub limit: Option<usize>,
-    #[serde(default)]
-    pub context: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct SubtitleSearchResponse {
-    pub schema: String,
-    pub query: String,
-    pub total: usize,
-    pub subtitles: Vec<SubtitleCandidate>,
-    pub provider_executions: Vec<SubtitleProviderExecution>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct SubtitleCandidate {
-    pub id: String,
-    pub title: String,
-    pub language: String,
-    pub format: SubtitleFormat,
-    pub source: String,
-    pub release: Option<String>,
-    pub score: u16,
-    pub delivery: SubtitleDelivery,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SubtitleFormat {
-    Vtt,
-    Srt,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum SubtitleDelivery {
-    Inline { text: String },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct SubtitleProviderExecution {
-    pub provider_id: String,
-    pub status: SubtitleProviderStatus,
-    pub result_count: usize,
-    pub safe_message: Option<String>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SubtitleProviderStatus {
-    Ok,
-    Skipped,
-}
+use crate::Config;
 
 #[must_use]
 pub fn search_subtitles(
     config: &Config,
-    request: SubtitleSearchRequest,
-) -> Option<SubtitleSearchResponse> {
+    request: AddonSubtitleSearchRequest,
+) -> Option<AddonSubtitleSearchResponse> {
     let query = normalize_query(&request.query)?;
     let limit = request
         .limit
@@ -84,9 +26,9 @@ pub fn search_subtitles(
         let result_count = subtitles.len();
         (
             subtitles,
-            SubtitleProviderExecution {
+            AddonSubtitleProviderExecution {
                 provider_id: "fixture".to_owned(),
-                status: SubtitleProviderStatus::Ok,
+                status: AddonSubtitleProviderStatus::Ok,
                 result_count,
                 safe_message: None,
             },
@@ -94,17 +36,17 @@ pub fn search_subtitles(
     } else {
         (
             Vec::new(),
-            SubtitleProviderExecution {
+            AddonSubtitleProviderExecution {
                 provider_id: "fixture".to_owned(),
-                status: SubtitleProviderStatus::Skipped,
+                status: AddonSubtitleProviderStatus::Skipped,
                 result_count: 0,
                 safe_message: Some("provider_disabled".to_owned()),
             },
         )
     };
 
-    Some(SubtitleSearchResponse {
-        schema: SUBTITLE_RESPONSE_SCHEMA.to_owned(),
+    Some(AddonSubtitleSearchResponse {
+        schema: ADDON_SUBTITLE_RESPONSE_SCHEMA.to_owned(),
         query,
         total: subtitles.len(),
         subtitles,
@@ -112,7 +54,7 @@ pub fn search_subtitles(
     })
 }
 
-fn fixture_subtitles(query: &str, languages: &[String]) -> Vec<SubtitleCandidate> {
+fn fixture_subtitles(query: &str, languages: &[String]) -> Vec<AddonSubtitleCandidate> {
     languages
         .iter()
         .take(2)
@@ -121,25 +63,25 @@ fn fixture_subtitles(query: &str, languages: &[String]) -> Vec<SubtitleCandidate
         .collect()
 }
 
-fn fixture_subtitle(query: &str, language: &str, index: usize) -> SubtitleCandidate {
+fn fixture_subtitle(query: &str, language: &str, index: usize) -> AddonSubtitleCandidate {
     let slug = slugify(query);
     let format = if index % 2 == 0 {
-        SubtitleFormat::Vtt
+        AddonSubtitleFormat::Vtt
     } else {
-        SubtitleFormat::Srt
+        AddonSubtitleFormat::Srt
     };
     let text = match format {
-        SubtitleFormat::Vtt => {
+        AddonSubtitleFormat::Vtt => {
             format!(
                 "WEBVTT\n\n00:00:01.000 --> 00:00:04.000\n{query} fixture subtitle ({language})\n"
             )
         }
-        SubtitleFormat::Srt => {
+        AddonSubtitleFormat::Srt => {
             format!("1\n00:00:01,000 --> 00:00:04,000\n{query} fixture subtitle ({language})\n")
         }
     };
 
-    SubtitleCandidate {
+    AddonSubtitleCandidate {
         id: format!("fixture:{slug}:{language}:{index}"),
         title: format!("{query} fixture subtitles {language}"),
         language: language.to_owned(),
@@ -147,7 +89,7 @@ fn fixture_subtitle(query: &str, language: &str, index: usize) -> SubtitleCandid
         source: "fixture".to_owned(),
         release: Some("WEB-DL".to_owned()),
         score: 900_u16.saturating_sub((index as u16).saturating_mul(20)),
-        delivery: SubtitleDelivery::Inline { text },
+        delivery: AddonSubtitleDelivery::Inline { text },
     }
 }
 
@@ -219,8 +161,8 @@ mod tests {
     fn fixture_search_returns_inline_read_only_subtitle_candidates() {
         let response = search_subtitles(
             &Config::default(),
-            SubtitleSearchRequest {
-                schema: "nako.official.subtitle_provider.request.v1".to_owned(),
+            AddonSubtitleSearchRequest {
+                schema: nako_addon_protocol::ADDON_SUBTITLE_REQUEST_SCHEMA.to_owned(),
                 query: "Demo Movie".to_owned(),
                 languages: vec!["zh-CN".to_owned(), "en".to_owned()],
                 limit: Some(10),
@@ -231,14 +173,14 @@ mod tests {
 
         assert_eq!(response.total, 2);
         assert_eq!(response.subtitles[0].source, "fixture");
-        assert_eq!(response.subtitles[0].format, SubtitleFormat::Vtt);
+        assert_eq!(response.subtitles[0].format, AddonSubtitleFormat::Vtt);
         assert!(matches!(
             response.subtitles[0].delivery,
-            SubtitleDelivery::Inline { .. }
+            AddonSubtitleDelivery::Inline { .. }
         ));
         assert_eq!(
             response.provider_executions[0].status,
-            SubtitleProviderStatus::Ok
+            AddonSubtitleProviderStatus::Ok
         );
     }
 
@@ -250,8 +192,8 @@ mod tests {
         };
         let response = search_subtitles(
             &config,
-            SubtitleSearchRequest {
-                schema: "nako.official.subtitle_provider.request.v1".to_owned(),
+            AddonSubtitleSearchRequest {
+                schema: nako_addon_protocol::ADDON_SUBTITLE_REQUEST_SCHEMA.to_owned(),
                 query: "Demo Movie".to_owned(),
                 languages: Vec::new(),
                 limit: None,

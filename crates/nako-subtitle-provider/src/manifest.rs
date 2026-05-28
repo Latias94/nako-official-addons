@@ -1,7 +1,7 @@
 use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration,
-    AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest, AddonResource,
-    AddonResourceDeclaration, AddonScope,
+    ADDON_PROTOCOL_VERSION, ADDON_SUBTITLE_REQUEST_SCHEMA, ADDON_SUBTITLE_RESPONSE_SCHEMA,
+    AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration, AddonEntryPointKind,
+    AddonHostedPageDeclaration, AddonManifest, AddonResource, AddonResourceDeclaration, AddonScope,
 };
 
 use crate::Config;
@@ -14,8 +14,8 @@ pub const DESCRIPTION: &str =
     "Official Nako subtitle provider sidecar for read-only subtitle candidate discovery.";
 pub const CONFIG_SCHEMA_ID: &str = "nako.official.subtitle-provider.config.v1";
 pub const SUBTITLE_RESOURCE_PATH: &str = "/subtitle";
-pub const SUBTITLE_REQUEST_SCHEMA: &str = "nako.official.subtitle_provider.request.v1";
-pub const SUBTITLE_RESPONSE_SCHEMA: &str = "nako.official.subtitle_provider.response.v1";
+pub const SUBTITLE_REQUEST_SCHEMA: &str = ADDON_SUBTITLE_REQUEST_SCHEMA;
+pub const SUBTITLE_RESPONSE_SCHEMA: &str = ADDON_SUBTITLE_RESPONSE_SCHEMA;
 pub const DIAGNOSTICS_ENTRY_POINT_ID: &str = "subtitle-provider-diagnostics";
 pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
 pub const DIAGNOSTICS_LABEL: &str = "Subtitle Provider Diagnostics";

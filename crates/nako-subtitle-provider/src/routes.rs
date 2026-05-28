@@ -8,7 +8,7 @@ use axum::{
 use nako_addon_protocol::{
     ADDON_PROTOCOL_VERSION, AddonHealthCheckRequest, AddonHealthCheckResponse,
     AddonHealthManifestFacts, AddonHealthStatus, AddonResource, AddonResourceRequest,
-    AddonResourceResponse,
+    AddonResourceResponse, AddonSubtitleSearchRequest,
 };
 use tower_http::trace::TraceLayer;
 
@@ -18,7 +18,7 @@ use crate::{
         ADDON_ID, ADDON_NAME, ADDON_VERSION, DIAGNOSTICS_PATH, SUBTITLE_REQUEST_SCHEMA,
         SUBTITLE_RESOURCE_PATH, addon_manifest, container_manifest,
     },
-    subtitles::{SubtitleSearchRequest, search_subtitles},
+    subtitles::search_subtitles,
 };
 
 #[derive(Clone)]
@@ -71,7 +71,7 @@ async fn subtitle(
     Json(request): Json<AddonResourceRequest>,
 ) -> Result<Json<AddonResourceResponse>, (StatusCode, Json<serde_json::Value>)> {
     validate_resource_envelope(&request)?;
-    let payload = serde_json::from_value::<SubtitleSearchRequest>(request.payload.clone())
+    let payload = serde_json::from_value::<AddonSubtitleSearchRequest>(request.payload.clone())
         .map_err(|_| safe_bad_request("invalid_subtitle_payload"))?;
     if payload.schema != SUBTITLE_REQUEST_SCHEMA {
         return Err(safe_bad_request("invalid_subtitle_schema"));

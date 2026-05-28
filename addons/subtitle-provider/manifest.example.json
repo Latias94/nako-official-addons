@@ -9,8 +9,8 @@
     {
       "kind": "subtitle",
       "path": "/subtitle",
-      "input_schema": "nako.official.subtitle_provider.request.v1",
-      "output_schema": "nako.official.subtitle_provider.response.v1",
+      "input_schema": "nako.addon.subtitle.request.v1",
+      "output_schema": "nako.addon.subtitle.response.v1",
       "required_scopes": ["subtitle_read"],
       "timeout_ms": 10000,
       "max_attempts": 1
