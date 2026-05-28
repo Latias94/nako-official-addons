@@ -162,6 +162,14 @@ Provider defaults:
 - `subtitle_provider.fixture`: enabled by default. It returns deterministic
   inline subtitle candidates for local smoke and never writes subtitle files.
 
+External acquisition execution is not implemented in this repository yet.
+`nako-resource-search` only returns search/link-check facts. A future External
+Acquisition Runner must be a separate action addon that consumes host-owned
+selected-link references, owns idempotency/progress/cancellation/audit, and does
+not make search providers directly executable. Cloud-drive save or transfer is
+also out of scope until Nako defines separate account-secret, consent, and audit
+policy.
+
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
 declared as the `bulk-metadata-scrape` Addon Task at

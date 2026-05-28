@@ -45,13 +45,15 @@ Last updated: 2026-05-28
 
 ## M3 - Acquisition Runner Follow-On Contract
 
-- [ ] OMEA-040 [owner=codex] [deps=OMEA-010] [scope=docs/workstreams/official-media-extension-addons/FOLLOW_ON_CONTRACTS.md,README.md]
+- [x] OMEA-040 [owner=codex] [deps=OMEA-010] [scope=docs/workstreams/official-media-extension-addons/FOLLOW_ON_CONTRACTS.md,README.md]
   Goal: Record External Acquisition Runner as a future action addon contract
   without adding runtime behavior.
   Validation: `git diff --check`; docs name the non-goals explicitly.
   Review: The contract must not imply resource-search can execute downloads.
   Evidence: docs/workstreams/official-media-extension-addons/FOLLOW_ON_CONTRACTS.md
-  Handoff: DONE once docs are explicit.
+  Handoff: DONE 2026-05-28. README and FOLLOW_ON_CONTRACTS document the
+  future action-addon envelope, resource-search separation, no downloader
+  execution, no cloud-drive transfer, and no durable password/code storage.
 
 ## M4 - Catalog Sync Follow-On Decision
 

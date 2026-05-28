@@ -2,7 +2,7 @@
 
 Status: active.
 
-Current task: OMEA-040.
+Current task: OMEA-050.
 
 Completed:
 
@@ -15,11 +15,13 @@ Completed:
 - OMEA-030 added the plan-only `nako-dlna-renderer` foundation, manual target
   discovery, command envelope validation, redaction-safe diagnostics,
   checked-in manifest, packaging docs, and local smoke script.
+- OMEA-040 recorded External Acquisition Runner as a future action addon:
+  search only passes candidate/link-check facts, runner execution must use
+  host-owned selected-link references, and cloud-drive transfer/password/code
+  persistence remain out of scope.
 
 Next:
 
-- Confirm OMEA-040 documentation is explicit enough for External Acquisition
-  Runner follow-on boundaries.
 - Decide whether Nako official catalog sync should stay split after manifests
   stabilized.
 
