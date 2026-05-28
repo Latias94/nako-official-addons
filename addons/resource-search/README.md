@@ -13,7 +13,7 @@ The current Nako Addon Protocol does not yet expose a dedicated
 resource at `/resource-search` and returns an alpha-local typed payload.
 
 The workstream proposal for the correct host contract is tracked in
-`docs/workstreams/official-resource-search-addon-foundation/PROTOCOL_PROPOSAL.md`.
+`docs/workstreams/official-resource-search-architecture-hardening/PROTOCOL_PROPOSAL.md`.
 
 ## Safe Defaults
 

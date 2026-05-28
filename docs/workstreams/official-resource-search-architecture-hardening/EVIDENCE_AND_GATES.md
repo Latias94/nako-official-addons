@@ -30,6 +30,16 @@
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
 
+### 2026-05-28 - ORSAH-060
+
+- Added `PROTOCOL_PROPOSAL.md` for the hardened addon-side model.
+- Updated the addon README to point at the current protocol proposal.
+- Documented Nako host requirements: `resource_search`, read scope,
+  structured intent, provider execution finality, acquisition handoff, and
+  separate link-check/downloader hooks.
+- `git diff --check -- addons/resource-search/README.md docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.
+
 ### 2026-05-28 - ORSAH-050
 
 - Moved provider-specific manifest configuration schema fragments behind

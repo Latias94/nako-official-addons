@@ -1,7 +1,7 @@
 # Handoff
 
-Status: active. ORSAH-050 is implemented and the lane is ready for protocol
-handoff refresh.
+Status: active. ORSAH-060 is implemented and the lane is ready for verification
+and closeout.
 
 Current state:
 
@@ -21,13 +21,14 @@ Current state:
   be represented without becoming runtime errors.
 - Provider descriptors now own provider-specific manifest configuration schema
   fragments.
+- Hardened protocol proposal records the deferred Nako host work.
 
 Next steps:
 
-- Start ORSAH-060 by refreshing the deferred Nako protocol proposal.
+- Start ORSAH-070 by running focused and workspace validation.
 - Keep PanSou-compatible disabled by default.
 - Do not add live provider scraping, link checking, or downloader hooks during
-  protocol proposal work.
+  closeout.
 
 Watch points:
 

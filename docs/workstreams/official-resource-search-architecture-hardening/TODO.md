@@ -87,7 +87,7 @@ Validation:
 
 ## ORSAH-060 - Protocol handoff refresh
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-040
 
