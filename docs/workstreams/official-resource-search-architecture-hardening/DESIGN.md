@@ -1,5 +1,11 @@
 # Official Resource Search Architecture Hardening
 
+## Implementation Status
+
+Addon-side hardening is complete. Workspace format validation now passes after
+formatting the previously reported `../nako` file in the Nako core repository.
+The Nako host protocol changes remain deferred to a separate lane.
+
 ## Problem
 
 `nako-resource-search` now proves the first official search sidecar with two

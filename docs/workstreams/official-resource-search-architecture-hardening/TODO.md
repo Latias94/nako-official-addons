@@ -102,7 +102,7 @@ Validation:
 
 ## ORSAH-070 - Verify and close
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-020 ORSAH-030 ORSAH-040 ORSAH-050 ORSAH-060
 

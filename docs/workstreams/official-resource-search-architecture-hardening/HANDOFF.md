@@ -1,7 +1,7 @@
 # Handoff
 
-Status: active. ORSAH-060 is implemented and the lane is ready for verification
-and closeout.
+Status: complete. Addon-side architecture hardening is complete; Nako host
+protocol implementation remains a separate lane.
 
 Current state:
 
@@ -25,10 +25,12 @@ Current state:
 
 Next steps:
 
-- Start ORSAH-070 by running focused and workspace validation.
-- Keep PanSou-compatible disabled by default.
-- Do not add live provider scraping, link checking, or downloader hooks during
-  closeout.
+- Open a separate `../nako` host-side lane for `resource_search`,
+  `acquisition_search_read`, structured search intent, provider execution
+  finality, and acquisition handoff.
+- Push or otherwise carry the `../nako` formatting commit
+  `d9d74402 style: format admin contract` with the host-side work.
+- Keep PanSou-compatible disabled by default until explicitly configured.
 
 Watch points:
 

@@ -30,26 +30,17 @@
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
 
-### 2026-05-28 - ORSAH-060
+### 2026-05-28 - ORSAH-030
 
-- Added `PROTOCOL_PROPOSAL.md` for the hardened addon-side model.
-- Updated the addon README to point at the current protocol proposal.
-- Documented Nako host requirements: `resource_search`, read scope,
-  structured intent, provider execution finality, acquisition handoff, and
-  separate link-check/downloader hooks.
-- `git diff --check -- addons/resource-search/README.md docs/workstreams/official-resource-search-architecture-hardening`:
-  passed.
-
-### 2026-05-28 - ORSAH-050
-
-- Moved provider-specific manifest configuration schema fragments behind
-  provider descriptors.
-- Kept `manifest.rs` responsible only for composing provider fragments with
-  global search settings.
-- Preserved checked-in example manifest parity.
+- Added provider descriptors, capability names, and source policy
+  classification.
+- Added provider registry assembly outside `ResourceSearchRuntime::new`.
+- Added redaction-safe provider diagnostics to health payloads.
+- Preserved the default no-network runtime: fixture active, PanSou-compatible
+  inactive until enabled with a base URL.
 - `cargo fmt -p nako-resource-search`: passed.
 - `cargo fmt -p nako-resource-search -- --check`: passed.
-- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 38
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 35
   tests.
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
@@ -68,17 +59,43 @@
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
 
-### 2026-05-28 - ORSAH-030
+### 2026-05-28 - ORSAH-050
 
-- Added provider descriptors, capability names, and source policy
-  classification.
-- Added provider registry assembly outside `ResourceSearchRuntime::new`.
-- Added redaction-safe provider diagnostics to health payloads.
-- Preserved the default no-network runtime: fixture active, PanSou-compatible
-  inactive until enabled with a base URL.
+- Moved provider-specific manifest configuration schema fragments behind
+  provider descriptors.
+- Kept `manifest.rs` responsible only for composing provider fragments with
+  global search settings.
+- Preserved checked-in example manifest parity.
 - `cargo fmt -p nako-resource-search`: passed.
 - `cargo fmt -p nako-resource-search -- --check`: passed.
-- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 35
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 38
   tests.
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
+
+### 2026-05-28 - ORSAH-060
+
+- Added `PROTOCOL_PROPOSAL.md` for the hardened addon-side model.
+- Updated the addon README to point at the current protocol proposal.
+- Documented Nako host requirements: `resource_search`, read scope,
+  structured intent, provider execution finality, acquisition handoff, and
+  separate link-check/downloader hooks.
+- `git diff --check -- addons/resource-search/README.md docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.
+
+### 2026-05-28 - ORSAH-070
+
+- Closeout verification completed.
+- `rustfmt --edition 2024 ../nako/crates/nako-api/src/admin_contract.rs`:
+  applied the one formatting change needed by the workspace fmt gate.
+- `../nako` commit `d9d74402 style: format admin contract`: committed the
+  external formatting change.
+- `cargo fmt --all -- --check`: passed.
+- `cargo fmt -p nako-resource-search -- --check`: passed.
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 38
+  tests.
+- `cargo nextest run --workspace --no-fail-fast`: passed, 375 tests run, 3
+  skipped.
+- `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.
+- Closeout status: complete.

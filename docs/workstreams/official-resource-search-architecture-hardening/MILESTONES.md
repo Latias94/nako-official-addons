@@ -31,8 +31,15 @@ Exit criteria:
 
 ## M4 - Ready For Nako Host Lane
 
+Status: complete via ORSAH-060 and ORSAH-070.
+
 Exit criteria:
 
 - Addon-side model is reflected in the deferred Nako protocol proposal.
 - Full validation passes.
 - Workstream evidence and handoff are current.
+
+Note:
+
+- The workspace fmt gate required one formatting commit in `../nako`:
+  `d9d74402 style: format admin contract`.
