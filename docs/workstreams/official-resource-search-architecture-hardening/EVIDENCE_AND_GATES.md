@@ -30,6 +30,20 @@
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
 
+### 2026-05-28 - ORSAH-040
+
+- Moved result fusion into `engine::fusion`.
+- Kept provider execution accounting in the runtime orchestration loop.
+- Changed providers to return `ProviderSearchBatch` with warning and finality
+  hints.
+- Changed provider runtime errors to a fixed redaction-safe execution message.
+- `cargo fmt -p nako-resource-search`: passed.
+- `cargo fmt -p nako-resource-search -- --check`: passed.
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 37
+  tests.
+- `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.
+
 ### 2026-05-28 - ORSAH-030
 
 - Added provider descriptors, capability names, and source policy

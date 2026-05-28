@@ -53,7 +53,7 @@ Validation:
 
 ## ORSAH-040 - Split orchestration from fusion
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-030
 

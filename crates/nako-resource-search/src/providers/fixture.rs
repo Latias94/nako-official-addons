@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use super::descriptor::{ProviderCapability, ProviderDescriptor};
 use crate::{
     domain::{ResourceSearchQuery, ResourceSearchResult},
-    engine::ResourceSearchProvider,
+    engine::{ProviderSearchBatch, ResourceSearchProvider},
     links::resource_link,
     source_policy::SourcePolicy,
 };
@@ -38,48 +38,50 @@ impl ResourceSearchProvider for FixtureResourceSearchProvider {
         1000
     }
 
-    async fn search(
-        &self,
-        query: &ResourceSearchQuery,
-    ) -> anyhow::Result<Vec<ResourceSearchResult>> {
+    async fn search(&self, query: &ResourceSearchQuery) -> anyhow::Result<ProviderSearchBatch> {
         let slug = slugify(&query.query);
         let source = self.id();
 
-        Ok(vec![
-            ResourceSearchResult {
-                id: format!("fixture:{slug}:pack"),
-                title: format!("{} release pack", query.query),
-                source: source.to_owned(),
-                content: Some("Deterministic fixture resource search result.".to_owned()),
-                links: vec![
-                    resource_link(format!("https://pan.quark.cn/s/{slug}"), source)
-                        .expect("fixture quark link is valid")
-                        .with_password("nako"),
-                    resource_link("magnet:?xt=urn:btih:0123456789abcdef", source)
-                        .expect("fixture magnet link is valid")
-                        .with_note("fixture magnet candidate"),
-                ],
-                tags: vec!["fixture".to_owned(), "pack".to_owned()],
-                images: Vec::new(),
-                score: 900,
-            },
-            ResourceSearchResult {
-                id: format!("fixture:{slug}:archive"),
-                title: format!("{} 1080p archive", query.query),
-                source: source.to_owned(),
-                content: Some("Second deterministic fixture result for fusion tests.".to_owned()),
-                links: vec![
-                    resource_link(format!("https://www.aliyundrive.com/s/{slug}"), source)
-                        .expect("fixture aliyun link is valid"),
-                    resource_link(format!("https://PAN.QUARK.CN/s/{slug}#duplicate"), source)
-                        .expect("fixture duplicate quark link is valid")
-                        .with_password("nako"),
-                ],
-                tags: vec!["fixture".to_owned(), "archive".to_owned()],
-                images: Vec::new(),
-                score: 800,
-            },
-        ])
+        Ok(ProviderSearchBatch::complete(
+            source,
+            vec![
+                ResourceSearchResult {
+                    id: format!("fixture:{slug}:pack"),
+                    title: format!("{} release pack", query.query),
+                    source: source.to_owned(),
+                    content: Some("Deterministic fixture resource search result.".to_owned()),
+                    links: vec![
+                        resource_link(format!("https://pan.quark.cn/s/{slug}"), source)
+                            .expect("fixture quark link is valid")
+                            .with_password("nako"),
+                        resource_link("magnet:?xt=urn:btih:0123456789abcdef", source)
+                            .expect("fixture magnet link is valid")
+                            .with_note("fixture magnet candidate"),
+                    ],
+                    tags: vec!["fixture".to_owned(), "pack".to_owned()],
+                    images: Vec::new(),
+                    score: 900,
+                },
+                ResourceSearchResult {
+                    id: format!("fixture:{slug}:archive"),
+                    title: format!("{} 1080p archive", query.query),
+                    source: source.to_owned(),
+                    content: Some(
+                        "Second deterministic fixture result for fusion tests.".to_owned(),
+                    ),
+                    links: vec![
+                        resource_link(format!("https://www.aliyundrive.com/s/{slug}"), source)
+                            .expect("fixture aliyun link is valid"),
+                        resource_link(format!("https://PAN.QUARK.CN/s/{slug}#duplicate"), source)
+                            .expect("fixture duplicate quark link is valid")
+                            .with_password("nako"),
+                    ],
+                    tags: vec!["fixture".to_owned(), "archive".to_owned()],
+                    images: Vec::new(),
+                    score: 800,
+                },
+            ],
+        ))
     }
 }
 
@@ -109,10 +111,11 @@ mod tests {
     #[tokio::test]
     async fn fixture_provider_returns_classified_results() {
         let provider = FixtureResourceSearchProvider;
-        let results = provider
+        let batch = provider
             .search(&ResourceSearchQuery::free_text("Demo Movie", 20))
             .await
             .unwrap();
+        let results = batch.results;
 
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].source, "fixture");

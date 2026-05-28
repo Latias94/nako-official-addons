@@ -22,6 +22,8 @@ Exit criteria:
 
 ## M3 - Fusion Is A Deep Module
 
+Status: complete via ORSAH-040.
+
 Exit criteria:
 
 - Orchestration does not own deduplication/ranking details.

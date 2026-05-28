@@ -1,7 +1,7 @@
 # Handoff
 
-Status: active. ORSAH-030 is implemented and the lane is ready for fusion
-extraction.
+Status: active. ORSAH-040 is implemented and the lane is ready for manifest
+schema composition.
 
 Current state:
 
@@ -16,17 +16,22 @@ Current state:
 - Provider descriptors and source policy are in place.
 - Provider registry assembly owns fixture/PanSou activation and exposes
   diagnostics.
+- Fusion/ranking/deduplication lives in `engine::fusion`.
+- Providers return `ProviderSearchBatch` so warnings and partial finality can
+  be represented without becoming runtime errors.
 
 Next steps:
 
-- Start ORSAH-040 by moving result fusion out of `engine.rs`.
+- Start ORSAH-050 by moving provider-specific manifest schema fragments behind
+  provider descriptors.
 - Keep PanSou-compatible disabled by default.
 - Do not add live provider scraping, link checking, or downloader hooks during
-  fusion work.
+  manifest schema work.
 
 Watch points:
 
 - Default local smoke must remain no-network.
 - PanSou-compatible provider must remain disabled by default.
 - Registry diagnostics must stay redaction-safe.
+- Provider execution errors must not expose raw provider exception text.
 - Nako core protocol changes are still deferred.

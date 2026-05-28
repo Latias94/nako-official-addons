@@ -8,7 +8,7 @@ use super::descriptor::{ProviderCapability, ProviderDescriptor};
 use crate::{
     config::PansouProviderConfig,
     domain::{ResourceLink, ResourceLinkType, ResourceSearchQuery, ResourceSearchResult},
-    engine::ResourceSearchProvider,
+    engine::{ProviderSearchBatch, ResourceSearchProvider},
     links::{classify_resource_url, resource_link_with_type},
     source_policy::SourcePolicy,
 };
@@ -59,10 +59,7 @@ impl ResourceSearchProvider for PansouCompatibleProvider {
         900
     }
 
-    async fn search(
-        &self,
-        query: &ResourceSearchQuery,
-    ) -> anyhow::Result<Vec<ResourceSearchResult>> {
+    async fn search(&self, query: &ResourceSearchQuery) -> anyhow::Result<ProviderSearchBatch> {
         let base_url = self
             .config
             .base_url
@@ -97,10 +94,12 @@ impl ResourceSearchProvider for PansouCompatibleProvider {
             anyhow::bail!("pansou compatible search failed: {}", response.message);
         }
 
-        Ok(response
+        let results = response
             .data
             .map(|data| map_pansou_response(query, data))
-            .unwrap_or_default())
+            .unwrap_or_default();
+
+        Ok(ProviderSearchBatch::complete(self.id(), results))
     }
 }
 
