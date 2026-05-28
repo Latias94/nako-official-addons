@@ -46,7 +46,7 @@ impl ProviderRegistry {
     pub fn active_provider_count(&self) -> usize {
         self.registrations
             .iter()
-            .filter(|registration| registration.active)
+            .filter(|registration| registration.active())
             .count()
     }
 
@@ -81,7 +81,6 @@ impl ProviderRegistry {
 struct ProviderRegistration {
     descriptor: ProviderDescriptor,
     configured: bool,
-    active: bool,
     safe_message: Option<&'static str>,
     provider: Option<Arc<dyn ResourceSearchProvider>>,
 }
@@ -91,7 +90,6 @@ impl ProviderRegistration {
         Self {
             descriptor,
             configured: true,
-            active: true,
             safe_message: None,
             provider: Some(provider),
         }
@@ -105,17 +103,20 @@ impl ProviderRegistration {
         Self {
             descriptor,
             configured,
-            active: false,
             safe_message: Some(safe_message),
             provider: None,
         }
+    }
+
+    fn active(&self) -> bool {
+        self.provider.is_some()
     }
 
     fn diagnostic(&self) -> ProviderDiagnostic {
         ProviderDiagnostic::from_descriptor(
             self.descriptor,
             self.configured,
-            self.active,
+            self.active(),
             self.safe_message,
         )
     }
