@@ -146,3 +146,134 @@ impl ResourceSearchProvider for PansouCompatibleProvider {
         Ok(ProviderSearchBatch::complete(self.id(), results))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use axum::{Json, Router, extract::State, http::HeaderMap, routing::post};
+    use tokio::net::TcpListener;
+
+    use crate::domain::{ResourceLinkType, ResourceSearchQuery};
+
+    use super::*;
+
+    #[derive(Clone, Debug, Default)]
+    struct PansouFixtureState {
+        requests: Arc<Mutex<Vec<CapturedPansouRequest>>>,
+    }
+
+    #[derive(Clone, Debug)]
+    struct CapturedPansouRequest {
+        auth_header: Option<String>,
+        body: serde_json::Value,
+    }
+
+    async fn record_pansou_search(
+        State(state): State<PansouFixtureState>,
+        headers: HeaderMap,
+        Json(body): Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let auth_header = headers
+            .get(reqwest::header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        state
+            .requests
+            .lock()
+            .unwrap()
+            .push(CapturedPansouRequest { auth_header, body });
+
+        Json(serde_json::json!({
+            "code": 0,
+            "message": "ok",
+            "data": {
+                "results": [{
+                    "message_id": "m1",
+                    "unique_id": "u1",
+                    "channel": "movies",
+                    "title": "Demo Movie 1080p",
+                    "content": "mock content",
+                    "links": [{
+                        "type": "quark",
+                        "url": "https://pan.quark.cn/s/demo",
+                        "password": "1234",
+                        "work_title": "disc 1"
+                    }],
+                    "tags": ["mock"],
+                    "images": ["https://example.test/poster.jpg"]
+                }]
+            }
+        }))
+    }
+
+    async fn spawn_pansou_fixture() -> (String, PansouFixtureState, tokio::task::JoinHandle<()>) {
+        let state = PansouFixtureState::default();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let app = Router::new()
+            .route("/api/search", post(record_pansou_search))
+            .with_state(state.clone());
+        let handle = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        (format!("http://{addr}"), state, handle)
+    }
+
+    #[tokio::test]
+    async fn provider_search_calls_pansou_http_api_and_maps_response() {
+        let (base_url, state, handle) = spawn_pansou_fixture().await;
+        let provider = PansouCompatibleProvider::new(PansouProviderConfig {
+            enabled: true,
+            base_url: Some(base_url),
+            bearer_token: Some("secret-token".to_owned()),
+            source_type: "plugin".to_owned(),
+            plugins: vec!["jikepan".to_owned()],
+            cloud_types: Vec::new(),
+            concurrency: Some(3),
+            timeout_ms: 1_000,
+        });
+        let mut query = ResourceSearchQuery::free_text("Demo Movie", 20);
+        query.link_types = vec![ResourceLinkType::Quark];
+        query.refresh = true;
+        query.ext = serde_json::json!({ "season": 1 });
+
+        let batch = provider.search(&query).await.unwrap();
+
+        assert_eq!(batch.provider_id, PANSOU_COMPATIBLE_PROVIDER_ID);
+        assert_eq!(batch.results.len(), 1);
+        let result = &batch.results[0];
+        assert_eq!(result.id, "u1");
+        assert_eq!(result.title, "Demo Movie 1080p");
+        assert_eq!(result.source, "pansou:movies");
+        assert_eq!(result.links.len(), 1);
+        assert_eq!(result.links[0].link_type, ResourceLinkType::Quark);
+        assert_eq!(
+            result.links[0].url,
+            "https://pan.quark.cn/s/demo".to_owned()
+        );
+        assert_eq!(result.links[0].password.as_deref(), Some("1234"));
+        assert_eq!(result.links[0].note.as_deref(), Some("disc 1"));
+        assert_eq!(result.tags, vec!["mock"]);
+
+        let requests = state.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].auth_header.as_deref(),
+            Some("Bearer secret-token")
+        );
+        assert_eq!(requests[0].body["kw"], "Demo Movie");
+        assert_eq!(requests[0].body["conc"], 3);
+        assert_eq!(requests[0].body["refresh"], true);
+        assert_eq!(requests[0].body["src"], "plugin");
+        assert_eq!(requests[0].body["plugins"], serde_json::json!(["jikepan"]));
+        assert_eq!(
+            requests[0].body["cloud_types"],
+            serde_json::json!(["quark"])
+        );
+        assert_eq!(requests[0].body["ext"], serde_json::json!({ "season": 1 }));
+
+        handle.abort();
+    }
+}
