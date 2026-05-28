@@ -57,13 +57,16 @@ Last updated: 2026-05-28
 
 ## M4 - Catalog Sync Follow-On Decision
 
-- [ ] OMEA-050 [owner=planner] [deps=OMEA-020,OMEA-030] [scope=docs/workstreams/official-media-extension-addons]
+- [x] OMEA-050 [owner=planner] [deps=OMEA-020,OMEA-030] [scope=docs/workstreams/official-media-extension-addons]
   Goal: Decide whether to sync `../nako` official addon catalog in this lane or
   split it after the addon manifests stabilize.
   Validation: HANDOFF.md records the decision and exact target repo.
   Review: Do not modify `../nako/web`.
   Evidence: HANDOFF.md
-  Handoff: Split a follow-on if Nako catalog sync is separate.
+  Handoff: DONE 2026-05-28. Synced `../nako` core catalog only, with no web
+  changes. Nako commit `52da469d` adds shared catalog facts and server catalog
+  resolve coverage for `nako.official.subtitle-provider` and
+  `nako.official.dlna-renderer`.
 
 ## M5 - Closeout
 

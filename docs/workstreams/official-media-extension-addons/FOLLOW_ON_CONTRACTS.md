@@ -57,6 +57,6 @@ secrets, consent, idempotency, audit, and rollback behavior.
 
 ## Catalog Sync
 
-Once Subtitle Provider and DLNA Renderer manifests stabilize, sync the official
-addon catalog in `../nako` as a separate bounded task or follow-on. That task
-must not touch `../nako/web`.
+Completed in `../nako` commit `52da469d`: core official addon catalog facts and
+server catalog resolve coverage now include `nako.official.subtitle-provider`
+and `nako.official.dlna-renderer`. The sync did not touch `../nako/web`.

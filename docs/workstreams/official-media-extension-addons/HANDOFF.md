@@ -2,7 +2,7 @@
 
 Status: active.
 
-Current task: OMEA-050.
+Current task: OMEA-060.
 
 Completed:
 
@@ -19,15 +19,18 @@ Completed:
   search only passes candidate/link-check facts, runner execution must use
   host-owned selected-link references, and cloud-drive transfer/password/code
   persistence remain out of scope.
+- OMEA-050 synced Nako core official catalog in `../nako` commit `52da469d`:
+  `nako-official-addon-catalog` and server catalog resolution now include
+  `nako.official.subtitle-provider` and `nako.official.dlna-renderer`; no
+  `../nako/web` changes were made.
 
 Next:
 
-- Decide whether Nako official catalog sync should stay split after manifests
-  stabilized.
+- Close out the workstream with fresh gates and final evidence.
 
 Watch points:
 
 - Do not add downloader execution or cloud-drive transfer behavior.
 - Do not modify `../nako/web`.
-- Split Nako official catalog sync after manifests stabilize if this lane gets
-  too large.
+- Keep DLNA live SSDP/UPnP and External Acquisition Runner implementation as
+  separate future lanes.
