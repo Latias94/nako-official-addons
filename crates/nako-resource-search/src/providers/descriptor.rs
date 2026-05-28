@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::Config;
 use crate::source_policy::SourcePolicy;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,13 +29,16 @@ impl ProviderCapability {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub type ProviderConfigurationSchemaBuilder = fn(&Config) -> ProviderConfigurationSchemaFragment;
+
+#[derive(Clone, Copy, Debug)]
 pub struct ProviderDescriptor {
     pub id: &'static str,
     pub display_name: &'static str,
     pub source_policy: SourcePolicy,
     pub default_enabled: bool,
     pub capabilities: &'static [ProviderCapability],
+    pub configuration_schema: ProviderConfigurationSchemaBuilder,
 }
 
 impl ProviderDescriptor {
@@ -45,6 +49,19 @@ impl ProviderDescriptor {
             .map(|capability| capability.as_str())
             .collect()
     }
+
+    #[must_use]
+    pub fn configuration_schema(self, config: &Config) -> ProviderConfigurationSchemaFragment {
+        (self.configuration_schema)(config)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProviderConfigurationSchemaFragment {
+    pub provider_id: &'static str,
+    pub provider_enabled_default: bool,
+    pub settings_key: Option<&'static str>,
+    pub settings_schema: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

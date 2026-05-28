@@ -71,7 +71,7 @@ Validation:
 
 ## ORSAH-050 - Manifest schema composition
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-030
 

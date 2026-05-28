@@ -4,8 +4,11 @@ use anyhow::Context;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use super::descriptor::{ProviderCapability, ProviderDescriptor};
+use super::descriptor::{
+    ProviderCapability, ProviderConfigurationSchemaFragment, ProviderDescriptor,
+};
 use crate::{
+    Config,
     config::PansouProviderConfig,
     domain::{ResourceLink, ResourceLinkType, ResourceSearchQuery, ResourceSearchResult},
     engine::{ProviderSearchBatch, ResourceSearchProvider},
@@ -30,7 +33,51 @@ pub const PANSOU_DESCRIPTOR: ProviderDescriptor = ProviderDescriptor {
     source_policy: SourcePolicy::ExternalService,
     default_enabled: false,
     capabilities: PANSOU_CAPABILITIES,
+    configuration_schema: pansou_configuration_schema,
 };
+
+fn pansou_configuration_schema(config: &Config) -> ProviderConfigurationSchemaFragment {
+    ProviderConfigurationSchemaFragment {
+        provider_id: PANSOU_COMPATIBLE_PROVIDER_ID,
+        provider_enabled_default: config.pansou.enabled,
+        settings_key: Some("pansou"),
+        settings_schema: Some(serde_json::json!({
+            "type": "object",
+            "properties": {
+                "base_url": {
+                    "type": "string",
+                    "default": config.pansou.base_url.clone().unwrap_or_default()
+                },
+                "source_type": {
+                    "type": "string",
+                    "default": config.pansou.source_type
+                },
+                "plugins": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "default": config.pansou.plugins
+                },
+                "cloud_types": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "default": config.pansou.cloud_types.iter().map(|link_type| link_type.as_str()).collect::<Vec<_>>()
+                },
+                "concurrency": {
+                    "type": ["integer", "null"],
+                    "default": config.pansou.concurrency,
+                    "minimum": 1
+                },
+                "timeout_ms": {
+                    "type": "integer",
+                    "default": config.pansou.timeout_ms,
+                    "minimum": 250,
+                    "maximum": 60000
+                }
+            },
+            "additionalProperties": false
+        })),
+    }
+}
 
 #[derive(Clone)]
 pub struct PansouCompatibleProvider {

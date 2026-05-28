@@ -1,7 +1,7 @@
 # Handoff
 
-Status: active. ORSAH-040 is implemented and the lane is ready for manifest
-schema composition.
+Status: active. ORSAH-050 is implemented and the lane is ready for protocol
+handoff refresh.
 
 Current state:
 
@@ -19,14 +19,15 @@ Current state:
 - Fusion/ranking/deduplication lives in `engine::fusion`.
 - Providers return `ProviderSearchBatch` so warnings and partial finality can
   be represented without becoming runtime errors.
+- Provider descriptors now own provider-specific manifest configuration schema
+  fragments.
 
 Next steps:
 
-- Start ORSAH-050 by moving provider-specific manifest schema fragments behind
-  provider descriptors.
+- Start ORSAH-060 by refreshing the deferred Nako protocol proposal.
 - Keep PanSou-compatible disabled by default.
 - Do not add live provider scraping, link checking, or downloader hooks during
-  manifest schema work.
+  protocol proposal work.
 
 Watch points:
 
@@ -34,4 +35,5 @@ Watch points:
 - PanSou-compatible provider must remain disabled by default.
 - Registry diagnostics must stay redaction-safe.
 - Provider execution errors must not expose raw provider exception text.
+- Runtime and checked-in container manifests must remain equal.
 - Nako core protocol changes are still deferred.

@@ -30,6 +30,20 @@
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
 
+### 2026-05-28 - ORSAH-050
+
+- Moved provider-specific manifest configuration schema fragments behind
+  provider descriptors.
+- Kept `manifest.rs` responsible only for composing provider fragments with
+  global search settings.
+- Preserved checked-in example manifest parity.
+- `cargo fmt -p nako-resource-search`: passed.
+- `cargo fmt -p nako-resource-search -- --check`: passed.
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 38
+  tests.
+- `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.
+
 ### 2026-05-28 - ORSAH-040
 
 - Moved result fusion into `engine::fusion`.

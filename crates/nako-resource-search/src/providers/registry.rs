@@ -3,13 +3,14 @@ use std::sync::Arc;
 use crate::{Config, engine::ResourceSearchProvider};
 
 use super::{
-    ProviderDescriptor, ProviderDiagnostic,
+    ProviderConfigurationSchemaFragment, ProviderDescriptor, ProviderDiagnostic,
     fixture::{FIXTURE_DESCRIPTOR, FixtureResourceSearchProvider},
     pansou::{PANSOU_DESCRIPTOR, PansouCompatibleProvider},
 };
 
 const PROVIDER_DISABLED: &str = "provider_disabled";
 const PANSOU_MISSING_BASE_URL: &str = "pansou_missing_base_url";
+const PROVIDER_DESCRIPTORS: &[ProviderDescriptor] = &[FIXTURE_DESCRIPTOR, PANSOU_DESCRIPTOR];
 
 #[derive(Clone)]
 pub struct ProviderRegistry {
@@ -17,6 +18,11 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    #[must_use]
+    pub const fn descriptors() -> &'static [ProviderDescriptor] {
+        PROVIDER_DESCRIPTORS
+    }
+
     #[must_use]
     pub fn from_config(config: &Config) -> Self {
         let registrations = vec![fixture_registration(config), pansou_registration(config)];
@@ -56,6 +62,16 @@ impl ProviderRegistry {
         self.registrations
             .iter()
             .map(ProviderRegistration::diagnostic)
+            .collect()
+    }
+
+    #[must_use]
+    pub fn configuration_schema_fragments(
+        config: &Config,
+    ) -> Vec<ProviderConfigurationSchemaFragment> {
+        Self::descriptors()
+            .iter()
+            .map(|descriptor| descriptor.configuration_schema(config))
             .collect()
     }
 }
@@ -208,6 +224,23 @@ mod tests {
             true,
             true,
             None,
+        );
+    }
+
+    #[test]
+    fn provider_schema_fragments_keep_provider_defaults() {
+        let fragments = ProviderRegistry::configuration_schema_fragments(&Config::default());
+
+        assert_eq!(fragments.len(), 2);
+        assert_eq!(fragments[0].provider_id, FIXTURE_PROVIDER_ID);
+        assert!(fragments[0].provider_enabled_default);
+        assert!(fragments[0].settings_schema.is_none());
+        assert_eq!(fragments[1].provider_id, PANSOU_COMPATIBLE_PROVIDER_ID);
+        assert!(!fragments[1].provider_enabled_default);
+        assert_eq!(fragments[1].settings_key, Some("pansou"));
+        assert_eq!(
+            fragments[1].settings_schema.as_ref().unwrap()["properties"]["timeout_ms"]["default"],
+            PansouProviderConfig::DEFAULT_TIMEOUT_MS
         );
     }
 

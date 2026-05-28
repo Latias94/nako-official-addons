@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 
-use super::descriptor::{ProviderCapability, ProviderDescriptor};
+use super::descriptor::{
+    ProviderCapability, ProviderConfigurationSchemaFragment, ProviderDescriptor,
+};
 use crate::{
+    Config,
     domain::{ResourceSearchQuery, ResourceSearchResult},
     engine::{ProviderSearchBatch, ResourceSearchProvider},
     links::resource_link,
@@ -23,7 +26,17 @@ pub const FIXTURE_DESCRIPTOR: ProviderDescriptor = ProviderDescriptor {
     source_policy: SourcePolicy::Official,
     default_enabled: true,
     capabilities: FIXTURE_CAPABILITIES,
+    configuration_schema: fixture_configuration_schema,
 };
+
+fn fixture_configuration_schema(config: &Config) -> ProviderConfigurationSchemaFragment {
+    ProviderConfigurationSchemaFragment {
+        provider_id: FIXTURE_PROVIDER_ID,
+        provider_enabled_default: config.fixture_provider_enabled,
+        settings_key: None,
+        settings_schema: None,
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct FixtureResourceSearchProvider;

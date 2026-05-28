@@ -7,6 +7,7 @@ use nako_addon_protocol::{
 use crate::{
     Config,
     domain::{RESOURCE_SEARCH_REQUEST_SCHEMA, RESOURCE_SEARCH_RESPONSE_SCHEMA},
+    providers::ProviderRegistry,
 };
 
 pub const ADDON_ID: &str = "nako.official.resource-search";
@@ -79,79 +80,70 @@ fn manifest_with_base_url(base_url: impl Into<String>, config: &Config) -> Addon
 }
 
 fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
+    let provider_fragments = ProviderRegistry::configuration_schema_fragments(config);
+    let mut provider_properties = serde_json::Map::new();
+    let mut root_properties = serde_json::Map::new();
+
+    for fragment in &provider_fragments {
+        provider_properties.insert(
+            fragment.provider_id.to_owned(),
+            serde_json::json!({
+                "type": "boolean",
+                "default": fragment.provider_enabled_default
+            }),
+        );
+    }
+
+    root_properties.insert(
+        "providers".to_owned(),
+        serde_json::json!({
+            "type": "object",
+            "properties": provider_properties,
+            "additionalProperties": false
+        }),
+    );
+
+    for fragment in provider_fragments {
+        if let (Some(settings_key), Some(settings_schema)) =
+            (fragment.settings_key, fragment.settings_schema)
+        {
+            root_properties.insert(settings_key.to_owned(), settings_schema);
+        }
+    }
+
+    root_properties.insert(
+        "default_limit".to_owned(),
+        serde_json::json!({
+            "type": "integer",
+            "default": config.default_limit,
+            "minimum": 1,
+            "maximum": config.max_limit
+        }),
+    );
+    root_properties.insert(
+        "max_limit".to_owned(),
+        serde_json::json!({
+            "type": "integer",
+            "default": config.max_limit,
+            "minimum": 1,
+            "maximum": 500
+        }),
+    );
+    root_properties.insert(
+        "search_timeout_ms".to_owned(),
+        serde_json::json!({
+            "type": "integer",
+            "default": config.search_timeout_ms,
+            "minimum": 250,
+            "maximum": 60000
+        }),
+    );
+
     AddonConfigurationSchema::new(
         CONFIG_SCHEMA_ID,
         serde_json::json!({
             "type": "object",
-            "properties": {
-                "providers": {
-                    "type": "object",
-                    "properties": {
-                        "fixture": {
-                            "type": "boolean",
-                            "default": config.fixture_provider_enabled
-                        },
-                        "pansou_compatible": {
-                            "type": "boolean",
-                            "default": config.pansou.enabled
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "pansou": {
-                    "type": "object",
-                    "properties": {
-                        "base_url": {
-                            "type": "string",
-                            "default": config.pansou.base_url.clone().unwrap_or_default()
-                        },
-                        "source_type": {
-                            "type": "string",
-                            "default": config.pansou.source_type
-                        },
-                        "plugins": {
-                            "type": "array",
-                            "items": { "type": "string" },
-                            "default": config.pansou.plugins
-                        },
-                        "cloud_types": {
-                            "type": "array",
-                            "items": { "type": "string" },
-                            "default": config.pansou.cloud_types.iter().map(|link_type| link_type.as_str()).collect::<Vec<_>>()
-                        },
-                        "concurrency": {
-                            "type": ["integer", "null"],
-                            "default": config.pansou.concurrency,
-                            "minimum": 1
-                        },
-                        "timeout_ms": {
-                            "type": "integer",
-                            "default": config.pansou.timeout_ms,
-                            "minimum": 250,
-                            "maximum": 60000
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "default_limit": {
-                    "type": "integer",
-                    "default": config.default_limit,
-                    "minimum": 1,
-                    "maximum": config.max_limit
-                },
-                "max_limit": {
-                    "type": "integer",
-                    "default": config.max_limit,
-                    "minimum": 1,
-                    "maximum": 500
-                },
-                "search_timeout_ms": {
-                    "type": "integer",
-                    "default": config.search_timeout_ms,
-                    "minimum": 250,
-                    "maximum": 60000
-                }
-            },
+            "properties": root_properties,
             "additionalProperties": false
         }),
     )
