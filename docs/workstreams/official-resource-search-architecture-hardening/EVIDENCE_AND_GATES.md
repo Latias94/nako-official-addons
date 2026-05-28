@@ -29,3 +29,18 @@
 - `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 31 tests.
 - `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
   passed.
+
+### 2026-05-28 - ORSAH-030
+
+- Added provider descriptors, capability names, and source policy
+  classification.
+- Added provider registry assembly outside `ResourceSearchRuntime::new`.
+- Added redaction-safe provider diagnostics to health payloads.
+- Preserved the default no-network runtime: fixture active, PanSou-compatible
+  inactive until enabled with a base URL.
+- `cargo fmt -p nako-resource-search`: passed.
+- `cargo fmt -p nako-resource-search -- --check`: passed.
+- `cargo nextest run -p nako-resource-search --no-fail-fast`: passed, 35
+  tests.
+- `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-resource-search addons/resource-search docs/workstreams/official-resource-search-architecture-hardening`:
+  passed.

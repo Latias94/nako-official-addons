@@ -1,9 +1,28 @@
 use async_trait::async_trait;
 
+use super::descriptor::{ProviderCapability, ProviderDescriptor};
 use crate::{
     domain::{ResourceSearchQuery, ResourceSearchResult},
     engine::ResourceSearchProvider,
     links::resource_link,
+    source_policy::SourcePolicy,
+};
+
+pub const FIXTURE_PROVIDER_ID: &str = "fixture";
+
+const FIXTURE_CAPABILITIES: &[ProviderCapability] = &[
+    ProviderCapability::ResourceSearch,
+    ProviderCapability::DeterministicFixture,
+    ProviderCapability::CloudDriveLinks,
+    ProviderCapability::MagnetLinks,
+];
+
+pub const FIXTURE_DESCRIPTOR: ProviderDescriptor = ProviderDescriptor {
+    id: FIXTURE_PROVIDER_ID,
+    display_name: "Fixture",
+    source_policy: SourcePolicy::Official,
+    default_enabled: true,
+    capabilities: FIXTURE_CAPABILITIES,
 };
 
 #[derive(Debug, Default)]
@@ -12,7 +31,7 @@ pub struct FixtureResourceSearchProvider;
 #[async_trait]
 impl ResourceSearchProvider for FixtureResourceSearchProvider {
     fn id(&self) -> &'static str {
-        "fixture"
+        FIXTURE_PROVIDER_ID
     }
 
     fn priority(&self) -> u16 {

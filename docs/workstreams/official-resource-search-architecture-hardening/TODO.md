@@ -36,7 +36,7 @@ Validation:
 
 ## ORSAH-030 - Provider registry and source policy
 
-Status: pending
+Status: complete
 Owner: Codex
 Dependencies: ORSAH-020
 

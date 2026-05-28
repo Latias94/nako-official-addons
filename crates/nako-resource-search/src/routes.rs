@@ -157,6 +157,7 @@ fn diagnostics_payload(state: &AppState) -> serde_json::Value {
         "configured_provider_count": state.config.enabled_provider_count(),
         "runtime_provider_count": state.runtime.provider_count(),
         "providers": state.runtime.provider_ids(),
+        "provider_registry": state.runtime.provider_diagnostics(),
         "pansou": {
             "enabled": state.config.pansou.enabled,
             "active": state.config.pansou.is_active(),
@@ -327,6 +328,22 @@ mod tests {
         assert_eq!(
             health.diagnostics["future_protocol_resource"],
             "resource_search"
+        );
+        assert_eq!(
+            health.diagnostics["provider_registry"][0]["provider_id"],
+            "fixture"
+        );
+        assert_eq!(
+            health.diagnostics["provider_registry"][0]["source_policy"],
+            "official"
+        );
+        assert_eq!(
+            health.diagnostics["provider_registry"][1]["provider_id"],
+            "pansou_compatible"
+        );
+        assert_eq!(
+            health.diagnostics["provider_registry"][1]["active"],
+            serde_json::json!(false)
         );
 
         let response = router(Config::default())

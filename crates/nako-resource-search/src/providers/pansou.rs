@@ -4,14 +4,33 @@ use anyhow::Context;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+use super::descriptor::{ProviderCapability, ProviderDescriptor};
 use crate::{
     config::PansouProviderConfig,
     domain::{ResourceLink, ResourceLinkType, ResourceSearchQuery, ResourceSearchResult},
     engine::ResourceSearchProvider,
     links::{classify_resource_url, resource_link_with_type},
+    source_policy::SourcePolicy,
 };
 
 pub const PANSOU_COMPATIBLE_PROVIDER_ID: &str = "pansou_compatible";
+
+const PANSOU_CAPABILITIES: &[ProviderCapability] = &[
+    ProviderCapability::ResourceSearch,
+    ProviderCapability::ExternalHttpSearch,
+    ProviderCapability::CloudDriveLinks,
+    ProviderCapability::MagnetLinks,
+    ProviderCapability::Refresh,
+    ProviderCapability::MergedLinkResponse,
+];
+
+pub const PANSOU_DESCRIPTOR: ProviderDescriptor = ProviderDescriptor {
+    id: PANSOU_COMPATIBLE_PROVIDER_ID,
+    display_name: "PanSou Compatible",
+    source_policy: SourcePolicy::ExternalService,
+    default_enabled: false,
+    capabilities: PANSOU_CAPABILITIES,
+};
 
 #[derive(Clone)]
 pub struct PansouCompatibleProvider {

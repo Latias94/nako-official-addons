@@ -13,7 +13,7 @@ use crate::{
         ResourceLinkType, ResourceSearchProviderExecution, ResourceSearchQuery,
         ResourceSearchRequest, ResourceSearchResponse, ResourceSearchResult,
     },
-    providers::{FixtureResourceSearchProvider, PansouCompatibleProvider},
+    providers::{ProviderDiagnostic, ProviderRegistry},
 };
 
 #[async_trait]
@@ -33,24 +33,21 @@ pub trait ResourceSearchProvider: Send + Sync {
 #[derive(Clone)]
 pub struct ResourceSearchRuntime {
     config: Config,
+    provider_registry: ProviderRegistry,
     providers: Vec<Arc<dyn ResourceSearchProvider>>,
 }
 
 impl ResourceSearchRuntime {
     #[must_use]
     pub fn new(config: Config) -> Self {
-        let mut providers = Vec::<Arc<dyn ResourceSearchProvider>>::new();
-        if config.fixture_provider_enabled {
-            providers.push(Arc::new(FixtureResourceSearchProvider));
-        }
-        if config.pansou.is_active() {
-            providers.push(Arc::new(PansouCompatibleProvider::new(
-                config.pansou.clone(),
-            )));
-        }
-        providers.sort_by_key(|provider| std::cmp::Reverse(provider.priority()));
+        let provider_registry = ProviderRegistry::from_config(&config);
+        let providers = provider_registry.enabled_providers();
 
-        Self { config, providers }
+        Self {
+            config,
+            provider_registry,
+            providers,
+        }
     }
 
     #[must_use]
@@ -64,6 +61,11 @@ impl ResourceSearchRuntime {
             .iter()
             .map(|provider| provider.id())
             .collect()
+    }
+
+    #[must_use]
+    pub fn provider_diagnostics(&self) -> Vec<ProviderDiagnostic> {
+        self.provider_registry.diagnostics()
     }
 
     pub async fn search(

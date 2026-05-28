@@ -12,6 +12,8 @@ Exit criteria:
 
 ## M2 - Providers Are Registry-Owned
 
+Status: complete via ORSAH-030.
+
 Exit criteria:
 
 - Runtime no longer constructs concrete providers directly.

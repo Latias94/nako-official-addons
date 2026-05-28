@@ -5,7 +5,7 @@
   "created_at": "2026-05-28",
   "updated_at": "2026-05-28",
   "objective": "Deepen the resource search architecture before adding more providers by separating search intent, provider registry, source policy, fusion, and deferred Nako protocol handoff.",
-  "current_task": "ORSAH-030",
+  "current_task": "ORSAH-040",
   "owner": "Codex",
   "docs": {
     "design": "DESIGN.md",

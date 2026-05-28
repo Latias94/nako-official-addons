@@ -1,7 +1,7 @@
 # Handoff
 
-Status: active. ORSAH-020 is implemented and the lane is ready for provider
-registry work.
+Status: active. ORSAH-030 is implemented and the lane is ready for fusion
+extraction.
 
 Current state:
 
@@ -13,17 +13,20 @@ Current state:
   context while preserving the alpha wire shape.
 - `links` owns URL classification, normalization, and `ResourceLink`
   construction.
+- Provider descriptors and source policy are in place.
+- Provider registry assembly owns fixture/PanSou activation and exposes
+  diagnostics.
 
 Next steps:
 
-- Start ORSAH-030 by adding provider descriptors, source policy, and registry
-  assembly.
+- Start ORSAH-040 by moving result fusion out of `engine.rs`.
 - Keep PanSou-compatible disabled by default.
 - Do not add live provider scraping, link checking, or downloader hooks during
-  registry work.
+  fusion work.
 
 Watch points:
 
 - Default local smoke must remain no-network.
 - PanSou-compatible provider must remain disabled by default.
+- Registry diagnostics must stay redaction-safe.
 - Nako core protocol changes are still deferred.
