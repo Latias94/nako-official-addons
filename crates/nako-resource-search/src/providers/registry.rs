@@ -186,8 +186,13 @@ mod tests {
 
     #[test]
     fn pansou_provider_requires_endpoint_before_activation() {
-        let mut config = Config::default();
-        config.pansou.enabled = true;
+        let config = Config {
+            pansou: PansouProviderConfig {
+                enabled: true,
+                ..PansouProviderConfig::default()
+            },
+            ..Config::default()
+        };
 
         let registry = ProviderRegistry::from_config(&config);
 
@@ -205,11 +210,13 @@ mod tests {
 
     #[test]
     fn pansou_provider_activates_when_endpoint_is_configured() {
-        let mut config = Config::default();
-        config.pansou = PansouProviderConfig {
-            enabled: true,
-            base_url: Some("http://127.0.0.1:8888".to_owned()),
-            ..PansouProviderConfig::default()
+        let config = Config {
+            pansou: PansouProviderConfig {
+                enabled: true,
+                base_url: Some("http://127.0.0.1:8888".to_owned()),
+                ..PansouProviderConfig::default()
+            },
+            ..Config::default()
         };
 
         let registry = ProviderRegistry::from_config(&config);
