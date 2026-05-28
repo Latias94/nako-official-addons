@@ -5,10 +5,12 @@ use thiserror::Error;
 use crate::{
     Config,
     domain::{
-        ProviderExecutionStatus, RESOURCE_SEARCH_RESPONSE_SCHEMA, ResourceSearchProviderExecution,
+        ProviderExecutionFinality, ProviderExecutionStatus, ResourceSearchProviderExecution,
         ResourceSearchRequest, ResourceSearchResponse,
     },
-    providers::{ProviderDiagnostic, ProviderRegistry, ResourceSearchProvider},
+    providers::{
+        ProviderDiagnostic, ProviderRegistry, ProviderSearchFinality, ResourceSearchProvider,
+    },
 };
 
 use super::fusion::fuse_results;
@@ -72,6 +74,7 @@ impl ResourceSearchRuntime {
                     provider_id: provider.id().to_owned(),
                     status: ProviderExecutionStatus::Skipped,
                     result_count: 0,
+                    finality: ProviderExecutionFinality::Unknown,
                     safe_message: Some("source_not_requested".to_owned()),
                 });
                 continue;
@@ -86,6 +89,7 @@ impl ResourceSearchRuntime {
                         provider_id: provider.id().to_owned(),
                         status: ProviderExecutionStatus::Ok,
                         result_count,
+                        finality: provider_finality(batch.finality),
                         safe_message,
                     });
                 }
@@ -93,6 +97,7 @@ impl ResourceSearchRuntime {
                     provider_id: provider.id().to_owned(),
                     status: ProviderExecutionStatus::Error,
                     result_count: 0,
+                    finality: ProviderExecutionFinality::Unknown,
                     safe_message: Some("provider_search_failed".to_owned()),
                 }),
             }
@@ -101,7 +106,6 @@ impl ResourceSearchRuntime {
         let (results, merged_by_type) = fuse_results(results, &query.link_types, query.limit);
 
         Ok(ResourceSearchResponse {
-            schema: RESOURCE_SEARCH_RESPONSE_SCHEMA.to_owned(),
             query: query.query,
             total: results.len(),
             results,
@@ -115,6 +119,13 @@ impl ResourceSearchRuntime {
 pub enum ResourceSearchError {
     #[error("empty resource search query")]
     EmptyQuery,
+}
+
+const fn provider_finality(finality: ProviderSearchFinality) -> ProviderExecutionFinality {
+    match finality {
+        ProviderSearchFinality::Complete => ProviderExecutionFinality::Complete,
+        ProviderSearchFinality::Partial => ProviderExecutionFinality::Partial,
+    }
 }
 
 #[cfg(test)]
@@ -139,12 +150,15 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.schema, RESOURCE_SEARCH_RESPONSE_SCHEMA);
         assert_eq!(response.query, "demo movie");
         assert_eq!(response.provider_executions.len(), 1);
         assert_eq!(
             response.provider_executions[0].status,
             ProviderExecutionStatus::Ok
+        );
+        assert_eq!(
+            response.provider_executions[0].finality,
+            ProviderExecutionFinality::Complete
         );
         assert_eq!(response.total, 2);
         assert!(

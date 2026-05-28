@@ -1,6 +1,6 @@
 # Nako Resource Search
 
-Official alpha resource search sidecar for Nako.
+Official resource search sidecar for Nako.
 
 This addon proves the plugin-side boundary for external resource discovery:
 provider aggregation, link classification, deterministic result fusion, and
@@ -8,12 +8,13 @@ safe diagnostics. It deliberately stays separate from metadata scraping.
 
 ## Protocol Status
 
-The current Nako Addon Protocol does not yet expose a dedicated
-`resource_search` resource. This sidecar temporarily declares an `automation`
-resource at `/resource-search` and returns an alpha-local typed payload.
+This sidecar declares the first-class Nako `resource_search` addon resource at
+`/resource-search`. It requires the read-only `acquisition_search_read` scope
+and returns `nako.addon.resource_search.response.v1` payloads.
 
-The workstream proposal for the correct host contract is tracked in
-`docs/workstreams/official-resource-search-architecture-hardening/PROTOCOL_PROPOSAL.md`.
+Resource search returns external acquisition candidates only. Link checking,
+downloader execution, cloud-drive transfer, and password/code reference handling
+remain separate follow-on contracts owned by Nako host policy.
 
 ## Safe Defaults
 

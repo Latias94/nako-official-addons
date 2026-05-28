@@ -76,12 +76,14 @@ async fn resource_search(
     let payload = resource_protocol::decode_search_request(&request)?;
     let response = state
         .runtime
-        .search(payload)
+        .search(payload.request)
         .await
         .map_err(resource_protocol::search_error_response)?;
 
     Ok(Json(resource_protocol::encode_search_response(
-        request, response,
+        request,
+        payload.intent,
+        response,
     )?))
 }
 
@@ -94,7 +96,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <h1>{ADDON_NAME}</h1>
   <p>Base URL: {}</p>
   <p>Resource path: {RESOURCE_SEARCH_RESOURCE_PATH}</p>
-  <p>Protocol resource: automation alpha</p>
+  <p>Protocol resource: resource_search</p>
   <p>Configured provider count: {}</p>
   <p>Runtime provider count: {}</p>
   <p>Providers: {}</p>
@@ -103,7 +105,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Default limit: {}</p>
   <p>Max limit: {}</p>
   <p>Search timeout ms: {}</p>
-  <p>This alpha sidecar will move to a dedicated resource_search protocol resource after the Nako host contract lands.</p>
+  <p>Search is read-only and returns external acquisition candidates for host selection.</p>
 </body>
 </html>"#,
         state.config.base_url,
@@ -121,8 +123,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
 fn diagnostics_payload(state: &AppState) -> serde_json::Value {
     serde_json::json!({
         "safe_note": "resource search sidecar is reachable",
-        "protocol_resource": "automation_alpha",
-        "future_protocol_resource": "resource_search",
+        "protocol_resource": "resource_search",
         "configured_provider_count": state.runtime.active_provider_count(),
         "runtime_provider_count": state.runtime.provider_count(),
         "providers": state.runtime.provider_ids(),
@@ -154,14 +155,11 @@ mod tests {
         http::{Request, StatusCode},
     };
     use nako_addon_protocol::{
-        AddonManifest, AddonResource, AddonResourceRequest, AddonResourceResponse, AddonScope,
-        validate_manifest,
+        ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA, ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonManifest,
+        AddonResource, AddonResourceRequest, AddonResourceResponse, AddonResourceSearchIntent,
+        AddonResourceSearchResponse, AddonScope, validate_manifest,
     };
     use tower::ServiceExt;
-
-    use crate::domain::{
-        RESOURCE_SEARCH_RESPONSE_SCHEMA, ResourceLinkType, ResourceSearchResponse,
-    };
 
     use super::*;
 
@@ -185,8 +183,8 @@ mod tests {
 
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
-        assert_eq!(manifest.resources[0].kind, AddonResource::Automation);
-        assert_eq!(manifest.scopes, vec![AddonScope::AutomationRun]);
+        assert_eq!(manifest.resources[0].kind, AddonResource::ResourceSearch);
+        assert_eq!(manifest.scopes, vec![AddonScope::AcquisitionSearchRead]);
     }
 
     #[tokio::test]
@@ -201,20 +199,26 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let payload = resource_response_payload(response).await;
-        let response: ResourceSearchResponse = serde_json::from_value(payload).unwrap();
+        let response: AddonResourceSearchResponse = serde_json::from_value(payload).unwrap();
 
-        assert_eq!(response.schema, RESOURCE_SEARCH_RESPONSE_SCHEMA);
+        assert_eq!(response.schema, ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA);
         assert_eq!(response.query, "Demo Movie");
+        assert_eq!(
+            response.intent,
+            AddonResourceSearchIntent::FreeText {
+                text: "Demo Movie".to_owned()
+            }
+        );
         assert_eq!(response.total, 2);
         assert!(
             response
                 .merged_by_type
-                .contains_key(&ResourceLinkType::Quark)
+                .contains_key(&nako_addon_protocol::AddonResourceLinkType::Quark)
         );
         assert!(
             response
                 .merged_by_type
-                .contains_key(&ResourceLinkType::Aliyun)
+                .contains_key(&nako_addon_protocol::AddonResourceLinkType::Aliyun)
         );
     }
 
@@ -290,10 +294,7 @@ mod tests {
             .unwrap();
         let health: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(health.status, AddonHealthStatus::Ok);
-        assert_eq!(
-            health.diagnostics["future_protocol_resource"],
-            "resource_search"
-        );
+        assert_eq!(health.diagnostics["protocol_resource"], "resource_search");
         assert_eq!(
             health.diagnostics["provider_registry"][0]["provider_id"],
             "fixture"
@@ -326,6 +327,7 @@ mod tests {
             .unwrap();
         let text = String::from_utf8(body.to_vec()).unwrap();
         assert!(text.contains("resource_search"));
+        assert!(text.contains("Search is read-only"));
         assert!(!text.contains("password"));
     }
 
@@ -333,9 +335,9 @@ mod tests {
         let request = AddonResourceRequest {
             protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
             addon_id: ADDON_ID.to_owned(),
-            resource: AddonResource::Automation,
+            resource: AddonResource::ResourceSearch,
             request_id: "request-1".to_owned(),
-            payload,
+            payload: resource_search_payload(payload),
         };
 
         Request::builder()
@@ -352,7 +354,22 @@ mod tests {
             .unwrap();
         let response: AddonResourceResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(response.addon_id, ADDON_ID);
-        assert_eq!(response.resource, AddonResource::Automation);
+        assert_eq!(response.resource, AddonResource::ResourceSearch);
         response.payload
+    }
+
+    fn resource_search_payload(payload: serde_json::Value) -> serde_json::Value {
+        let query = payload
+            .get("query")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+
+        serde_json::json!({
+            "schema": ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
+            "intent": { "kind": "free_text", "text": query },
+            "query": query,
+            "limit": payload.get("limit").cloned()
+        })
     }
 }

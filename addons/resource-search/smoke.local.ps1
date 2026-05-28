@@ -65,8 +65,11 @@ Write-Host "[sidecar] Fetching manifest from $SidecarBaseUrl"
 $manifest = Invoke-Json -Method 'GET' -Url (Join-HttpUrl $SidecarBaseUrl '/manifest.json')
 Assert-Equal -Actual $manifest.id -Expected 'nako.official.resource-search' -Name 'manifest.id'
 Assert-Equal -Actual $manifest.protocol_version -Expected '0.1.0-alpha.1' -Name 'manifest.protocol_version'
-Assert-Equal -Actual $manifest.resources[0].kind -Expected 'automation' -Name 'manifest.resources[0].kind'
+Assert-Equal -Actual $manifest.resources[0].kind -Expected 'resource_search' -Name 'manifest.resources[0].kind'
 Assert-Equal -Actual $manifest.resources[0].path -Expected '/resource-search' -Name 'manifest.resources[0].path'
+Assert-Equal -Actual $manifest.resources[0].input_schema -Expected 'nako.addon.resource_search.request.v1' -Name 'manifest.resources[0].input_schema'
+Assert-Equal -Actual $manifest.resources[0].output_schema -Expected 'nako.addon.resource_search.response.v1' -Name 'manifest.resources[0].output_schema'
+Assert-Equal -Actual $manifest.scopes[0] -Expected 'acquisition_search_read' -Name 'manifest.scopes[0]'
 Write-Host "[sidecar] Manifest OK: $($manifest.id)@$($manifest.version)"
 
 $healthRequest = [ordered]@{
@@ -82,16 +85,21 @@ Write-Host "[sidecar] Health status: $($health.status); providers=$($health.diag
 $searchRequest = [ordered]@{
     protocol_version = $manifest.protocol_version
     addon_id = $manifest.id
-    resource = 'automation'
+    resource = 'resource_search'
     request_id = "local-smoke-search-$([guid]::NewGuid())"
     payload = [ordered]@{
+        schema = 'nako.addon.resource_search.request.v1'
+        intent = [ordered]@{
+            kind = 'free_text'
+            text = $Query
+        }
         query = $Query
         limit = 5
     }
 }
 $search = Invoke-Json -Method 'POST' -Url (Join-HttpUrl $SidecarBaseUrl '/resource-search') -Body $searchRequest
-Assert-Equal -Actual $search.resource -Expected 'automation' -Name 'search.resource'
-Assert-Equal -Actual $search.payload.schema -Expected 'nako.official.resource-search.alpha.response.v1' -Name 'search.payload.schema'
+Assert-Equal -Actual $search.resource -Expected 'resource_search' -Name 'search.resource'
+Assert-Equal -Actual $search.payload.schema -Expected 'nako.addon.resource_search.response.v1' -Name 'search.payload.schema'
 Assert-MinCount -Items @($search.payload.results) -Minimum 1 -Name 'search.payload.results'
 Write-Host "[sidecar] Search OK: total=$($search.payload.total); query='$($search.payload.query)'"
 

@@ -4,14 +4,14 @@
   "version": "0.1.0-alpha.2",
   "protocol_version": "0.1.0-alpha.1",
   "base_url": "http://nako-resource-search:9130",
-  "description": "Official Nako resource search sidecar. Alpha contract for external resource discovery, link classification, and result fusion while the final Nako resource_search protocol surface is designed.",
+  "description": "Official Nako resource search sidecar for external resource discovery, link classification, and result fusion.",
   "resources": [
     {
-      "kind": "automation",
+      "kind": "resource_search",
       "path": "/resource-search",
-      "input_schema": "nako.official.resource-search.alpha.request.v1",
-      "output_schema": "nako.official.resource-search.alpha.response.v1",
-      "required_scopes": ["automation_run"],
+      "input_schema": "nako.addon.resource_search.request.v1",
+      "output_schema": "nako.addon.resource_search.response.v1",
+      "required_scopes": ["acquisition_search_read"],
       "timeout_ms": 10000,
       "max_attempts": 1
     }
@@ -23,7 +23,7 @@
       "label": "Resource Search Diagnostics",
       "path": "/ui/diagnostics",
       "hosted_page_id": "diagnostics",
-      "required_scopes": ["automation_run"]
+      "required_scopes": ["acquisition_search_read"]
     }
   ],
   "hosted_pages": [
@@ -31,7 +31,7 @@
       "id": "diagnostics",
       "title": "Resource Search Diagnostics",
       "path": "/ui/diagnostics",
-      "required_scopes": ["automation_run"]
+      "required_scopes": ["acquisition_search_read"]
     }
   ],
   "configuration_schema": {
@@ -113,5 +113,5 @@
   "auth": "none",
   "default_timeout_ms": 10000,
   "default_max_attempts": 1,
-  "scopes": ["automation_run"]
+  "scopes": ["acquisition_search_read"]
 }

@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{ResourceLink, ResourceLinkType};
 
-pub const RESOURCE_SEARCH_RESPONSE_SCHEMA: &str = "nako.official.resource-search.alpha.response.v1";
-
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceSearchResult {
     pub id: String,
@@ -75,18 +73,37 @@ impl ProviderExecutionStatus {
     }
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderExecutionFinality {
+    Complete,
+    Partial,
+    Unknown,
+}
+
+impl ProviderExecutionFinality {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Partial => "partial",
+            Self::Unknown => "unknown",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceSearchProviderExecution {
     pub provider_id: String,
     pub status: ProviderExecutionStatus,
     pub result_count: usize,
+    pub finality: ProviderExecutionFinality,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub safe_message: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceSearchResponse {
-    pub schema: String,
     pub query: String,
     pub total: usize,
     pub results: Vec<ResourceSearchResult>,
