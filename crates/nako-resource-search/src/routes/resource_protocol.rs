@@ -2,10 +2,12 @@ use std::collections::BTreeMap;
 
 use axum::{Json, http::StatusCode};
 use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
+    ADDON_PROTOCOL_VERSION, ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA,
+    ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA, ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
     ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonMergedResourceLink, AddonResource,
-    AddonResourceLink, AddonResourceLinkType, AddonResourceRequest, AddonResourceResponse,
-    AddonResourceSearchIntent, AddonResourceSearchProviderExecution,
+    AddonResourceLink, AddonResourceLinkCheckRequest, AddonResourceLinkCheckResponse,
+    AddonResourceLinkCheckStatus, AddonResourceLinkType, AddonResourceRequest,
+    AddonResourceResponse, AddonResourceSearchIntent, AddonResourceSearchProviderExecution,
     AddonResourceSearchProviderFinality, AddonResourceSearchProviderStatus,
     AddonResourceSearchRequest, AddonResourceSearchResponse, AddonResourceSearchResult,
 };
@@ -13,6 +15,7 @@ use nako_addon_protocol::{
 use crate::{
     domain::{
         MergedResourceLink, ProviderExecutionFinality, ProviderExecutionStatus, ResourceLink,
+        ResourceLinkCheckRequest, ResourceLinkCheckResponse, ResourceLinkCheckStatus,
         ResourceLinkType, ResourceSearchProviderExecution, ResourceSearchRequest,
         ResourceSearchResponse, ResourceSearchResult,
     },
@@ -28,10 +31,15 @@ pub(super) struct DecodedSearchRequest {
     pub intent: AddonResourceSearchIntent,
 }
 
+#[derive(Debug)]
+pub(super) struct DecodedLinkCheckRequest {
+    pub request: ResourceLinkCheckRequest,
+}
+
 pub(super) fn decode_search_request(
     request: &AddonResourceRequest,
 ) -> Result<DecodedSearchRequest, RouteError> {
-    validate_resource_envelope(request)?;
+    validate_resource_envelope(request, AddonResource::ResourceSearch)?;
     let payload = serde_json::from_value::<AddonResourceSearchRequest>(request.payload.clone())
         .map_err(|_| safe_bad_request("invalid_resource_search_payload"))?;
 
@@ -42,6 +50,25 @@ pub(super) fn decode_search_request(
     Ok(DecodedSearchRequest {
         request: domain_search_request(&payload),
         intent: payload.intent,
+    })
+}
+
+pub(super) fn decode_link_check_request(
+    request: &AddonResourceRequest,
+) -> Result<DecodedLinkCheckRequest, RouteError> {
+    validate_resource_envelope(request, AddonResource::ResourceLinkCheck)?;
+    let payload = serde_json::from_value::<AddonResourceLinkCheckRequest>(request.payload.clone())
+        .map_err(|_| safe_bad_request("invalid_resource_link_check_payload"))?;
+
+    if payload.schema != ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA {
+        return Err(safe_bad_request("invalid_resource_link_check_schema"));
+    }
+
+    Ok(DecodedLinkCheckRequest {
+        request: ResourceLinkCheckRequest {
+            link: domain_link(payload.link),
+            refresh: payload.refresh,
+        },
     })
 }
 
@@ -63,20 +90,40 @@ pub(super) fn encode_search_response(
     })
 }
 
+pub(super) fn encode_link_check_response(
+    request: AddonResourceRequest,
+    response: ResourceLinkCheckResponse,
+) -> Result<AddonResourceResponse, RouteError> {
+    let payload = serde_json::to_value(addon_link_check_response(response))
+        .map_err(|_| safe_internal_error("resource_link_check_response_serialize_failed"))?;
+
+    Ok(AddonResourceResponse {
+        protocol_version: request.protocol_version,
+        addon_id: request.addon_id,
+        resource: request.resource,
+        request_id: request.request_id,
+        payload,
+        artifacts: Vec::new(),
+    })
+}
+
 pub(super) fn search_error_response(error: ResourceSearchError) -> RouteError {
     match error {
         ResourceSearchError::EmptyQuery => safe_bad_request("empty_query"),
     }
 }
 
-fn validate_resource_envelope(request: &AddonResourceRequest) -> Result<(), RouteError> {
+fn validate_resource_envelope(
+    request: &AddonResourceRequest,
+    expected_resource: AddonResource,
+) -> Result<(), RouteError> {
     if request.protocol_version != ADDON_PROTOCOL_VERSION {
         return Err(safe_bad_request("invalid_protocol_version"));
     }
     if request.addon_id != ADDON_ID {
         return Err(safe_bad_request("invalid_addon_id"));
     }
-    if request.resource != AddonResource::ResourceSearch {
+    if request.resource != expected_resource {
         return Err(safe_bad_request("invalid_resource"));
     }
 
@@ -99,6 +146,21 @@ fn domain_search_request(payload: &AddonResourceSearchRequest) -> ResourceSearch
     }
 }
 
+fn domain_link(link: AddonResourceLink) -> ResourceLink {
+    let normalized_url = crate::links::normalize_resource_url(&link.normalized_url)
+        .or_else(|| crate::links::normalize_resource_url(&link.url))
+        .unwrap_or_default();
+
+    ResourceLink {
+        url: link.url.trim().to_owned(),
+        normalized_url,
+        link_type: domain_link_type(link.link_type),
+        source: link.source,
+        password: link.password,
+        note: link.note,
+    }
+}
+
 fn effective_query(payload: &AddonResourceSearchRequest) -> String {
     if let AddonResourceSearchIntent::ExactLink { url } = &payload.intent {
         let url = url.trim();
@@ -117,6 +179,22 @@ fn effective_query(payload: &AddonResourceSearchRequest) -> String {
         AddonResourceSearchIntent::MediaTitle { title, .. } => title.trim().to_owned(),
         AddonResourceSearchIntent::ExternalId { value, .. } => value.trim().to_owned(),
         AddonResourceSearchIntent::ExactLink { url } => url.trim().to_owned(),
+    }
+}
+
+fn addon_link_check_response(
+    response: ResourceLinkCheckResponse,
+) -> AddonResourceLinkCheckResponse {
+    AddonResourceLinkCheckResponse {
+        schema: ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA.to_owned(),
+        link_type: addon_link_type(response.link_type),
+        status: addon_link_check_status(response.status),
+        checked_at_ms: response.checked_at_ms,
+        requires_password: response.requires_password,
+        retryable: response.retryable,
+        retry_after_ms: response.retry_after_ms,
+        safe_message: response.safe_message,
+        safe_facts: response.safe_facts,
     }
 }
 
@@ -313,6 +391,18 @@ const fn addon_link_type(link_type: ResourceLinkType) -> AddonResourceLinkType {
     }
 }
 
+const fn addon_link_check_status(status: ResourceLinkCheckStatus) -> AddonResourceLinkCheckStatus {
+    match status {
+        ResourceLinkCheckStatus::Reachable => AddonResourceLinkCheckStatus::Reachable,
+        ResourceLinkCheckStatus::Unavailable => AddonResourceLinkCheckStatus::Unavailable,
+        ResourceLinkCheckStatus::PasswordNeeded => AddonResourceLinkCheckStatus::PasswordNeeded,
+        ResourceLinkCheckStatus::Unsupported => AddonResourceLinkCheckStatus::Unsupported,
+        ResourceLinkCheckStatus::RateLimited => AddonResourceLinkCheckStatus::RateLimited,
+        ResourceLinkCheckStatus::Error => AddonResourceLinkCheckStatus::Error,
+        ResourceLinkCheckStatus::Unknown => AddonResourceLinkCheckStatus::Unknown,
+    }
+}
+
 fn safe_bad_request(safe_error_code: &str) -> RouteError {
     safe_error(StatusCode::BAD_REQUEST, safe_error_code, false)
 }
@@ -445,11 +535,104 @@ mod tests {
         assert_eq!(decoded.request.query, "magnet:?xt=urn:btih:ABCDEF");
     }
 
+    #[test]
+    fn decode_link_check_request_rejects_wrong_payload_schema() {
+        let request = AddonResourceRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            resource: AddonResource::ResourceLinkCheck,
+            request_id: "request-1".to_owned(),
+            payload: serde_json::json!({
+                "schema": "nako.addon.resource_link_check.request.v0",
+                "link": {
+                    "url": "https://pan.quark.cn/s/demo",
+                    "normalized_url": "https://pan.quark.cn/s/demo",
+                    "link_type": "quark",
+                    "source": "fixture"
+                }
+            }),
+        };
+
+        let error = decode_link_check_request(&request).unwrap_err();
+
+        assert_safe_error(
+            error,
+            StatusCode::BAD_REQUEST,
+            "invalid_resource_link_check_schema",
+        );
+    }
+
+    #[test]
+    fn decode_and_encode_link_check_keep_sensitive_material_out_of_response() {
+        let request = AddonResourceRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            resource: AddonResource::ResourceLinkCheck,
+            request_id: "request-1".to_owned(),
+            payload: resource_link_check_payload(),
+        };
+
+        let decoded = decode_link_check_request(&request).unwrap();
+
+        assert_eq!(decoded.request.link.link_type, ResourceLinkType::Quark);
+        assert_eq!(
+            decoded.request.link.password.as_deref(),
+            Some("secret-code")
+        );
+        assert_eq!(decoded.request.link.note.as_deref(), Some("private-note"));
+
+        let response = encode_link_check_response(
+            request,
+            ResourceLinkCheckResponse::new(
+                ResourceLinkType::Quark,
+                ResourceLinkCheckStatus::Unknown,
+                1_779_814_400_000,
+            )
+            .with_requires_password(true)
+            .with_safe_message("site_specific_checker_not_configured")
+            .with_safe_fact("checker_provider", "conservative"),
+        )
+        .unwrap();
+        let payload = serde_json::to_string(&response.payload).unwrap();
+
+        assert_eq!(response.resource, AddonResource::ResourceLinkCheck);
+        assert!(payload.contains(ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA));
+        for forbidden in [
+            "https://pan.quark.cn",
+            "secret-code",
+            "private-note",
+            "raw-secret-link",
+        ] {
+            assert!(
+                !payload.contains(forbidden),
+                "resource_link_check response leaked forbidden term: {forbidden}"
+            );
+        }
+    }
+
     fn resource_search_payload() -> serde_json::Value {
         serde_json::json!({
             "schema": ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
             "intent": { "kind": "free_text", "text": "Demo Movie" },
             "query": "Demo Movie"
+        })
+    }
+
+    fn resource_link_check_payload() -> serde_json::Value {
+        serde_json::json!({
+            "schema": ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA,
+            "link": {
+                "url": "https://pan.quark.cn/s/raw-secret-link",
+                "normalized_url": "https://pan.quark.cn/s/raw-secret-link",
+                "link_type": "quark",
+                "source": "fixture",
+                "password": "secret-code",
+                "note": "private-note"
+            },
+            "refresh": true,
+            "context": {
+                "selection_id": "sel_opaque_1"
+            }
         })
     }
 

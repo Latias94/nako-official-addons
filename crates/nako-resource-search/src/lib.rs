@@ -1,3 +1,4 @@
+pub mod checkers;
 pub mod config;
 pub mod domain;
 pub mod engine;

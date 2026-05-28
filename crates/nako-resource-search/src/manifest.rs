@@ -1,5 +1,6 @@
 use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
+    ADDON_PROTOCOL_VERSION, ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA,
+    ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA, ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
     ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonAuth, AddonConfigurationSchema,
     AddonEntryPointDeclaration, AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest,
     AddonResource, AddonResourceDeclaration, AddonScope,
@@ -14,6 +15,7 @@ pub const DEFAULT_CONTAINER_BASE_URL: &str = "http://nako-resource-search:9130";
 pub const DESCRIPTION: &str = "Official Nako resource search sidecar for external resource discovery, link classification, and result fusion.";
 pub const CONFIG_SCHEMA_ID: &str = "nako.official.resource-search.config.v1";
 pub const RESOURCE_SEARCH_RESOURCE_PATH: &str = "/resource-search";
+pub const RESOURCE_LINK_CHECK_RESOURCE_PATH: &str = "/resource-link-check";
 pub const DIAGNOSTICS_ENTRY_POINT_ID: &str = "resource-search-diagnostics";
 pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
 pub const DIAGNOSTICS_LABEL: &str = "Resource Search Diagnostics";
@@ -42,15 +44,26 @@ fn manifest_with_base_url(base_url: impl Into<String>, config: &Config) -> Addon
         protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
         base_url: base_url.into(),
         description: Some(DESCRIPTION.to_owned()),
-        resources: vec![AddonResourceDeclaration {
-            kind: AddonResource::ResourceSearch,
-            path: RESOURCE_SEARCH_RESOURCE_PATH.to_owned(),
-            input_schema: Some(ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA.to_owned()),
-            output_schema: Some(ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA.to_owned()),
-            required_scopes: vec![AddonScope::AcquisitionSearchRead],
-            timeout_ms: Some(config.search_timeout_ms),
-            max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        }],
+        resources: vec![
+            AddonResourceDeclaration {
+                kind: AddonResource::ResourceSearch,
+                path: RESOURCE_SEARCH_RESOURCE_PATH.to_owned(),
+                input_schema: Some(ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA.to_owned()),
+                output_schema: Some(ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA.to_owned()),
+                required_scopes: vec![AddonScope::AcquisitionSearchRead],
+                timeout_ms: Some(config.search_timeout_ms),
+                max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
+            },
+            AddonResourceDeclaration {
+                kind: AddonResource::ResourceLinkCheck,
+                path: RESOURCE_LINK_CHECK_RESOURCE_PATH.to_owned(),
+                input_schema: Some(ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA.to_owned()),
+                output_schema: Some(ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA.to_owned()),
+                required_scopes: vec![AddonScope::AcquisitionLinkCheckRead],
+                timeout_ms: Some(config.search_timeout_ms),
+                max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
+            },
+        ],
         entry_points: vec![AddonEntryPointDeclaration::hosted_page(
             DIAGNOSTICS_ENTRY_POINT_ID,
             AddonEntryPointKind::Diagnostics,
@@ -72,7 +85,10 @@ fn manifest_with_base_url(base_url: impl Into<String>, config: &Config) -> Addon
         auth: AddonAuth::None,
         default_timeout_ms: Some(config.search_timeout_ms),
         default_max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        scopes: vec![AddonScope::AcquisitionSearchRead],
+        scopes: vec![
+            AddonScope::AcquisitionSearchRead,
+            AddonScope::AcquisitionLinkCheckRead,
+        ],
     }
 }
 
@@ -160,7 +176,7 @@ mod tests {
         assert_eq!(manifest.id, ADDON_ID);
         assert_eq!(manifest.name, ADDON_NAME);
         assert_eq!(manifest.version, ADDON_VERSION);
-        assert_eq!(manifest.resources.len(), 1);
+        assert_eq!(manifest.resources.len(), 2);
         assert_eq!(manifest.resources[0].kind, AddonResource::ResourceSearch);
         assert_eq!(manifest.resources[0].path, RESOURCE_SEARCH_RESOURCE_PATH);
         assert_eq!(
@@ -171,7 +187,26 @@ mod tests {
             manifest.resources[0].output_schema.as_deref(),
             Some(ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA)
         );
-        assert_eq!(manifest.scopes, vec![AddonScope::AcquisitionSearchRead]);
+        assert_eq!(manifest.resources[1].kind, AddonResource::ResourceLinkCheck);
+        assert_eq!(
+            manifest.resources[1].path,
+            RESOURCE_LINK_CHECK_RESOURCE_PATH
+        );
+        assert_eq!(
+            manifest.resources[1].input_schema.as_deref(),
+            Some(ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA)
+        );
+        assert_eq!(
+            manifest.resources[1].output_schema.as_deref(),
+            Some(ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA)
+        );
+        assert_eq!(
+            manifest.scopes,
+            vec![
+                AddonScope::AcquisitionSearchRead,
+                AddonScope::AcquisitionLinkCheckRead
+            ]
+        );
         assert_eq!(manifest.hosted_pages.len(), 1);
         assert_eq!(manifest.entry_points.len(), 1);
         let schema = &manifest.configuration_schema.as_ref().unwrap().schema;

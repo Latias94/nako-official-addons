@@ -4,8 +4,10 @@ use thiserror::Error;
 
 use crate::{
     Config,
+    checkers::{ConservativeResourceLinkCheckProvider, ResourceLinkCheckProvider},
     domain::{
-        ProviderExecutionFinality, ProviderExecutionStatus, ResourceSearchProviderExecution,
+        ProviderExecutionFinality, ProviderExecutionStatus, ResourceLinkCheckRequest,
+        ResourceLinkCheckResponse, ResourceLinkCheckStatus, ResourceSearchProviderExecution,
         ResourceSearchRequest, ResourceSearchResponse,
     },
     providers::{
@@ -20,6 +22,7 @@ pub struct ResourceSearchRuntime {
     config: Config,
     provider_registry: ProviderRegistry,
     providers: Vec<Arc<dyn ResourceSearchProvider>>,
+    link_check_provider: Arc<dyn ResourceLinkCheckProvider>,
 }
 
 impl ResourceSearchRuntime {
@@ -32,6 +35,7 @@ impl ResourceSearchRuntime {
             config,
             provider_registry,
             providers,
+            link_check_provider: Arc::new(ConservativeResourceLinkCheckProvider),
         }
     }
 
@@ -56,6 +60,11 @@ impl ResourceSearchRuntime {
     #[must_use]
     pub fn provider_diagnostics(&self) -> Vec<ProviderDiagnostic> {
         self.provider_registry.diagnostics()
+    }
+
+    #[must_use]
+    pub fn link_check_provider_id(&self) -> &'static str {
+        self.link_check_provider.id()
     }
 
     pub async fn search(
@@ -113,6 +122,19 @@ impl ResourceSearchRuntime {
             provider_executions,
         })
     }
+
+    pub async fn check_link(&self, request: ResourceLinkCheckRequest) -> ResourceLinkCheckResponse {
+        match self.link_check_provider.check(&request).await {
+            Ok(response) => response,
+            Err(_error) => ResourceLinkCheckResponse::new(
+                request.link.link_type,
+                ResourceLinkCheckStatus::Error,
+                current_time_ms(),
+            )
+            .with_safe_message("link_check_provider_failed")
+            .with_safe_fact("checker_provider", self.link_check_provider.id()),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -128,12 +150,22 @@ const fn provider_finality(finality: ProviderSearchFinality) -> ProviderExecutio
     }
 }
 
+fn current_time_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis().try_into().unwrap_or(u64::MAX))
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use crate::{
-        domain::{ResourceLinkType, ResourceSearchQuery, ResourceSearchRequest},
+        domain::{
+            ResourceLink, ResourceLinkCheckRequest, ResourceLinkCheckStatus, ResourceLinkType,
+            ResourceSearchQuery, ResourceSearchRequest,
+        },
         providers::ProviderSearchBatch,
     };
 
@@ -235,6 +267,30 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn runtime_check_link_uses_conservative_checker() {
+        let runtime = ResourceSearchRuntime::new(Config::default());
+        let response = runtime
+            .check_link(ResourceLinkCheckRequest {
+                link: ResourceLink {
+                    url: "https://pan.quark.cn/s/demo".to_owned(),
+                    normalized_url: "https://pan.quark.cn/s/demo".to_owned(),
+                    link_type: ResourceLinkType::Quark,
+                    source: "fixture".to_owned(),
+                    password: None,
+                    note: None,
+                },
+                refresh: false,
+            })
+            .await;
+
+        assert_eq!(response.status, ResourceLinkCheckStatus::Reachable);
+        assert_eq!(
+            response.safe_facts.get("live_network").map(String::as_str),
+            Some("false")
+        );
+    }
+
     #[async_trait::async_trait]
     impl ResourceSearchProvider for FailingProvider {
         fn id(&self) -> &'static str {
@@ -259,6 +315,7 @@ mod tests {
                 config,
                 provider_registry,
                 providers,
+                link_check_provider: Arc::new(ConservativeResourceLinkCheckProvider),
             }
         }
     }

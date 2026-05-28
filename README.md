@@ -20,9 +20,10 @@ as one suite later:
 - users can install `nako-chromecast-renderer` for the first official external
   renderer adapter proof: Chromecast target discovery plus host-owned,
   cast-safe command envelope translation;
-- users can install `nako-resource-search` for first-class `resource_search`:
-  fixture-backed search, link classification, and result fusion with the
-  read-only `acquisition_search_read` scope;
+- users can install `nako-resource-search` for first-class `resource_search`
+  and `resource_link_check`: fixture-backed search, link classification, result
+  fusion, and conservative safe link checks with the read-only
+  `acquisition_search_read` / `acquisition_link_check_read` scopes;
 - the current runtime supports the fixture provider by default and includes
   default-disabled TMDB, Bangumi, and Douban baselines behind the same provider
   seam;
@@ -135,8 +136,9 @@ Provider defaults:
   `NAKO_CHROMECAST_RENDERER_LIVE_DISCOVERY_ENABLED=1` or
   `NAKO_CHROMECAST_RENDERER_LIVE_CONTROL_ENABLED=1`.
 - `resource_search.fixture`: enabled by default. It provides deterministic
-  search results for local smoke while live provider scraping, link checking,
-  downloader hooks, and cloud-drive transfer are handled in later lanes.
+  search results and deterministic fixture link checks for local smoke while
+  live provider scraping, downloader hooks, and cloud-drive transfer are handled
+  in later lanes.
 - `resource_search.pansou_compatible`: disabled by default. Configure
   `NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED=1` plus
   `NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL` to query an externally managed

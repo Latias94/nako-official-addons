@@ -14,8 +14,8 @@ use crate::{
     Config,
     engine::ResourceSearchRuntime,
     manifest::{
-        ADDON_ID, ADDON_NAME, ADDON_VERSION, DIAGNOSTICS_PATH, RESOURCE_SEARCH_RESOURCE_PATH,
-        addon_manifest, container_manifest,
+        ADDON_ID, ADDON_NAME, ADDON_VERSION, DIAGNOSTICS_PATH, RESOURCE_LINK_CHECK_RESOURCE_PATH,
+        RESOURCE_SEARCH_RESOURCE_PATH, addon_manifest, container_manifest,
     },
 };
 
@@ -34,6 +34,7 @@ pub fn router(config: Config) -> Router {
         .route("/manifest.json", get(manifest))
         .route("/health", post(health))
         .route(RESOURCE_SEARCH_RESOURCE_PATH, post(resource_search))
+        .route(RESOURCE_LINK_CHECK_RESOURCE_PATH, post(resource_link_check))
         .route(DIAGNOSTICS_PATH, get(diagnostics))
         .layer(TraceLayer::new_for_http())
         .with_state(AppState { config, runtime })
@@ -87,6 +88,18 @@ async fn resource_search(
     )?))
 }
 
+async fn resource_link_check(
+    State(state): State<AppState>,
+    Json(request): Json<AddonResourceRequest>,
+) -> Result<Json<AddonResourceResponse>, resource_protocol::RouteError> {
+    let payload = resource_protocol::decode_link_check_request(&request)?;
+    let response = state.runtime.check_link(payload.request).await;
+
+    Ok(Json(resource_protocol::encode_link_check_response(
+        request, response,
+    )?))
+}
+
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
     Html(format!(
         r#"<!doctype html>
@@ -96,10 +109,12 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <h1>{ADDON_NAME}</h1>
   <p>Base URL: {}</p>
   <p>Resource path: {RESOURCE_SEARCH_RESOURCE_PATH}</p>
-  <p>Protocol resource: resource_search</p>
+  <p>Link check path: {RESOURCE_LINK_CHECK_RESOURCE_PATH}</p>
+  <p>Protocol resources: resource_search, resource_link_check</p>
   <p>Configured provider count: {}</p>
   <p>Runtime provider count: {}</p>
   <p>Providers: {}</p>
+  <p>Link check provider: {}</p>
   <p>PanSou-compatible provider active: {}</p>
   <p>PanSou-compatible base URL configured: {}</p>
   <p>Default limit: {}</p>
@@ -112,6 +127,7 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
         state.runtime.active_provider_count(),
         state.runtime.provider_count(),
         state.runtime.provider_ids().join(", "),
+        state.runtime.link_check_provider_id(),
         yes_no_label(state.config.pansou.is_active()),
         yes_no_label(state.config.pansou.base_url.is_some()),
         state.config.default_limit,
@@ -123,11 +139,16 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
 fn diagnostics_payload(state: &AppState) -> serde_json::Value {
     serde_json::json!({
         "safe_note": "resource search sidecar is reachable",
-        "protocol_resource": "resource_search",
+        "protocol_resources": ["resource_search", "resource_link_check"],
         "configured_provider_count": state.runtime.active_provider_count(),
         "runtime_provider_count": state.runtime.provider_count(),
         "providers": state.runtime.provider_ids(),
         "provider_registry": state.runtime.provider_diagnostics(),
+        "link_check": {
+            "provider_id": state.runtime.link_check_provider_id(),
+            "live_network": false,
+            "safe_message": "conservative_fixture_and_classification_only"
+        },
         "pansou": {
             "enabled": state.config.pansou.enabled,
             "active": state.config.pansou.is_active(),
@@ -155,9 +176,12 @@ mod tests {
         http::{Request, StatusCode},
     };
     use nako_addon_protocol::{
+        ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA, ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA,
         ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA, ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonManifest,
-        AddonResource, AddonResourceRequest, AddonResourceResponse, AddonResourceSearchIntent,
-        AddonResourceSearchResponse, AddonScope, validate_manifest,
+        AddonResource, AddonResourceLink, AddonResourceLinkCheckResponse,
+        AddonResourceLinkCheckStatus, AddonResourceLinkType, AddonResourceRequest,
+        AddonResourceResponse, AddonResourceSearchIntent, AddonResourceSearchResponse, AddonScope,
+        validate_manifest,
     };
     use tower::ServiceExt;
 
@@ -184,7 +208,14 @@ mod tests {
         validate_manifest(&manifest).unwrap();
         assert_eq!(manifest.id, ADDON_ID);
         assert_eq!(manifest.resources[0].kind, AddonResource::ResourceSearch);
-        assert_eq!(manifest.scopes, vec![AddonScope::AcquisitionSearchRead]);
+        assert_eq!(manifest.resources[1].kind, AddonResource::ResourceLinkCheck);
+        assert_eq!(
+            manifest.scopes,
+            vec![
+                AddonScope::AcquisitionSearchRead,
+                AddonScope::AcquisitionLinkCheckRead
+            ]
+        );
     }
 
     #[tokio::test]
@@ -268,6 +299,98 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn resource_link_check_returns_safe_typed_status() {
+        let response = router(Config::default())
+            .oneshot(link_check_request(serde_json::json!({
+                "schema": ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA,
+                "link": {
+                    "url": "https://pan.quark.cn/s/raw-secret-link",
+                    "normalized_url": "https://pan.quark.cn/s/raw-secret-link",
+                    "link_type": "quark",
+                    "source": "fixture",
+                    "password": "secret-code",
+                    "note": "private-note"
+                },
+                "refresh": true,
+                "context": {
+                    "selection_id": "sel_opaque_1",
+                    "token": "nako_at_should_not_echo"
+                }
+            })))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let envelope: AddonResourceResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(envelope.resource, AddonResource::ResourceLinkCheck);
+        let response: AddonResourceLinkCheckResponse =
+            serde_json::from_value(envelope.payload).unwrap();
+        let text = serde_json::to_string(&response).unwrap();
+
+        assert_eq!(response.schema, ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA);
+        assert_eq!(response.link_type, AddonResourceLinkType::Quark);
+        assert_eq!(response.status, AddonResourceLinkCheckStatus::Reachable);
+        assert!(response.requires_password);
+        assert_eq!(
+            response
+                .safe_facts
+                .get("checker_provider")
+                .map(String::as_str),
+            Some("conservative")
+        );
+        assert_eq!(
+            response.safe_facts.get("live_network").map(String::as_str),
+            Some("false")
+        );
+
+        for forbidden in [
+            "https://pan.quark.cn",
+            "raw-secret-link",
+            "secret-code",
+            "private-note",
+            "nako_at_should_not_echo",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "link-check response leaked forbidden term: {forbidden}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn resource_link_check_rejects_invalid_resource_envelope() {
+        let request = AddonResourceRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            resource: AddonResource::ResourceSearch,
+            request_id: "request-1".to_owned(),
+            payload: resource_link_check_payload(),
+        };
+
+        let response = router(Config::default())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(RESOURCE_LINK_CHECK_RESOURCE_PATH)
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["safe_error_code"], "invalid_resource");
+    }
+
+    #[tokio::test]
     async fn health_and_diagnostics_are_redaction_safe() {
         let health_request = AddonHealthCheckRequest {
             protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
@@ -294,7 +417,10 @@ mod tests {
             .unwrap();
         let health: AddonHealthCheckResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(health.status, AddonHealthStatus::Ok);
-        assert_eq!(health.diagnostics["protocol_resource"], "resource_search");
+        assert_eq!(
+            health.diagnostics["protocol_resources"],
+            serde_json::json!(["resource_search", "resource_link_check"])
+        );
         assert_eq!(
             health.diagnostics["provider_registry"][0]["provider_id"],
             "fixture"
@@ -311,6 +437,11 @@ mod tests {
             health.diagnostics["provider_registry"][1]["active"],
             serde_json::json!(false)
         );
+        assert_eq!(
+            health.diagnostics["link_check"]["provider_id"],
+            "conservative"
+        );
+        assert_eq!(health.diagnostics["link_check"]["live_network"], false);
 
         let response = router(Config::default())
             .oneshot(
@@ -327,6 +458,8 @@ mod tests {
             .unwrap();
         let text = String::from_utf8(body.to_vec()).unwrap();
         assert!(text.contains("resource_search"));
+        assert!(text.contains("resource_link_check"));
+        assert!(text.contains("conservative"));
         assert!(text.contains("Search is read-only"));
         assert!(!text.contains("password"));
     }
@@ -343,6 +476,23 @@ mod tests {
         Request::builder()
             .method("POST")
             .uri(RESOURCE_SEARCH_RESOURCE_PATH)
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&request).unwrap()))
+            .unwrap()
+    }
+
+    fn link_check_request(payload: serde_json::Value) -> Request<Body> {
+        let request = AddonResourceRequest {
+            protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
+            addon_id: ADDON_ID.to_owned(),
+            resource: AddonResource::ResourceLinkCheck,
+            request_id: "request-1".to_owned(),
+            payload,
+        };
+
+        Request::builder()
+            .method("POST")
+            .uri(RESOURCE_LINK_CHECK_RESOURCE_PATH)
             .header("content-type", "application/json")
             .body(Body::from(serde_json::to_vec(&request).unwrap()))
             .unwrap()
@@ -371,5 +521,22 @@ mod tests {
             "query": query,
             "limit": payload.get("limit").cloned()
         })
+    }
+
+    fn resource_link_check_payload() -> serde_json::Value {
+        serde_json::to_value(nako_addon_protocol::AddonResourceLinkCheckRequest {
+            schema: ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA.to_owned(),
+            link: AddonResourceLink {
+                url: "https://pan.quark.cn/s/demo".to_owned(),
+                normalized_url: "https://pan.quark.cn/s/demo".to_owned(),
+                link_type: AddonResourceLinkType::Quark,
+                source: "fixture".to_owned(),
+                password: None,
+                note: None,
+            },
+            refresh: false,
+            context: serde_json::Value::Null,
+        })
+        .unwrap()
     }
 }
