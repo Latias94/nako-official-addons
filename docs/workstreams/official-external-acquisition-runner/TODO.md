@@ -43,7 +43,7 @@ Task IDs use the `OEAR` prefix.
 
 ## M3 - Host Dispatch And Audit
 
-- [ ] OEAR-040 [owner=codex] [deps=OEAR-020,OEAR-030] [scope=../nako/crates/nako-server/src/app/addons,../nako/crates/nako-server/src/http]
+- [x] OEAR-040 [owner=codex] [deps=OEAR-020,OEAR-030] [scope=../nako/crates/nako-server/src/app/addons,../nako/crates/nako-server/src/http]
   Goal: Let Nako core dispatch approved acquisition actions to the sidecar with
   host-owned idempotency, cancellation, progress/status refresh, and audit
   records.

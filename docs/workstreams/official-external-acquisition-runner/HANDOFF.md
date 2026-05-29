@@ -5,12 +5,13 @@ Last updated: 2026-05-29
 
 ## Current State
 
-OEAR-030 is complete. The protocol now has a dedicated External Acquisition
+OEAR-040 is complete. The protocol now has a dedicated External Acquisition
 Action task contract, the official Nako catalog exposes an
 `nako.official.external-acquisition-runner` descriptor, and this repository has
 a fixture/no-op runner sidecar that implements manifest, health, action
 submission, idempotent enqueue replay, status query, cancellation, progress,
-safe diagnostics, and a local smoke script.
+safe diagnostics, and a local smoke script. Nako core now guards dispatch of
+the external acquisition action task before job input is persisted.
 
 This lane starts contract/fixture-first. It should not begin with qBittorrent,
 Transmission, aria2, or HTTP downloader code until the host-owned action
@@ -18,12 +19,10 @@ envelope and fixture runner semantics are stable.
 
 ## Active Task
 
-- Task ID: OEAR-040
-- Owner: codex
-- Files: `../nako/crates/nako-server/src/app/addons`,
-  `../nako/crates/nako-server/src/http`
-- Validation: `nako-server` contract tests for action authorization,
-  idempotency, redaction, cancellation, and retry-safe dispatch
+- Task ID: OEAR-050
+- Owner: planner
+- Files: `docs/workstreams/official-external-acquisition-runner`
+- Validation: decision note and adapter-specific follow-on task or lane
 - Status: READY
 
 ## Decisions Since Open
@@ -42,14 +41,22 @@ envelope and fixture runner semantics are stable.
 - The sidecar rejects raw URL/password-shaped payloads through the protocol
   schema and does not echo unsafe payload facts in task errors or diagnostics.
 - The checked-in addon manifest must match the runtime container manifest.
+- Nako host dispatch treats the external acquisition action as a typed
+  contract, not arbitrary task JSON: it requires direct dispatch, rejects
+  unknown raw URL/password-shaped payloads before storage, aligns host and
+  runner idempotency keys, requires audit refs for mutating operations, and
+  maps runner `rejected`/`failed`/`not_found` responses to failed host task
+  records with safe error codes.
 
 ## Blockers
 
-- None for OEAR-040.
+- None for OEAR-050.
 - Product UI may depend on the separate web acquisition intake lane later.
+- `cargo clippy -p nako-server --tests -- -D warnings` is blocked by existing
+  unrelated lint debt and was not used as a completion gate for OEAR-040.
 
 ## Next Recommended Action
 
-Start OEAR-040 in `../nako` by wiring host dispatch to the approved action
-sidecar. Keep authorization, idempotency, retry safety, cancellation, progress
-refresh, audit records, and redaction as the primary test surface.
+Start OEAR-050 by deciding the first real runner adapter. Compare qBittorrent,
+Transmission, aria2, and a plain HTTP downloader against config surface,
+secret handling, cancellation/status APIs, testability, and deployment risk.

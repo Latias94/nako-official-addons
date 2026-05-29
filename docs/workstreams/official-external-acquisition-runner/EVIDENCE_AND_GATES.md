@@ -34,7 +34,10 @@ pwsh -File addons/external-acquisition-runner/smoke.local.ps1 -SidecarBaseUrl ht
 Nako host dispatch gates:
 
 ```powershell
+cargo fmt -p nako-server -- --check
 cargo check -p nako-server --tests
+cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast
+cargo nextest run -p nako-server addon_task_run --no-fail-fast
 cargo nextest run -p nako-server official_external_acquisition --no-fail-fast
 cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
 ```
@@ -68,6 +71,13 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
 | 2026-05-29 | OEAR-030 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
 | 2026-05-29 | OEAR-030 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
 | 2026-05-29 | OEAR-030 | `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-external-acquisition-runner addons/external-acquisition-runner docs/workstreams/official-external-acquisition-runner` | Pass |
+| 2026-05-29 | OEAR-040 | `cargo fmt -p nako-server -- --check` | Pass |
+| 2026-05-29 | OEAR-040 | `cargo check -p nako-server --tests` | Pass |
+| 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast` | Pass: 4 tests cover direct dispatch, unsafe payload rejection, idempotency alignment, and runner rejection mapping |
+| 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server addon_task_run --no-fail-fast` | Pass: 9 existing task runtime tests |
+| 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server official_external_acquisition --no-fail-fast` | Pass |
+| 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast` | Pass |
+| 2026-05-29 | OEAR-040 | `git diff --check -- crates/nako-server/src/app/addons.rs crates/nako-server/src/app/addons/task_runtime.rs crates/nako-server/src/app/addons/external_acquisition.rs crates/nako-server/src/http/tests/addons.rs` | Pass |
 
 ## Known Constraints
 
@@ -80,3 +90,6 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
   before committing.
 - No real runner adapter should be added before the fixture/no-op contract and
   host dispatch semantics pass focused gates.
+- `cargo clippy -p nako-server --tests -- -D warnings` and `--no-deps`
+  currently fail on pre-existing unrelated lint debt across `nako-server` and
+  dependencies, so clippy is not used as an OEAR-040 completion gate.

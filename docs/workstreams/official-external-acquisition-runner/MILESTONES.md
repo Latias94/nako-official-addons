@@ -33,6 +33,8 @@ Exit criteria:
 
 ## M3 - Host Dispatch And Audit
 
+Status: Complete via OEAR-040.
+
 Exit criteria:
 
 - Nako can dispatch approved actions to the sidecar.
