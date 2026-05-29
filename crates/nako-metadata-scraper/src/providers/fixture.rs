@@ -41,6 +41,7 @@ impl MetadataProvider for FixtureProvider {
                     "nako-metadata-scraper".to_owned(),
                     "fixture".to_owned(),
                 ]),
+                ..Default::default()
             },
             evidence: evidence(
                 "Fixture provider echoes normalized title for smoke testing.",
