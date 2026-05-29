@@ -48,7 +48,7 @@ Task IDs use the `OEAM` prefix.
 
 ## M3 - Official Runner Materialization Client
 
-- [ ] OEAM-040 [owner=codex] [deps=OEAM-020,OEAM-030] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
+- [x] OEAM-040 [owner=codex] [deps=OEAM-020,OEAM-030] [scope=../nako/crates/nako-addon-client,crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
   Goal: Add a materialization client boundary to the official fixture runner
   and prove the runner can request host material without exposing it in logs,
   diagnostics, or task output.
@@ -58,7 +58,9 @@ Task IDs use the `OEAM` prefix.
   downloader network calls.
   Evidence: runner tests and local smoke update if the public smoke contract
   changes.
-  Handoff: Continue with OEAM-050.
+  Handoff: Continue with OEAM-050. Shared runtime client support landed in
+  `../nako`; the official runner now uses a materializer abstraction with
+  host-runtime, unavailable, and local fixture implementations.
 
 ## M4 - End-To-End Contract Proof
 

@@ -5,27 +5,30 @@ Last updated: 2026-05-29
 
 ## Current State
 
-OEAM-030 is complete. OEAR closed with a safe external acquisition action
+OEAM-040 is complete. OEAR closed with a safe external acquisition action
 envelope and fixture runner, but production adapters remained blocked because
 sidecars could only see opaque `selected_link_ref` or `intake_candidate_ref`
-values. ADR 0054 now records the materialization boundary,
-`nako-addon-protocol` defines the route and DTOs, and `nako-server` exposes the
-runtime route with host-side action-context validation and candidate resolution.
+values. ADR 0054 records the materialization boundary, `nako-addon-protocol`
+defines the route and DTOs, `nako-server` exposes the runtime route with
+host-side action-context validation and candidate resolution, and the official
+fixture runner now uses a materialization client abstraction without adding a
+production downloader adapter.
 
 ## Active Task
 
-- Task ID: OEAM-040
+- Task ID: OEAM-050
 - Owner: codex
-- Files: `crates/nako-external-acquisition-runner`,
-  `addons/external-acquisition-runner`
-- Validation: `cargo nextest run -p nako-external-acquisition-runner materialization --no-fail-fast`;
-  `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings`
+- Files: `../nako/crates/nako-server/src/http/tests`,
+  `crates/nako-external-acquisition-runner`
+- Validation: `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast`;
+  `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`
 - Status: READY
-- Review: Keep the sidecar fixture-only. It may call a fake materialization
-  client in tests but must not add Transmission or other downloader network
-  calls.
-- Evidence: runner tests proving materialized data is used only inside enqueue
-  and not exposed through diagnostics or task output.
+- Review: Prove the host dispatch, sidecar materialization request, and redacted
+  task completion compose across the fake host/sidecar boundary. Do not add
+  Transmission or external downloader calls.
+- Evidence: integration tests proving raw URI, password, materialization ref,
+  selected-link refs, and idempotency keys do not leak through observed task
+  responses.
 
 ## Decisions Since Open
 
@@ -51,14 +54,26 @@ runtime route with host-side action-context validation and candidate resolution.
   candidates. `intake_candidate_ref` resolves by intake candidate id.
 - External runner materialization rejects cloud-drive link types; allowed first
   link types are `magnet`, `ed2k`, and `web`.
+- `nako-addon-client` exposes
+  `NakoRuntimeClient::materialize_external_acquisition()` for sidecars instead
+  of requiring each runner to hand-roll runtime HTTP calls.
+- The fixture runner owns an `ExternalAcquisitionMaterializer` boundary with
+  `nako_runtime`, `unavailable`, and `fixture_local` implementations.
+- Fixture local materialization remains the default so local smoke tests still
+  run without a Nako host. Enabling host materialization requires
+  `NAKO_EXTERNAL_ACQUISITION_RUNNER_MATERIALIZATION_ENABLED=true`,
+  `NAKO_EXTERNAL_ACQUISITION_RUNNER_NAKO_BASE_URL`, and
+  `NAKO_EXTERNAL_ACQUISITION_RUNNER_ADDON_TOKEN`.
+- Runner responses expose only safe materialization facts: client kind, link
+  type, password presence, and materialization-ref presence.
 
 ## Blockers
 
-- No blockers for OEAM-040.
+- No blockers for OEAM-050.
 - Transmission adapter work remains blocked until this lane closes or records a
   concrete remaining materialization blocker.
 
 ## Next Recommended Action
 
-Implement OEAM-040: add a materialization client boundary to the fixture runner
-and prove it does not leak materialized URI/password data.
+Implement OEAM-050: prove the full approved-action-to-sidecar materialization
+flow across Nako server and official runner test boundaries.

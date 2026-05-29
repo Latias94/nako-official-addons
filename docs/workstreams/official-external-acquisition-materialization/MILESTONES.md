@@ -52,6 +52,8 @@ Primary gates:
 
 ## M3 - Official Runner Materialization Client
 
+Status: Complete via OEAM-040.
+
 Exit criteria:
 
 - The fixture runner has a materialization client abstraction.

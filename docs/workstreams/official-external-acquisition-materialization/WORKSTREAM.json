@@ -9,7 +9,7 @@
     "nako-official-addons",
     "../nako"
   ],
-  "current_task": "OEAM-040",
+  "current_task": "OEAM-050",
   "goals": [
     "Define the host-to-runner materialization contract for external acquisition actions.",
     "Keep raw acquisition material out of browser submissions, task input/output, diagnostics, and admin responses.",

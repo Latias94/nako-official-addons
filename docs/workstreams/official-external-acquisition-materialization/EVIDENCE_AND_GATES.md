@@ -71,6 +71,18 @@ complete.
 | 2026-05-29 | OEAM-030 | `cargo check -p nako-server --tests` | Pass |
 | 2026-05-29 | OEAM-030 | `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast` | Pass: 4 regression tests |
 | 2026-05-29 | OEAM-030 | `git diff --check -- crates/nako-server/src/app/addons/external_acquisition.rs crates/nako-server/src/app/addons/task_runtime.rs crates/nako-server/src/http/addons.rs crates/nako-server/src/http/tests/addons.rs crates/nako-server/src/http/tests/mod.rs` | Pass with line-ending warnings |
+| 2026-05-29 | OEAM-040 | `cargo fmt -p nako-addon-client` | Pass |
+| 2026-05-29 | OEAM-040 | `cargo nextest run -p nako-addon-client materialization --no-fail-fast` | Pass: 3 tests |
+| 2026-05-29 | OEAM-040 | `cargo fmt -p nako-addon-client -- --check` | Pass |
+| 2026-05-29 | OEAM-040 | `cargo nextest run -p nako-addon-client --no-fail-fast` | Pass: 37 tests |
+| 2026-05-29 | OEAM-040 | `git diff --check -- crates/nako-addon-client/src/lib.rs` | Pass with line-ending warning |
+| 2026-05-29 | OEAM-040 | `cargo nextest run -p nako-external-acquisition-runner materialization --no-fail-fast` | Pass: 5 tests |
+| 2026-05-29 | OEAM-040 | `cargo fmt -p nako-external-acquisition-runner` | Pass |
+| 2026-05-29 | OEAM-040 | `cargo fmt -p nako-external-acquisition-runner -- --check` | Pass |
+| 2026-05-29 | OEAM-040 | `cargo check -p nako-external-acquisition-runner --tests` | Pass |
+| 2026-05-29 | OEAM-040 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 16 tests |
+| 2026-05-29 | OEAM-040 | `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
+| 2026-05-29 | OEAM-040 | `git diff --check -- Cargo.lock crates/nako-external-acquisition-runner addons/external-acquisition-runner` | Pass with line-ending warning |
 
 ## Known Constraints
 
