@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "slug": "official-external-acquisition-transmission-adapter",
+  "title": "Official External Acquisition Transmission Adapter",
+  "status": "active",
+  "created": "2026-05-29",
+  "last_updated": "2026-05-29",
+  "scope_kind": "execution",
+  "task_prefix": "OETA",
+  "repositories": [
+    "nako-official-addons",
+    "../nako"
+  ],
+  "problem": "The official external acquisition runner has a safe host materialization boundary but still lacks a production Transmission adapter.",
+  "current_task": "OETA-020",
+  "completed_tasks": [
+    "OETA-010"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "python -m json.tool docs/workstreams/official-external-acquisition-transmission-adapter/WORKSTREAM.json",
+    "git diff --check -- docs/workstreams/official-external-acquisition-transmission-adapter",
+    "cargo nextest run -p nako-external-acquisition-runner --no-fail-fast",
+    "cargo fmt -p nako-external-acquisition-runner -- --check",
+    "cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings"
+  ],
+  "evidence": [
+    "OETA-010 opened the lane from OEAM closeout and froze Transmission as the first production adapter without reopening raw action input."
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
+    "../nako/docs/adr/0054-external-acquisition-materialization-boundary.md"
+  ],
+  "continue_policy": {
+    "default_action": "continue_current_task",
+    "next_task": "OETA-020",
+    "notes": "Continue with Transmission profile configuration and secret policy. Do not implement RPC calls until profile redaction and fixture-default behavior are proven."
+  }
+}
