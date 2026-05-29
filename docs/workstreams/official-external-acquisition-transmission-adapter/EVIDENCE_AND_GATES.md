@@ -29,6 +29,7 @@ done. Normal CI must not require a live Transmission daemon.
 | 2026-05-29 | OETA-010 | `python -m json.tool docs/workstreams/official-external-acquisition-transmission-adapter/WORKSTREAM.json`; `git diff --check -- docs/workstreams/official-external-acquisition-transmission-adapter` | Pass |
 | 2026-05-29 | OETA-020 | `cargo nextest run -p nako-external-acquisition-runner config manifest diagnostics --no-fail-fast`; `cargo nextest run -p nako-official-addon-catalog external_acquisition_runner_default_manifest_matches_official_catalog_facts --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo fmt -p nako-official-addon-catalog -- --check` | Pass |
 | 2026-05-29 | OETA-030 | `cargo nextest run -p nako-external-acquisition-runner transmission --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
+| 2026-05-29 | OETA-040 | `cargo nextest run -p nako-external-acquisition-runner transmission enqueue materialization --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 
 ## Live Smoke Policy
 

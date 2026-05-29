@@ -33,12 +33,12 @@ Exit criteria:
 
 Exit criteria:
 
-- Enqueue materializes once for the approved action context.
-- Supported material enqueues to Transmission.
-- Duplicate add behavior maps to an idempotent/AlreadyExists response where
+- [x] Enqueue materializes once for the approved action context.
+- [x] Supported material enqueues to Transmission.
+- [x] Duplicate add behavior maps to an idempotent/AlreadyExists response where
   possible.
-- `runner_job_ref` uses `transmission:<hash_string>`.
-- Unsupported link types fail safely.
+- [x] `runner_job_ref` uses `transmission:<hash_string>`.
+- [x] Unsupported link types fail safely.
 
 ## M4 - Status And Controls
 

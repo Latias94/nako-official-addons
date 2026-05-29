@@ -66,7 +66,7 @@ impl Config {
 
     #[must_use]
     pub fn active_profile_count(&self) -> usize {
-        usize::from(self.fixture_profile_enabled)
+        usize::from(self.fixture_profile_enabled) + usize::from(self.transmission.enabled)
     }
 }
 
@@ -292,7 +292,7 @@ mod tests {
         assert_eq!(config.base_url, "http://runner.local");
         assert!(!config.fixture_profile_enabled);
         assert_eq!(config.default_runner_profile_id, "fixture-alt");
-        assert_eq!(config.active_profile_count(), 0);
+        assert_eq!(config.active_profile_count(), 1);
         assert_eq!(
             config.nako_materialization,
             NakoMaterializationConfig {

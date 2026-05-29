@@ -8,6 +8,25 @@ use crate::config::TransmissionConfig;
 
 const SESSION_ID_HEADER: &str = "x-transmission-session-id";
 
+pub type SharedTransmissionClient = Arc<dyn TransmissionRunnerClient>;
+
+#[async_trait]
+pub trait TransmissionRunnerClient: fmt::Debug + Send + Sync {
+    async fn add_torrent(
+        &self,
+        filename: String,
+    ) -> Result<TransmissionAddOutcome, TransmissionError>;
+
+    async fn get_torrent(
+        &self,
+        hash_string: &str,
+    ) -> Result<Option<TransmissionTorrentFacts>, TransmissionError>;
+
+    async fn start_torrent(&self, hash_string: &str) -> Result<(), TransmissionError>;
+
+    async fn stop_torrent(&self, hash_string: &str) -> Result<(), TransmissionError>;
+}
+
 #[derive(Clone)]
 pub struct TransmissionClient<T = ReqwestTransmissionTransport>
 where
@@ -15,6 +34,34 @@ where
 {
     transport: T,
     session_id: Arc<Mutex<Option<String>>>,
+}
+
+#[async_trait]
+impl<T> TransmissionRunnerClient for TransmissionClient<T>
+where
+    T: TransmissionTransport,
+{
+    async fn add_torrent(
+        &self,
+        filename: String,
+    ) -> Result<TransmissionAddOutcome, TransmissionError> {
+        Self::add_torrent(self, filename).await
+    }
+
+    async fn get_torrent(
+        &self,
+        hash_string: &str,
+    ) -> Result<Option<TransmissionTorrentFacts>, TransmissionError> {
+        Self::get_torrent(self, hash_string).await
+    }
+
+    async fn start_torrent(&self, hash_string: &str) -> Result<(), TransmissionError> {
+        Self::start_torrent(self, hash_string).await
+    }
+
+    async fn stop_torrent(&self, hash_string: &str) -> Result<(), TransmissionError> {
+        Self::stop_torrent(self, hash_string).await
+    }
 }
 
 impl TransmissionClient<ReqwestTransmissionTransport> {
@@ -186,6 +233,18 @@ impl TransmissionRpcConfig {
             allow_invalid_tls_certificates: config.allow_invalid_tls_certificates,
         }
     }
+}
+
+#[must_use]
+pub fn transmission_client_from_config(
+    config: &TransmissionConfig,
+) -> Option<SharedTransmissionClient> {
+    if !config.enabled {
+        return None;
+    }
+    TransmissionClient::new(TransmissionRpcConfig::from_config(config))
+        .ok()
+        .map(|client| Arc::new(client) as SharedTransmissionClient)
 }
 
 impl fmt::Debug for TransmissionRpcConfig {

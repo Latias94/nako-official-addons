@@ -11,7 +11,9 @@ configuration, redaction-safe debug/diagnostics, manifest example updates, and
 the matching official catalog configuration/secret schema in `../nako`.
 OETA-030 added the typed Transmission RPC client boundary and fake transport
 tests for session-id retry, add/duplicate, get, start, stop, and redacted
-errors.
+errors. OETA-040 wired Transmission enqueue through host materialization,
+mapped duplicate add to `AlreadyExists`, rejected unsupported material safely,
+and returned only `transmission:<hash_string>` plus safe facts.
 
 The adapter should consume `official-external-acquisition-materialization`
 rather than reopening raw action input. The fixture profile remains the default
@@ -19,22 +21,21 @@ for local smoke and contract tests.
 
 ## Active Task
 
-- Task ID: OETA-040
+- Task ID: OETA-050
 - Owner: codex
 - Status: READY
-- Scope: Runner enqueue through host materialization and Transmission add.
+- Scope: Transmission status, pause, resume, and cancel from runner job refs.
 
 ## Next Recommended Action
 
-Run OETA-040:
+Run OETA-050:
 
-1. Split runner profile routing if `runner.rs` becomes hard to reason about.
-2. Route Transmission `enqueue` through `ExternalAcquisitionMaterializer`.
-3. Accept supported material types and reject unsupported types with safe
-   errors.
-4. Return `transmission:<hash_string>` only after Transmission add succeeds.
-5. Ensure duplicate add maps to a stable idempotent response without leaking
-   raw material or materialization refs.
+1. Parse and validate `transmission:<hash_string>` runner job refs.
+2. Map query status through `torrent-get`.
+3. Map pause/resume through stop/start without materialization.
+4. Decide whether cancel should stop only or remove later; first slice should
+   not delete data unless a separate remove policy is accepted.
+5. Prove status/control operations do not call materialization.
 
 ## Guardrails
 

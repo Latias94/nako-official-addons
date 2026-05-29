@@ -461,7 +461,7 @@ mod tests {
         );
         assert_eq!(
             health.diagnostics["profile_registry"][1]["implementation_status"],
-            "configuration_ready"
+            "disabled"
         );
 
         let response = router(Config::default())

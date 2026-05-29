@@ -34,12 +34,12 @@ Task IDs use the `OETA` prefix.
 
 ## M3 - Enqueue Through Materialization
 
-- [ ] OETA-040 [owner=codex] [deps=OETA-020,OETA-030] [scope=crates/nako-external-acquisition-runner/src/runner.rs,crates/nako-external-acquisition-runner/src/transmission.rs]
+- [x] OETA-040 [owner=codex] [deps=OETA-020,OETA-030] [scope=crates/nako-external-acquisition-runner/src/runner.rs,crates/nako-external-acquisition-runner/src/transmission.rs]
   Goal: Route `enqueue` for the Transmission profile through host materialization and Transmission add, returning `transmission:<hash_string>` with safe facts.
   Validation: `cargo nextest run -p nako-external-acquisition-runner transmission enqueue materialization --no-fail-fast`.
   Review: Do not materialize unsupported operations; reject unsupported link types safely; do not echo raw URI, password, idempotency key, materialization ref, endpoint, username, or password.
   Evidence: runner tests for accepted, duplicate, unsupported, and redaction cases.
-  Handoff: Continue with OETA-050.
+  Handoff: DONE. Transmission enqueue uses host materialization, rejects unsupported material safely, maps duplicate add to `AlreadyExists`, and returns only `transmission:<hash_string>` plus safe facts. Continue with OETA-050.
 
 ## M4 - Status And Control Operations
 
