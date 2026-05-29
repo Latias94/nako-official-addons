@@ -12,12 +12,13 @@
     "../nako"
   ],
   "problem": "The official external acquisition runner has a safe host materialization boundary but still lacks a production Transmission adapter.",
-  "current_task": "OETA-050",
+  "current_task": "OETA-060",
   "completed_tasks": [
     "OETA-010",
     "OETA-020",
     "OETA-030",
-    "OETA-040"
+    "OETA-040",
+    "OETA-050"
   ],
   "authoritative_docs": [
     {
@@ -52,7 +53,8 @@
     "OETA-010 opened the lane from OEAM closeout and froze Transmission as the first production adapter without reopening raw action input.",
     "OETA-020 added opt-in Transmission profile configuration, secret-reference manifest schema, official catalog schema, redaction-safe diagnostics, and config/manifest tests.",
     "OETA-030 added a typed Transmission RPC client boundary with fake transport coverage for session-id retry, add/duplicate, get, start, stop, and redacted errors.",
-    "OETA-040 routed Transmission enqueue through host materialization and Transmission add, rejected unsupported material safely, and returned only redaction-safe facts plus transmission hash refs."
+    "OETA-040 routed Transmission enqueue through host materialization and Transmission add, rejected unsupported material safely, and returned only redaction-safe facts plus transmission hash refs.",
+    "OETA-050 mapped Transmission status and control operations from runner job refs without rematerializing target links."
   ],
   "adr_refs": [
     "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
@@ -60,7 +62,7 @@
   ],
   "continue_policy": {
     "default_action": "continue_current_task",
-    "next_task": "OETA-050",
-    "notes": "Continue with status and control operations from transmission runner job refs. Do not rematerialize target links for status, pause, resume, or cancel."
+    "next_task": "OETA-060",
+    "notes": "Continue with route, smoke, README, and full package regression before closeout."
   }
 }

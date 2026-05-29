@@ -393,7 +393,7 @@ pub enum TransmissionAddOutcomeKind {
 pub struct TransmissionTorrentFacts {
     pub hash_string: String,
     pub state: TransmissionTorrentState,
-    pub percent_milli: Option<u64>,
+    pub percent_milli: Option<u32>,
     pub downloaded_bytes: Option<u64>,
     pub total_bytes: Option<u64>,
 }
@@ -540,11 +540,11 @@ fn non_empty_hash(hash_string: String) -> Result<String, TransmissionError> {
     }
 }
 
-fn percent_milli(percent_done: f64) -> Option<u64> {
+fn percent_milli(percent_done: f64) -> Option<u32> {
     if !percent_done.is_finite() || percent_done < 0.0 {
         return None;
     }
-    Some(((percent_done.min(1.0) * 100_000.0).round()) as u64)
+    Some(((percent_done.min(1.0) * 100_000.0).round()) as u32)
 }
 
 #[cfg(test)]

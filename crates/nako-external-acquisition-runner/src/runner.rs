@@ -42,7 +42,7 @@ struct FixtureJob {
     runner_profile_id: String,
     profile_kind: &'static str,
     target_kind: &'static str,
-    materialization: FixtureMaterializationSummary,
+    materialization: Option<FixtureMaterializationSummary>,
     runner_outcome: Option<&'static str>,
     state: AddonExternalAcquisitionRunnerState,
     progress: AddonExternalAcquisitionProgress,
@@ -64,6 +64,7 @@ pub enum FixtureActionError {
     Materialization(MaterializationError),
     TransmissionUnavailable,
     TransmissionOperationUnsupported,
+    TransmissionJobRefInvalid,
     TransmissionLinkTypeUnsupported,
     TransmissionPasswordUnsupported,
     Transmission(TransmissionError),
@@ -81,6 +82,7 @@ impl FixtureActionError {
             Self::TransmissionOperationUnsupported => {
                 "transmission_operation_unsupported".to_owned()
             }
+            Self::TransmissionJobRefInvalid => "transmission_runner_job_ref_invalid".to_owned(),
             Self::TransmissionLinkTypeUnsupported => {
                 "transmission_link_type_unsupported".to_owned()
             }
@@ -100,6 +102,7 @@ impl FixtureActionError {
             | Self::Materialization(_)
             | Self::TransmissionUnavailable
             | Self::TransmissionOperationUnsupported
+            | Self::TransmissionJobRefInvalid
             | Self::TransmissionLinkTypeUnsupported
             | Self::TransmissionPasswordUnsupported
             | Self::Transmission(_) => AddonExternalAcquisitionActionStatus::Rejected,
@@ -239,10 +242,38 @@ impl FixtureRunner {
         if !self.config.transmission.enabled {
             return Err(FixtureActionError::ProfileUnavailable);
         }
-        if request.operation != AddonExternalAcquisitionOperation::Enqueue {
-            return Err(FixtureActionError::TransmissionOperationUnsupported);
+        match request.operation {
+            AddonExternalAcquisitionOperation::Enqueue => {
+                self.enqueue_transmission(context, request).await
+            }
+            AddonExternalAcquisitionOperation::QueryStatus => {
+                self.query_transmission_status(&request).await
+            }
+            AddonExternalAcquisitionOperation::Pause => {
+                self.control_transmission(
+                    &request,
+                    TransmissionControlOperation::Pause,
+                    AddonExternalAcquisitionRunnerState::Paused,
+                )
+                .await
+            }
+            AddonExternalAcquisitionOperation::Resume => {
+                self.control_transmission(
+                    &request,
+                    TransmissionControlOperation::Resume,
+                    AddonExternalAcquisitionRunnerState::Running,
+                )
+                .await
+            }
+            AddonExternalAcquisitionOperation::Cancel => {
+                self.control_transmission(
+                    &request,
+                    TransmissionControlOperation::Cancel,
+                    AddonExternalAcquisitionRunnerState::Cancelled,
+                )
+                .await
+            }
         }
-        self.enqueue_transmission(context, request).await
     }
 
     async fn enqueue(
@@ -297,7 +328,7 @@ impl FixtureRunner {
             runner_profile_id: request.runner_profile_id,
             profile_kind: "fixture",
             target_kind: materialized_target_kind(&request.target_ref),
-            materialization,
+            materialization: Some(materialization),
             runner_outcome: None,
             state: AddonExternalAcquisitionRunnerState::Running,
             progress: AddonExternalAcquisitionProgress {
@@ -383,7 +414,7 @@ impl FixtureRunner {
             runner_profile_id: request.runner_profile_id,
             profile_kind: "transmission",
             target_kind: materialized_target_kind(&request.target_ref),
-            materialization,
+            materialization: Some(materialization),
             runner_outcome: Some(match add_outcome.kind {
                 TransmissionAddOutcomeKind::Added => "added",
                 TransmissionAddOutcomeKind::Duplicate => "duplicate",
@@ -401,6 +432,70 @@ impl FixtureRunner {
         state.jobs.insert(runner_job_ref, job.clone());
 
         Ok(job.response(status, request.operation, false))
+    }
+
+    async fn query_transmission_status(
+        &self,
+        request: &AddonExternalAcquisitionActionRequest,
+    ) -> Result<AddonExternalAcquisitionActionResponse, FixtureActionError> {
+        let hash_string = transmission_hash_from_target(&request.target_ref)?;
+        let transmission_client = self
+            .transmission_client
+            .as_ref()
+            .ok_or(FixtureActionError::TransmissionUnavailable)?;
+        let facts = transmission_client
+            .get_torrent(hash_string)
+            .await
+            .map_err(FixtureActionError::Transmission)?
+            .ok_or(FixtureActionError::JobNotFound)?;
+        let state = addon_state_from_transmission(&facts);
+        Ok(transmission_job_response(
+            request,
+            hash_string,
+            state,
+            progress_from_transmission(&facts),
+            Some("status"),
+            AddonExternalAcquisitionActionStatus::Accepted,
+        ))
+    }
+
+    async fn control_transmission(
+        &self,
+        request: &AddonExternalAcquisitionActionRequest,
+        operation: TransmissionControlOperation,
+        state: AddonExternalAcquisitionRunnerState,
+    ) -> Result<AddonExternalAcquisitionActionResponse, FixtureActionError> {
+        let hash_string = transmission_hash_from_target(&request.target_ref)?;
+        let transmission_client = self
+            .transmission_client
+            .as_ref()
+            .ok_or(FixtureActionError::TransmissionUnavailable)?;
+        match operation {
+            TransmissionControlOperation::Pause | TransmissionControlOperation::Cancel => {
+                transmission_client
+                    .stop_torrent(hash_string)
+                    .await
+                    .map_err(FixtureActionError::Transmission)?;
+            }
+            TransmissionControlOperation::Resume => {
+                transmission_client
+                    .start_torrent(hash_string)
+                    .await
+                    .map_err(FixtureActionError::Transmission)?;
+            }
+        }
+        Ok(transmission_job_response(
+            request,
+            hash_string,
+            state,
+            AddonExternalAcquisitionProgress {
+                percent_milli: None,
+                downloaded_bytes: None,
+                total_bytes: None,
+            },
+            Some(operation.safe_outcome()),
+            AddonExternalAcquisitionActionStatus::Accepted,
+        ))
     }
 
     async fn transition_job(
@@ -466,22 +561,24 @@ impl FixtureJob {
         if let Some(outcome) = self.runner_outcome {
             safe_facts.insert("runner_outcome".to_owned(), outcome.to_owned());
         }
-        safe_facts.insert(
-            "materialization_client".to_owned(),
-            self.materialization.client_kind.to_owned(),
-        );
-        safe_facts.insert(
-            "materialized_link_type".to_owned(),
-            self.materialization.link_type.clone(),
-        );
-        safe_facts.insert(
-            "materialized_password_present".to_owned(),
-            self.materialization.password_present.to_string(),
-        );
-        safe_facts.insert(
-            "materialization_ref_present".to_owned(),
-            self.materialization.materialization_ref_present.to_string(),
-        );
+        if let Some(materialization) = &self.materialization {
+            safe_facts.insert(
+                "materialization_client".to_owned(),
+                materialization.client_kind.to_owned(),
+            );
+            safe_facts.insert(
+                "materialized_link_type".to_owned(),
+                materialization.link_type.clone(),
+            );
+            safe_facts.insert(
+                "materialized_password_present".to_owned(),
+                materialization.password_present.to_string(),
+            );
+            safe_facts.insert(
+                "materialization_ref_present".to_owned(),
+                materialization.materialization_ref_present.to_string(),
+            );
+        }
         safe_facts.insert(
             "idempotent_replay".to_owned(),
             idempotent_replay.to_string(),
@@ -495,12 +592,37 @@ impl FixtureJob {
             progress: Some(self.progress.clone()),
             retryable: false,
             retry_after_ms: None,
-            safe_message: Some(match self.profile_kind {
-                "transmission" => "transmission_enqueued".to_owned(),
-                _ => "fixture_noop".to_owned(),
-            }),
+            safe_message: Some(safe_message(self.profile_kind, self.runner_outcome)),
             safe_facts,
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TransmissionControlOperation {
+    Pause,
+    Resume,
+    Cancel,
+}
+
+impl TransmissionControlOperation {
+    const fn safe_outcome(self) -> &'static str {
+        match self {
+            Self::Pause => "paused",
+            Self::Resume => "resumed",
+            Self::Cancel => "cancelled",
+        }
+    }
+}
+
+fn safe_message(profile_kind: &str, runner_outcome: Option<&'static str>) -> String {
+    match (profile_kind, runner_outcome) {
+        ("transmission", Some("status")) => "transmission_status".to_owned(),
+        ("transmission", Some("paused")) => "transmission_paused".to_owned(),
+        ("transmission", Some("resumed")) => "transmission_resumed".to_owned(),
+        ("transmission", Some("cancelled")) => "transmission_cancelled".to_owned(),
+        ("transmission", _) => "transmission_enqueued".to_owned(),
+        _ => "fixture_noop".to_owned(),
     }
 }
 
@@ -517,6 +639,74 @@ fn runner_job_ref(
         | AddonExternalAcquisitionTargetRef::IntakeCandidate { .. } => {
             Err(FixtureActionError::InvalidStatusTarget)
         }
+    }
+}
+
+fn transmission_hash_from_target(
+    target_ref: &AddonExternalAcquisitionTargetRef,
+) -> Result<&str, FixtureActionError> {
+    let runner_job_ref = runner_job_ref(target_ref)?;
+    runner_job_ref
+        .strip_prefix("transmission:")
+        .filter(|hash| !hash.trim().is_empty())
+        .ok_or(FixtureActionError::TransmissionJobRefInvalid)
+}
+
+fn transmission_job_response(
+    request: &AddonExternalAcquisitionActionRequest,
+    hash_string: &str,
+    state: AddonExternalAcquisitionRunnerState,
+    progress: AddonExternalAcquisitionProgress,
+    runner_outcome: Option<&'static str>,
+    status: AddonExternalAcquisitionActionStatus,
+) -> AddonExternalAcquisitionActionResponse {
+    let job = FixtureJob {
+        runner_job_ref: format!("transmission:{hash_string}"),
+        runner_profile_id: request.runner_profile_id.clone(),
+        profile_kind: "transmission",
+        target_kind: "runner_job",
+        materialization: None,
+        runner_outcome,
+        state,
+        progress,
+    };
+    job.response(status, request.operation, false)
+}
+
+fn addon_state_from_transmission(
+    facts: &crate::transmission::TransmissionTorrentFacts,
+) -> AddonExternalAcquisitionRunnerState {
+    match facts.state {
+        crate::transmission::TransmissionTorrentState::Stopped => {
+            AddonExternalAcquisitionRunnerState::Paused
+        }
+        crate::transmission::TransmissionTorrentState::Checking
+        | crate::transmission::TransmissionTorrentState::Downloading => {
+            AddonExternalAcquisitionRunnerState::Running
+        }
+        crate::transmission::TransmissionTorrentState::Queued => {
+            AddonExternalAcquisitionRunnerState::Queued
+        }
+        crate::transmission::TransmissionTorrentState::Seeding => {
+            if facts.percent_milli == Some(100_000) {
+                AddonExternalAcquisitionRunnerState::Succeeded
+            } else {
+                AddonExternalAcquisitionRunnerState::Running
+            }
+        }
+        crate::transmission::TransmissionTorrentState::Unknown(_) => {
+            AddonExternalAcquisitionRunnerState::Unknown
+        }
+    }
+}
+
+fn progress_from_transmission(
+    facts: &crate::transmission::TransmissionTorrentFacts,
+) -> AddonExternalAcquisitionProgress {
+    AddonExternalAcquisitionProgress {
+        percent_milli: facts.percent_milli,
+        downloaded_bytes: facts.downloaded_bytes,
+        total_bytes: facts.total_bytes,
     }
 }
 
@@ -559,6 +749,7 @@ mod tests {
         materialization::{FixtureActionContext, local_action_context},
         transmission::{
             TransmissionAddOutcome, TransmissionAddOutcomeKind, TransmissionRunnerClient,
+            TransmissionTorrentFacts, TransmissionTorrentState,
         },
     };
 
@@ -874,6 +1065,150 @@ mod tests {
         assert!(!response_text.contains("ed2k://|file|secret"));
     }
 
+    #[tokio::test]
+    async fn transmission_runner_queries_status_without_materialization() {
+        let materializer = RecordingMaterializer::with_response(
+            magnet_materialization_response_without_password(),
+        );
+        let transmission =
+            RecordingTransmissionClient::new(TransmissionAddOutcomeKind::Added, "UNUSED")
+                .with_torrent_facts(TransmissionTorrentFacts {
+                    hash_string: "ABCDEF123456".to_owned(),
+                    state: TransmissionTorrentState::Downloading,
+                    percent_milli: Some(25_000),
+                    downloaded_bytes: Some(500),
+                    total_bytes: Some(2000),
+                });
+        let runner = FixtureRunner::with_clients(
+            transmission_config(),
+            Arc::new(materializer.clone()),
+            Some(Arc::new(transmission.clone())),
+        );
+
+        let response = runner
+            .handle_action(
+                FixtureActionContext::new("job-status-secret", ACTION_TASK_ID),
+                transmission_job_request(
+                    AddonExternalAcquisitionOperation::QueryStatus,
+                    "transmission:ABCDEF123456",
+                ),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.state, AddonExternalAcquisitionRunnerState::Running);
+        assert_eq!(response.progress.unwrap().percent_milli, Some(25_000));
+        assert_eq!(
+            response.safe_message.as_deref(),
+            Some("transmission_status")
+        );
+        assert_eq!(
+            response
+                .safe_facts
+                .get("runner_outcome")
+                .map(String::as_str),
+            Some("status")
+        );
+        assert_eq!(materializer.requests().len(), 0);
+        assert_eq!(transmission.get_hashes(), vec!["ABCDEF123456".to_owned()]);
+    }
+
+    #[tokio::test]
+    async fn transmission_runner_pause_resume_and_cancel_do_not_materialize() {
+        let materializer = RecordingMaterializer::with_response(
+            magnet_materialization_response_without_password(),
+        );
+        let transmission =
+            RecordingTransmissionClient::new(TransmissionAddOutcomeKind::Added, "UNUSED");
+        let runner = FixtureRunner::with_clients(
+            transmission_config(),
+            Arc::new(materializer.clone()),
+            Some(Arc::new(transmission.clone())),
+        );
+
+        let paused = runner
+            .handle_action(
+                FixtureActionContext::new("job-pause-secret", ACTION_TASK_ID),
+                transmission_job_request(
+                    AddonExternalAcquisitionOperation::Pause,
+                    "transmission:ABCDEF123456",
+                ),
+            )
+            .await
+            .unwrap();
+        let resumed = runner
+            .handle_action(
+                FixtureActionContext::new("job-resume-secret", ACTION_TASK_ID),
+                transmission_job_request(
+                    AddonExternalAcquisitionOperation::Resume,
+                    "transmission:ABCDEF123456",
+                ),
+            )
+            .await
+            .unwrap();
+        let cancelled = runner
+            .handle_action(
+                FixtureActionContext::new("job-cancel-secret", ACTION_TASK_ID),
+                transmission_job_request(
+                    AddonExternalAcquisitionOperation::Cancel,
+                    "transmission:ABCDEF123456",
+                ),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(paused.state, AddonExternalAcquisitionRunnerState::Paused);
+        assert_eq!(resumed.state, AddonExternalAcquisitionRunnerState::Running);
+        assert_eq!(
+            cancelled.state,
+            AddonExternalAcquisitionRunnerState::Cancelled
+        );
+        assert_eq!(
+            transmission.stopped_hashes(),
+            vec!["ABCDEF123456".to_owned(), "ABCDEF123456".to_owned()]
+        );
+        assert_eq!(
+            transmission.started_hashes(),
+            vec!["ABCDEF123456".to_owned()]
+        );
+        assert_eq!(materializer.requests().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn transmission_runner_rejects_malformed_runner_job_ref_safely() {
+        let materializer = RecordingMaterializer::with_response(
+            magnet_materialization_response_without_password(),
+        );
+        let transmission =
+            RecordingTransmissionClient::new(TransmissionAddOutcomeKind::Added, "UNUSED");
+        let runner = FixtureRunner::with_clients(
+            transmission_config(),
+            Arc::new(materializer.clone()),
+            Some(Arc::new(transmission)),
+        );
+
+        let error = runner
+            .handle_action(
+                FixtureActionContext::new("job-bad-ref-secret", ACTION_TASK_ID),
+                transmission_job_request(
+                    AddonExternalAcquisitionOperation::QueryStatus,
+                    "fixture-job-1",
+                ),
+            )
+            .await
+            .unwrap_err();
+        let response = error.to_response();
+
+        assert_eq!(
+            response.safe_message.as_deref(),
+            Some("transmission_runner_job_ref_invalid")
+        );
+        assert_eq!(materializer.requests().len(), 0);
+        let response_text = serde_json::to_string(&response).unwrap();
+        assert!(!response_text.contains("fixture-job-1"));
+        assert!(!response_text.contains("job-bad-ref-secret"));
+    }
+
     fn enqueue_request(idempotency_key: &str) -> AddonExternalAcquisitionActionRequest {
         AddonExternalAcquisitionActionRequest {
             schema: crate::manifest::ACTION_REQUEST_SCHEMA.to_owned(),
@@ -919,6 +1254,22 @@ mod tests {
             },
             runner_profile_id: "fixture".to_owned(),
             idempotency_key: format!("idem-{operation:?}"),
+            operation,
+            audit_ref: None,
+        }
+    }
+
+    fn transmission_job_request(
+        operation: AddonExternalAcquisitionOperation,
+        runner_job_ref: &str,
+    ) -> AddonExternalAcquisitionActionRequest {
+        AddonExternalAcquisitionActionRequest {
+            schema: crate::manifest::ACTION_REQUEST_SCHEMA.to_owned(),
+            target_ref: AddonExternalAcquisitionTargetRef::RunnerJob {
+                runner_job_ref: runner_job_ref.to_owned(),
+            },
+            runner_profile_id: "transmission".to_owned(),
+            idempotency_key: format!("idem-transmission-{operation:?}"),
             operation,
             audit_ref: None,
         }
@@ -1023,21 +1374,46 @@ mod tests {
     #[derive(Clone, Debug)]
     struct RecordingTransmissionClient {
         filenames: Arc<StdMutex<Vec<String>>>,
+        get_hashes: Arc<StdMutex<Vec<String>>>,
+        started_hashes: Arc<StdMutex<Vec<String>>>,
+        stopped_hashes: Arc<StdMutex<Vec<String>>>,
         outcome_kind: TransmissionAddOutcomeKind,
         hash_string: String,
+        torrent_facts: Arc<StdMutex<Option<TransmissionTorrentFacts>>>,
     }
 
     impl RecordingTransmissionClient {
         fn new(outcome_kind: TransmissionAddOutcomeKind, hash_string: &str) -> Self {
             Self {
                 filenames: Arc::default(),
+                get_hashes: Arc::default(),
+                started_hashes: Arc::default(),
+                stopped_hashes: Arc::default(),
                 outcome_kind,
                 hash_string: hash_string.to_owned(),
+                torrent_facts: Arc::default(),
             }
+        }
+
+        fn with_torrent_facts(self, facts: TransmissionTorrentFacts) -> Self {
+            *self.torrent_facts.lock().unwrap() = Some(facts);
+            self
         }
 
         fn filenames(&self) -> Vec<String> {
             self.filenames.lock().unwrap().clone()
+        }
+
+        fn get_hashes(&self) -> Vec<String> {
+            self.get_hashes.lock().unwrap().clone()
+        }
+
+        fn started_hashes(&self) -> Vec<String> {
+            self.started_hashes.lock().unwrap().clone()
+        }
+
+        fn stopped_hashes(&self) -> Vec<String> {
+            self.stopped_hashes.lock().unwrap().clone()
         }
     }
 
@@ -1056,25 +1432,32 @@ mod tests {
 
         async fn get_torrent(
             &self,
-            _hash_string: &str,
-        ) -> Result<
-            Option<crate::transmission::TransmissionTorrentFacts>,
-            crate::transmission::TransmissionError,
-        > {
-            Ok(None)
+            hash_string: &str,
+        ) -> Result<Option<TransmissionTorrentFacts>, crate::transmission::TransmissionError>
+        {
+            self.get_hashes.lock().unwrap().push(hash_string.to_owned());
+            Ok(self.torrent_facts.lock().unwrap().clone())
         }
 
         async fn start_torrent(
             &self,
-            _hash_string: &str,
+            hash_string: &str,
         ) -> Result<(), crate::transmission::TransmissionError> {
+            self.started_hashes
+                .lock()
+                .unwrap()
+                .push(hash_string.to_owned());
             Ok(())
         }
 
         async fn stop_torrent(
             &self,
-            _hash_string: &str,
+            hash_string: &str,
         ) -> Result<(), crate::transmission::TransmissionError> {
+            self.stopped_hashes
+                .lock()
+                .unwrap()
+                .push(hash_string.to_owned());
             Ok(())
         }
     }

@@ -44,9 +44,9 @@ Exit criteria:
 
 Exit criteria:
 
-- Query status maps Transmission state/progress to addon response state.
-- Cancel, pause, and resume operate only on runner job refs.
-- No status/control path rematerializes target links.
+- [x] Query status maps Transmission state/progress to addon response state.
+- [x] Cancel, pause, and resume operate only on runner job refs.
+- [x] No status/control path rematerializes target links.
 
 ## M5 - Integration And Smoke
 

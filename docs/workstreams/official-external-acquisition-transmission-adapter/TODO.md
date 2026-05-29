@@ -43,12 +43,12 @@ Task IDs use the `OETA` prefix.
 
 ## M4 - Status And Control Operations
 
-- [ ] OETA-050 [owner=codex] [deps=OETA-040] [scope=crates/nako-external-acquisition-runner/src/runner.rs,crates/nako-external-acquisition-runner/src/transmission.rs]
+- [x] OETA-050 [owner=codex] [deps=OETA-040] [scope=crates/nako-external-acquisition-runner/src/runner.rs,crates/nako-external-acquisition-runner/src/transmission.rs]
   Goal: Map `query_status`, `cancel`, `pause`, and `resume` to Transmission hash operations from `runner_job_ref`.
   Validation: `cargo nextest run -p nako-external-acquisition-runner transmission status cancel pause resume --no-fail-fast`.
   Review: These operations must not call materialization and must fail safely for non-Transmission or malformed runner job refs.
   Evidence: runner operation tests and fake RPC transcripts.
-  Handoff: Continue with OETA-060.
+  Handoff: DONE. Query status maps `torrent-get`; pause/cancel call stop; resume calls start; malformed/non-Transmission refs fail safely; control paths do not call materialization. Continue with OETA-060.
 
 ## M5 - Route, Smoke, And Redaction Integration
 
