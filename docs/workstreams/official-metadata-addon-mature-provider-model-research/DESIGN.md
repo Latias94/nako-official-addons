@@ -1,7 +1,7 @@
 # Official Metadata Addon Mature Provider Model Research
 
 Status: Complete
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## Why This Lane Exists
 
@@ -95,5 +95,10 @@ Result:
   source anchors.
 - `REFACTOR_CANDIDATES.md` ranks follow-on work.
 - No production Rust code changed in this research lane.
-- Follow-on implementation is deferred to a new workstream, recommended scope:
-  sidecar-local provider fact resolver plus external ID capability catalog.
+- Follow-on implementation was later completed in
+  `docs/workstreams/official-metadata-addon-provider-fact-resolver`: the
+  sidecar now has resolver-backed orchestration and executable external ID
+  capabilities.
+- Subsequent provider field-policy lanes added request/default field policy and
+  provider-owned default preference descriptors. These are now baseline
+  architecture, not future P0 work from this research lane.

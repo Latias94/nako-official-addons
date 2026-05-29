@@ -110,7 +110,8 @@ fn rendered_html_response_body(url: &str, title: &str, html: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use crate::providers::http_runtime::{
-        ProviderHttpMethod, ProviderHttpRequest, ProviderHttpRuntimeConfig, ProviderHttpTransport,
+        ProviderHttpMethod, ProviderHttpOperationPolicy, ProviderHttpRequest,
+        ProviderHttpRuntimeConfig, ProviderHttpTransport,
     };
 
     use super::*;
@@ -141,6 +142,7 @@ mod tests {
                         .into_bytes(),
                     ),
                     form_body: Vec::new(),
+                    operation_policy: ProviderHttpOperationPolicy::default(),
                 },
                 ProviderHttpRuntimeConfig::default(),
             )

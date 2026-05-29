@@ -14,27 +14,23 @@ use tower_http::trace::TraceLayer;
 use crate::{
     Config,
     attempt_history::ProviderAttemptHistory,
-    discord_webhook::{DiscordWebhookClient, DiscordWebhookSendOutcome},
-    http_webhook::{HttpWebhookClient, HttpWebhookSendOutcome},
+    diagnostics::render_diagnostics_page,
     manifest::{
         ADDON_ID, ADDON_VERSION, DIAGNOSTICS_PATH, LIBRARY_SCANNED_EVENT_KIND,
         LIBRARY_SCANNED_EVENT_PATH, LIBRARY_SCANNED_EVENT_SUBSCRIPTION_ID, PROVIDER_TEST_SEND_PATH,
         PROVIDER_TEST_SEND_RESPONSE_SCHEMA, addon_manifest,
     },
-    provider_registry::{
-        NotificationProviderRegistry, record_provider_error, record_provider_outcome,
-        select_primary_provider_output,
+    provider_registry::{NotificationProviderRegistry, select_primary_provider_output},
+    provider_send::{
+        NotificationProviderClients, ProviderSendFailure, send_library_scanned_event_to_providers,
     },
-    telegram::{TelegramClient, TelegramSendOutcome},
     template::{TemplateContext, render_template},
 };
 
 #[derive(Clone)]
 pub struct AppState {
     config: Config,
-    http_webhook: HttpWebhookClient,
-    discord_webhook: DiscordWebhookClient,
-    telegram: TelegramClient,
+    provider_clients: NotificationProviderClients,
     provider_attempt_history: ProviderAttemptHistory,
 }
 
@@ -51,9 +47,7 @@ pub fn router(config: Config) -> Router {
         .layer(TraceLayer::new_for_http())
         .with_state(AppState {
             config,
-            http_webhook: HttpWebhookClient::new(),
-            discord_webhook: DiscordWebhookClient::new(),
-            telegram: TelegramClient::new(),
+            provider_clients: NotificationProviderClients::new(),
             provider_attempt_history,
         })
 }
@@ -137,8 +131,16 @@ async fn library_scanned_event(
     )
     .map_err(invalid_template_error)?;
 
-    let provider_send =
-        send_library_scanned_event_to_providers(&state, &request, &payload_keys, &summary).await?;
+    let provider_send = send_library_scanned_event_to_providers(
+        &state.config,
+        &state.provider_clients,
+        &state.provider_attempt_history,
+        &request,
+        &payload_keys,
+        &summary,
+    )
+    .await
+    .map_err(provider_send_route_error)?;
     let provider_outputs = provider_send.provider_outputs();
     let primary_provider_output = select_primary_provider_output(&provider_outputs);
 
@@ -179,8 +181,16 @@ async fn provider_test_send(
         },
     )
     .map_err(invalid_template_error)?;
-    let provider_send =
-        send_library_scanned_event_to_providers(&state, &request, &payload_keys, &summary).await?;
+    let provider_send = send_library_scanned_event_to_providers(
+        &state.config,
+        &state.provider_clients,
+        &state.provider_attempt_history,
+        &request,
+        &payload_keys,
+        &summary,
+    )
+    .await
+    .map_err(provider_send_route_error)?;
     let provider_outputs = provider_send.provider_outputs();
     let primary_provider_output = select_primary_provider_output(&provider_outputs);
 
@@ -195,92 +205,8 @@ async fn provider_test_send(
     })))
 }
 
-async fn send_library_scanned_event_to_providers(
-    state: &AppState,
-    request: &AddonEventRequest,
-    payload_keys: &[String],
-    summary: &str,
-) -> Result<ProviderSendOutcomes, (StatusCode, Json<serde_json::Value>)> {
-    let http_webhook = match state
-        .http_webhook
-        .send_library_scanned_event(&state.config.http_webhook, request, payload_keys, summary)
-        .await
-    {
-        Ok(outcome) => {
-            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
-            outcome
-        }
-        Err(error) => {
-            record_provider_error(&state.provider_attempt_history, request, &error);
-            return Err((error.status_code(), Json(error.safe_body())));
-        }
-    };
-    let discord_webhook = match state
-        .discord_webhook
-        .send_library_scanned_event(
-            &state.config.discord_webhook,
-            request,
-            payload_keys,
-            summary,
-        )
-        .await
-    {
-        Ok(outcome) => {
-            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
-            outcome
-        }
-        Err(error) => {
-            record_provider_error(&state.provider_attempt_history, request, &error);
-            return Err((error.status_code(), Json(error.safe_body())));
-        }
-    };
-    let telegram = match state
-        .telegram
-        .send_library_scanned_event(&state.config.telegram, request, payload_keys, summary)
-        .await
-    {
-        Ok(outcome) => {
-            record_provider_outcome(&state.provider_attempt_history, request, &outcome);
-            outcome
-        }
-        Err(error) => {
-            record_provider_error(&state.provider_attempt_history, request, &error);
-            return Err((error.status_code(), Json(error.safe_body())));
-        }
-    };
-
-    Ok(ProviderSendOutcomes {
-        http_webhook,
-        discord_webhook,
-        telegram,
-    })
-}
-
-struct ProviderSendOutcomes {
-    http_webhook: HttpWebhookSendOutcome,
-    discord_webhook: DiscordWebhookSendOutcome,
-    telegram: TelegramSendOutcome,
-}
-
-impl ProviderSendOutcomes {
-    fn provider_outputs(&self) -> Vec<serde_json::Value> {
-        vec![
-            self.http_webhook.provider_output(),
-            self.discord_webhook.provider_output(),
-            self.telegram.provider_output(),
-        ]
-    }
-
-    const fn mode(&self) -> &'static str {
-        if matches!(self.http_webhook, HttpWebhookSendOutcome::Sent { .. })
-            || matches!(self.discord_webhook, DiscordWebhookSendOutcome::Sent { .. })
-            || matches!(self.telegram, TelegramSendOutcome::Sent { .. })
-        {
-            "provider_send"
-        } else {
-            "ack_only"
-        }
-    }
+fn provider_send_route_error(error: ProviderSendFailure) -> (StatusCode, Json<serde_json::Value>) {
+    (error.status_code(), Json(error.into_safe_body()))
 }
 
 fn sorted_payload_keys(request: &AddonEventRequest) -> Vec<String> {
@@ -313,77 +239,9 @@ fn provider_test_send_request() -> AddonEventRequest {
 }
 
 async fn diagnostics(State(state): State<AppState>) -> Html<String> {
-    let providers = NotificationProviderRegistry::new(&state.config);
-    let provider_diagnostics = providers.diagnostics();
-    let http_webhook = provider_diagnostics.http_webhook;
-    let discord_webhook = provider_diagnostics.discord_webhook;
-    let telegram = provider_diagnostics.telegram;
-    let template = &state.config.template;
-    let http_webhook_enabled = yes_no_label(http_webhook.enabled);
-    let http_webhook_target_configured = yes_no_label(http_webhook.target_url_configured);
-    let http_webhook_target_valid = yes_no_label(http_webhook.target_url_valid);
-    let http_webhook_shared_secret_configured = yes_no_label(http_webhook.shared_secret_configured);
-    let http_webhook_send_path_enabled = yes_no_label(http_webhook.send_path_enabled);
-    let discord_webhook_enabled = yes_no_label(discord_webhook.enabled);
-    let discord_webhook_url_configured = yes_no_label(discord_webhook.webhook_url_configured);
-    let discord_webhook_url_valid = yes_no_label(discord_webhook.webhook_url_valid);
-    let discord_webhook_send_path_enabled = yes_no_label(discord_webhook.send_path_enabled);
-    let telegram_enabled = yes_no_label(telegram.enabled);
-    let telegram_api_base_url_configured = yes_no_label(telegram.api_base_url_configured);
-    let telegram_api_base_url_valid = yes_no_label(telegram.api_base_url_valid);
-    let telegram_bot_token_configured = yes_no_label(telegram.bot_token_configured);
-    let telegram_chat_id_configured = yes_no_label(telegram.chat_id_configured);
-    let telegram_send_path_enabled = yes_no_label(telegram.send_path_enabled);
-    let provider_send_configured = yes_no_label(providers.send_path_configured());
-    let provider_send_path_count = providers.send_path_count();
-    let configuration_status = providers.configuration_status();
-    let summary_template_configured = yes_no_label(template.summary_template_configured());
-    let summary_template_valid = yes_no_label(template.summary_template_valid());
-    let provider_attempt_history_count = state.provider_attempt_history.snapshot().len();
-    let provider_attempt_history_capacity = state.provider_attempt_history.capacity();
-    Html(format!(
-        r#"<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Nako Notification Bridge</title></head>
-<body>
-  <h1>Nako Notification Bridge</h1>
-  <p>Base URL: {}</p>
-  <p>Mode: ack only</p>
-  <p>Provider send configured: {provider_send_configured}</p>
-  <p>Provider send path count: {provider_send_path_count}</p>
-  <p>Configuration status: {}</p>
-  <p>Summary template status: {}</p>
-  <p>Summary template configured: {summary_template_configured}</p>
-  <p>Summary template valid: {summary_template_valid}</p>
-  <p>Provider attempt history count: {provider_attempt_history_count}</p>
-  <p>Provider attempt history capacity: {provider_attempt_history_capacity}</p>
-  <p>HTTP webhook provider status: {}</p>
-  <p>HTTP webhook enabled: {http_webhook_enabled}</p>
-  <p>HTTP webhook target configured: {http_webhook_target_configured}</p>
-  <p>HTTP webhook target valid: {http_webhook_target_valid}</p>
-  <p>HTTP webhook shared secret configured: {http_webhook_shared_secret_configured}</p>
-  <p>HTTP webhook send path enabled: {http_webhook_send_path_enabled}</p>
-  <p>Discord webhook provider status: {}</p>
-  <p>Discord webhook enabled: {discord_webhook_enabled}</p>
-  <p>Discord webhook URL configured: {discord_webhook_url_configured}</p>
-  <p>Discord webhook URL valid: {discord_webhook_url_valid}</p>
-  <p>Discord webhook send path enabled: {discord_webhook_send_path_enabled}</p>
-  <p>Telegram provider status: {}</p>
-  <p>Telegram enabled: {telegram_enabled}</p>
-  <p>Telegram API base URL configured: {telegram_api_base_url_configured}</p>
-  <p>Telegram API base URL valid: {telegram_api_base_url_valid}</p>
-  <p>Telegram bot token configured: {telegram_bot_token_configured}</p>
-  <p>Telegram chat id configured: {telegram_chat_id_configured}</p>
-  <p>Telegram send path enabled: {telegram_send_path_enabled}</p>
-  <p>This page is hosted by the Addon Sidecar and is not trusted Nako Admin UI.</p>
-</body>
-</html>"#,
-        state.config.base_url,
-        configuration_status.as_str(),
-        template.status().as_str(),
-        http_webhook.status,
-        discord_webhook.status,
-        telegram.status
+    Html(render_diagnostics_page(
+        &state.config,
+        &state.provider_attempt_history,
     ))
 }
 
@@ -398,10 +256,6 @@ fn invalid_template_error(
             "retryable": false
         })),
     )
-}
-
-const fn yes_no_label(value: bool) -> &'static str {
-    if value { "yes" } else { "no" }
 }
 
 #[cfg(test)]

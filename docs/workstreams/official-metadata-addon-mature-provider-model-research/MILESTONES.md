@@ -1,7 +1,7 @@
 # Official Metadata Addon Mature Provider Model Research - Milestones
 
 Status: Complete
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## M0 - Reference Base Ready
 
@@ -37,5 +37,8 @@ Last updated: 2026-05-25
 Closeout result:
 
 - Research lane closed with no production code changes.
-- Concrete follow-on is deferred to the next workstream: provider fact resolver
-  plus external ID capability catalog.
+- The concrete follow-on was completed by
+  `official-metadata-addon-provider-fact-resolver`: provider fact resolver plus
+  external ID capability catalog are now baseline architecture.
+- Later field-policy workstreams added request/default provider field policy and
+  provider-owned default field preferences.

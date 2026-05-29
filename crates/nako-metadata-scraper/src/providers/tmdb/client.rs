@@ -2,8 +2,9 @@ use crate::{
     config::TmdbProviderConfig,
     engine::MetadataQuery,
     providers::http_runtime::{
-        ProviderHttpResult, ProviderHttpRuntime, ProviderHttpRuntimeConfig, ProviderHttpTransport,
-        ReqwestProviderHttpTransport,
+        ProviderHttpCachePolicy, ProviderHttpOperationPolicy, ProviderHttpResult,
+        ProviderHttpRuntime, ProviderHttpRuntimeConfig, ProviderHttpThrottlePolicy,
+        ProviderHttpTransport, ReqwestProviderHttpTransport,
     },
 };
 
@@ -15,6 +16,9 @@ use super::{
         TmdbTvSearchResponse,
     },
 };
+
+const TMDB_DETAIL_CACHE_TTL_MS: u64 = 24 * 60 * 60 * 1_000;
+const TMDB_API_THROTTLE_MS: u64 = 250;
 
 impl TmdbMetadataProvider<ReqwestProviderHttpTransport> {
     pub fn new(config: TmdbProviderConfig) -> ProviderHttpResult<Self> {
@@ -126,7 +130,7 @@ where
     ) -> anyhow::Result<TmdbMovieDetailBundle> {
         let response = self
             .runtime
-            .get_json(
+            .get_json_with_policy(
                 TMDB_PROVIDER_ID,
                 "movie detail",
                 self.endpoint(format!("movie/{movie_id}")),
@@ -138,6 +142,7 @@ where
                     ),
                 ],
                 self.bearer_headers(),
+                tmdb_detail_operation_policy("movie", movie_id, &self.config.language),
             )
             .await?;
 
@@ -150,7 +155,7 @@ where
     ) -> anyhow::Result<TmdbTvDetailBundle> {
         let response = self
             .runtime
-            .get_json(
+            .get_json_with_policy(
                 TMDB_PROVIDER_ID,
                 "TV detail",
                 self.endpoint(format!("tv/{tv_id}")),
@@ -162,6 +167,7 @@ where
                     ),
                 ],
                 self.bearer_headers(),
+                tmdb_detail_operation_policy("tv", tv_id, &self.config.language),
             )
             .await?;
 
@@ -182,6 +188,22 @@ where
 
         TmdbFindResponse::from_value(response.body)
     }
+}
+
+fn tmdb_detail_operation_policy(
+    entity: &'static str,
+    id: u64,
+    language: &str,
+) -> ProviderHttpOperationPolicy {
+    ProviderHttpOperationPolicy::default()
+        .with_cache(ProviderHttpCachePolicy::safe_authenticated(
+            format!("tmdb.{entity}.{id}.{language}.detail_bundle"),
+            TMDB_DETAIL_CACHE_TTL_MS,
+        ))
+        .with_throttle(ProviderHttpThrottlePolicy::provider_local(
+            "tmdb.api",
+            TMDB_API_THROTTLE_MS,
+        ))
 }
 
 #[derive(Clone, Debug)]

@@ -3,7 +3,7 @@
   "slug": "official-metadata-addon-mature-provider-model-research",
   "title": "Official Metadata Addon Mature Provider Model Research",
   "status": "complete",
-  "updated": "2026-05-25",
+  "updated": "2026-05-29",
   "scope_kind": "research",
   "problem": "The metadata scraper provider architecture is now extensible, but the next fearless refactor should be informed by mature metadata provider systems instead of local intuition alone.",
   "authoritative_docs": [
@@ -43,7 +43,12 @@
     {
       "date": "2026-05-25",
       "task": "OMAPMR-050",
-      "summary": "Research lane closed with no production code changes; follow-on resolver and external ID capability workstream deferred."
+      "summary": "Research lane closed with no production code changes; resolver and external ID capability implementation was split to a follow-on lane that is now complete."
+    },
+    {
+      "date": "2026-05-29",
+      "task": "OAABH-060",
+      "summary": "Status refresh recorded that resolver, external ID capabilities, and provider field-policy fusion are completed baseline architecture; remaining follow-ons are host policy context, artwork source separation, matching strategy refinement, and only-if-needed cache/throttle execution state."
     }
   ],
   "reference_repos": [
@@ -55,6 +60,6 @@
   ],
   "continue_policy": {
     "default_action": "closed",
-    "notes": "Research is complete. Recommended follow-on is a new implementation workstream for the sidecar provider fact resolver and external ID capability catalog; host-owned refresh, local metadata, locked fields, and final merge policy stay out of this sidecar lane."
+    "notes": "Research is complete. The original provider fact resolver and external ID capability follow-on has been completed, and provider field-policy fusion is baseline architecture. Remaining follow-ons are host policy context, artwork source separation, matching strategy refinement, and only-if-needed cache/throttle execution state; host-owned refresh, local metadata, locked fields, and final merge policy stay out of this sidecar lane."
   }
 }

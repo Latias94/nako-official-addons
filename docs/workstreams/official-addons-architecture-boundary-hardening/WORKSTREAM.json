@@ -1,0 +1,27 @@
+{
+  "slug": "official-addons-architecture-boundary-hardening",
+  "title": "Official Addons Architecture Boundary Hardening",
+  "status": "complete",
+  "created": "2026-05-29",
+  "last_updated": "2026-05-29",
+  "task_prefix": "OAABH",
+  "repositories": [
+    "nako-official-addons",
+    "../nako"
+  ],
+  "current_task": null,
+  "goals": [
+    "Use the official catalog as the source of truth for shared official addon manifest facts.",
+    "Deepen Nako server addon app-service workflow boundaries.",
+    "Add explicit metadata provider HTTP operation policy without hidden scheduler state.",
+    "Improve notification bridge route locality.",
+    "Update stale provider-model roadmap docs."
+  ],
+  "non_goals": [
+    "External Acquisition Runner implementation",
+    "Addon process supervision",
+    "Full Jellyfin-style host provider manager inside the metadata sidecar",
+    "Public Addon Protocol wire changes unless a bounded task proves they are necessary",
+    "Edits to active ../nako/web workstream files"
+  ]
+}

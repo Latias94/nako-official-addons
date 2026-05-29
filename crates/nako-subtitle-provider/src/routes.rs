@@ -205,7 +205,10 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let payload = resource_response_payload(response).await;
-        assert_eq!(payload["schema"], crate::manifest::SUBTITLE_RESPONSE_SCHEMA);
+        assert_eq!(
+            payload["schema"],
+            nako_addon_protocol::ADDON_SUBTITLE_RESPONSE_SCHEMA
+        );
         assert_eq!(payload["total"], 2);
         assert_eq!(payload["subtitles"][0]["source"], "fixture");
         assert_eq!(payload["subtitles"][0]["delivery"]["kind"], "inline");

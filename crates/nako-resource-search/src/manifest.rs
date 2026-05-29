@@ -1,26 +1,15 @@
-use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA,
-    ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA, ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA,
-    ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonAuth, AddonConfigurationSchema,
-    AddonEntryPointDeclaration, AddonEntryPointKind, AddonHostedPageDeclaration, AddonManifest,
-    AddonResource, AddonResourceDeclaration, AddonScope,
-};
+use nako_addon_protocol::{AddonConfigurationSchema, AddonManifest};
+use nako_official_addon_catalog::resource_search;
 
 use crate::{Config, providers::ProviderRegistry};
 
-pub const ADDON_ID: &str = "nako.official.resource-search";
-pub const ADDON_NAME: &str = "Nako Resource Search";
 pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_CONTAINER_BASE_URL: &str = "http://nako-resource-search:9130";
-pub const DESCRIPTION: &str = "Official Nako resource search sidecar for external resource discovery, link classification, and result fusion.";
-pub const CONFIG_SCHEMA_ID: &str = "nako.official.resource-search.config.v1";
-pub const RESOURCE_SEARCH_RESOURCE_PATH: &str = "/resource-search";
-pub const RESOURCE_LINK_CHECK_RESOURCE_PATH: &str = "/resource-link-check";
-pub const DIAGNOSTICS_ENTRY_POINT_ID: &str = "resource-search-diagnostics";
-pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
-pub const DIAGNOSTICS_LABEL: &str = "Resource Search Diagnostics";
-pub const DIAGNOSTICS_PATH: &str = "/ui/diagnostics";
-pub const DEFAULT_MAX_ATTEMPTS: u32 = 1;
+
+pub use resource_search::{
+    ADDON_ID, ADDON_NAME, CONFIG_SCHEMA_ID, DEFAULT_CONTAINER_BASE_URL, DEFAULT_MAX_ATTEMPTS,
+    DESCRIPTION, DIAGNOSTICS_ENTRY_POINT_ID, DIAGNOSTICS_HOSTED_PAGE_ID, DIAGNOSTICS_LABEL,
+    DIAGNOSTICS_PATH, RESOURCE_LINK_CHECK_RESOURCE_PATH, RESOURCE_SEARCH_RESOURCE_PATH,
+};
 
 #[must_use]
 pub fn addon_manifest(config: &Config) -> AddonManifest {
@@ -37,59 +26,28 @@ pub fn container_manifest() -> AddonManifest {
 }
 
 fn manifest_with_base_url(base_url: impl Into<String>, config: &Config) -> AddonManifest {
-    AddonManifest {
-        id: ADDON_ID.to_owned(),
-        name: ADDON_NAME.to_owned(),
-        version: ADDON_VERSION.to_owned(),
-        protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-        base_url: base_url.into(),
-        description: Some(DESCRIPTION.to_owned()),
-        resources: vec![
-            AddonResourceDeclaration {
-                kind: AddonResource::ResourceSearch,
-                path: RESOURCE_SEARCH_RESOURCE_PATH.to_owned(),
-                input_schema: Some(ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA.to_owned()),
-                output_schema: Some(ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA.to_owned()),
-                required_scopes: vec![AddonScope::AcquisitionSearchRead],
-                timeout_ms: Some(config.search_timeout_ms),
-                max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-            },
-            AddonResourceDeclaration {
-                kind: AddonResource::ResourceLinkCheck,
-                path: RESOURCE_LINK_CHECK_RESOURCE_PATH.to_owned(),
-                input_schema: Some(ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA.to_owned()),
-                output_schema: Some(ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA.to_owned()),
-                required_scopes: vec![AddonScope::AcquisitionLinkCheckRead],
-                timeout_ms: Some(config.search_timeout_ms),
-                max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-            },
-        ],
-        entry_points: vec![AddonEntryPointDeclaration::hosted_page(
-            DIAGNOSTICS_ENTRY_POINT_ID,
-            AddonEntryPointKind::Diagnostics,
-            DIAGNOSTICS_LABEL,
-            DIAGNOSTICS_PATH,
-            DIAGNOSTICS_HOSTED_PAGE_ID,
-            vec![AddonScope::AcquisitionSearchRead],
-        )],
-        hosted_pages: vec![AddonHostedPageDeclaration::new(
-            DIAGNOSTICS_HOSTED_PAGE_ID,
-            DIAGNOSTICS_LABEL,
-            DIAGNOSTICS_PATH,
-            vec![AddonScope::AcquisitionSearchRead],
-        )],
-        configuration_schema: Some(configuration_schema(config)),
-        secret_reference_fields: Vec::new(),
-        event_subscriptions: Vec::new(),
-        tasks: Vec::new(),
-        auth: AddonAuth::None,
-        default_timeout_ms: Some(config.search_timeout_ms),
-        default_max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        scopes: vec![
-            AddonScope::AcquisitionSearchRead,
-            AddonScope::AcquisitionLinkCheckRead,
-        ],
-    }
+    let mut manifest = resource_search::manifest_with_version(
+        ADDON_VERSION,
+        base_url,
+        provider_toggles(config),
+        config.default_limit,
+        config.max_limit,
+        config.search_timeout_ms,
+    );
+    manifest.configuration_schema = Some(configuration_schema(config));
+    manifest
+}
+
+fn provider_toggles(config: &Config) -> Vec<resource_search::ProviderToggle> {
+    ProviderRegistry::configuration_schema_fragments(config)
+        .into_iter()
+        .map(|fragment| {
+            resource_search::ProviderToggle::new(
+                fragment.provider_id,
+                fragment.provider_enabled_default,
+            )
+        })
+        .collect()
 }
 
 fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
@@ -164,7 +122,11 @@ fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
 
 #[cfg(test)]
 mod tests {
-    use nako_addon_protocol::{AddonResource, AddonScope, validate_manifest};
+    use nako_addon_protocol::{
+        ADDON_RESOURCE_LINK_CHECK_REQUEST_SCHEMA, ADDON_RESOURCE_LINK_CHECK_RESPONSE_SCHEMA,
+        ADDON_RESOURCE_SEARCH_REQUEST_SCHEMA, ADDON_RESOURCE_SEARCH_RESPONSE_SCHEMA, AddonResource,
+        AddonScope, validate_manifest,
+    };
 
     use super::*;
 

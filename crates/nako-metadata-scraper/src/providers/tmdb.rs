@@ -188,7 +188,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::providers::http_runtime::{ProviderHttpResponse, ProviderHttpRuntimeConfig};
+    use crate::providers::http_runtime::{
+        ProviderHttpCachePolicy, ProviderHttpResponse, ProviderHttpRuntimeConfig,
+        ProviderHttpThrottlePolicy,
+    };
 
     use super::*;
 
@@ -562,6 +565,17 @@ mod tests {
                 .contains(&("primary_release_year".to_owned(), "1999".to_owned()))
         );
         assert_eq!(requests[1].url, "https://tmdb.example/3/movie/603");
+        assert_eq!(
+            requests[1].operation_policy.cache,
+            ProviderHttpCachePolicy::safe_authenticated(
+                "tmdb.movie.603.en-US.detail_bundle",
+                24 * 60 * 60 * 1_000
+            )
+        );
+        assert_eq!(
+            requests[1].operation_policy.throttle,
+            ProviderHttpThrottlePolicy::provider_local("tmdb.api", 250)
+        );
         assert_eq!(
             requests[1].query,
             vec![

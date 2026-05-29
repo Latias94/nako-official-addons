@@ -34,6 +34,126 @@ impl Default for ProviderHttpRuntimeConfig {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderHttpOperationPolicy {
+    pub retry_after: ProviderHttpRetryAfterPolicy,
+    pub cache: ProviderHttpCachePolicy,
+    pub throttle: ProviderHttpThrottlePolicy,
+}
+
+impl Default for ProviderHttpOperationPolicy {
+    fn default() -> Self {
+        Self {
+            retry_after: ProviderHttpRetryAfterPolicy::default(),
+            cache: ProviderHttpCachePolicy::NoStore,
+            throttle: ProviderHttpThrottlePolicy::None,
+        }
+    }
+}
+
+impl ProviderHttpOperationPolicy {
+    #[must_use]
+    pub fn with_cache(mut self, cache: ProviderHttpCachePolicy) -> Self {
+        self.cache = cache;
+        self
+    }
+
+    #[must_use]
+    pub fn with_throttle(mut self, throttle: ProviderHttpThrottlePolicy) -> Self {
+        self.throttle = throttle;
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProviderHttpRetryAfterPolicy {
+    pub honor_retry_after: bool,
+    pub max_retry_after_ms: u64,
+}
+
+impl Default for ProviderHttpRetryAfterPolicy {
+    fn default() -> Self {
+        Self {
+            honor_retry_after: true,
+            max_retry_after_ms: 30_000,
+        }
+    }
+}
+
+impl ProviderHttpRetryAfterPolicy {
+    #[must_use]
+    pub const fn ignored() -> Self {
+        Self {
+            honor_retry_after: false,
+            max_retry_after_ms: 0,
+        }
+    }
+
+    #[must_use]
+    pub const fn clamp_retry_after_ms(self, retry_after_ms: Option<u64>) -> Option<u64> {
+        if !self.honor_retry_after {
+            return None;
+        }
+        match retry_after_ms {
+            Some(value) => Some(if value > self.max_retry_after_ms {
+                self.max_retry_after_ms
+            } else {
+                value
+            }),
+            None => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProviderHttpCachePolicy {
+    NoStore,
+    ProviderLocal {
+        cache_key: String,
+        ttl_ms: u64,
+        authenticated: bool,
+    },
+}
+
+impl ProviderHttpCachePolicy {
+    #[must_use]
+    pub fn safe_public(cache_key: impl Into<String>, ttl_ms: u64) -> Self {
+        Self::ProviderLocal {
+            cache_key: cache_key.into(),
+            ttl_ms,
+            authenticated: false,
+        }
+    }
+
+    #[must_use]
+    pub fn safe_authenticated(cache_key: impl Into<String>, ttl_ms: u64) -> Self {
+        Self::ProviderLocal {
+            cache_key: cache_key.into(),
+            ttl_ms,
+            authenticated: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProviderHttpThrottlePolicy {
+    None,
+    ProviderLocal {
+        throttle_key: String,
+        min_interval_ms: u64,
+    },
+}
+
+impl ProviderHttpThrottlePolicy {
+    #[must_use]
+    pub fn provider_local(throttle_key: impl Into<String>, min_interval_ms: u64) -> Self {
+        Self::ProviderLocal {
+            throttle_key: throttle_key.into(),
+            min_interval_ms,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ProviderHttpRuntime<T = ReqwestProviderHttpTransport> {
     config: ProviderHttpRuntimeConfig,
@@ -72,6 +192,26 @@ where
         query: Vec<(String, String)>,
         headers: Vec<(String, String)>,
     ) -> ProviderHttpResult<ProviderHttpJsonResponse> {
+        self.get_json_with_policy(
+            provider_id,
+            operation,
+            url,
+            query,
+            headers,
+            ProviderHttpOperationPolicy::default(),
+        )
+        .await
+    }
+
+    pub async fn get_json_with_policy(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+        operation_policy: ProviderHttpOperationPolicy,
+    ) -> ProviderHttpResult<ProviderHttpJsonResponse> {
         self.execute(ProviderHttpRequest {
             method: ProviderHttpMethod::Get,
             provider_id,
@@ -81,6 +221,7 @@ where
             headers,
             json_body: None,
             form_body: Vec::new(),
+            operation_policy,
         })
         .await
     }
@@ -93,6 +234,26 @@ where
         query: Vec<(String, String)>,
         headers: Vec<(String, String)>,
     ) -> ProviderHttpResult<ProviderHttpTextResponse> {
+        self.get_text_with_policy(
+            provider_id,
+            operation,
+            url,
+            query,
+            headers,
+            ProviderHttpOperationPolicy::default(),
+        )
+        .await
+    }
+
+    pub async fn get_text_with_policy(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+        operation_policy: ProviderHttpOperationPolicy,
+    ) -> ProviderHttpResult<ProviderHttpTextResponse> {
         self.execute_text(ProviderHttpRequest {
             method: ProviderHttpMethod::Get,
             provider_id,
@@ -102,6 +263,7 @@ where
             headers,
             json_body: None,
             form_body: Vec::new(),
+            operation_policy,
         })
         .await
     }
@@ -114,6 +276,31 @@ where
         query: Vec<(String, String)>,
         headers: Vec<(String, String)>,
         body: &B,
+    ) -> ProviderHttpResult<ProviderHttpJsonResponse>
+    where
+        B: Serialize,
+    {
+        self.post_json_with_policy(
+            provider_id,
+            operation,
+            url,
+            query,
+            headers,
+            body,
+            ProviderHttpOperationPolicy::default(),
+        )
+        .await
+    }
+
+    pub async fn post_json_with_policy<B>(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+        body: &B,
+        operation_policy: ProviderHttpOperationPolicy,
     ) -> ProviderHttpResult<ProviderHttpJsonResponse>
     where
         B: Serialize,
@@ -133,6 +320,7 @@ where
             headers,
             json_body: Some(json_body),
             form_body: Vec::new(),
+            operation_policy,
         })
         .await
     }
@@ -146,6 +334,28 @@ where
         headers: Vec<(String, String)>,
         form_body: Vec<(String, String)>,
     ) -> ProviderHttpResult<ProviderHttpTextResponse> {
+        self.post_form_text_with_policy(
+            provider_id,
+            operation,
+            url,
+            query,
+            headers,
+            form_body,
+            ProviderHttpOperationPolicy::default(),
+        )
+        .await
+    }
+
+    pub async fn post_form_text_with_policy(
+        &self,
+        provider_id: &'static str,
+        operation: &'static str,
+        url: impl Into<String>,
+        query: Vec<(String, String)>,
+        headers: Vec<(String, String)>,
+        form_body: Vec<(String, String)>,
+        operation_policy: ProviderHttpOperationPolicy,
+    ) -> ProviderHttpResult<ProviderHttpTextResponse> {
         self.execute_text(ProviderHttpRequest {
             method: ProviderHttpMethod::Post,
             provider_id,
@@ -155,6 +365,7 @@ where
             headers,
             json_body: None,
             form_body,
+            operation_policy,
         })
         .await
     }
@@ -219,8 +430,11 @@ where
                 Ok(Ok(response)) => response,
                 Ok(Err(error)) | Err(error) => {
                     if attempt < max_attempts && error.is_retryable() {
-                        last_retryable_error = Some(error.with_attempts(attempt));
-                        self.sleep_before_retry(attempt).await;
+                        let error = error.with_attempts(attempt);
+                        let retry_after_ms =
+                            error.retry_after_ms(&request.operation_policy.retry_after);
+                        last_retryable_error = Some(error);
+                        self.sleep_before_retry(attempt, retry_after_ms).await;
                         continue;
                     }
                     return Err(error.with_attempts(attempt));
@@ -235,11 +449,14 @@ where
                     status,
                     retryable: is_retryable_status(status),
                     body_excerpt: safe_excerpt(&response.body),
+                    retry_after_ms: None,
                     attempts: attempt,
                 };
                 if attempt < max_attempts && error.is_retryable() {
+                    let retry_after_ms =
+                        error.retry_after_ms(&request.operation_policy.retry_after);
                     last_retryable_error = Some(error);
-                    self.sleep_before_retry(attempt).await;
+                    self.sleep_before_retry(attempt, retry_after_ms).await;
                     continue;
                 }
                 return Err(error);
@@ -267,13 +484,14 @@ where
         )
     }
 
-    async fn sleep_before_retry(&self, attempt: u32) {
+    async fn sleep_before_retry(&self, attempt: u32, retry_after_ms: Option<u64>) {
         let backoff_ms = self
             .config
             .retry_backoff_ms
             .saturating_mul(u64::from(attempt));
-        if backoff_ms > 0 {
-            sleep(Duration::from_millis(backoff_ms)).await;
+        let sleep_ms = backoff_ms.max(retry_after_ms.unwrap_or(0));
+        if sleep_ms > 0 {
+            sleep(Duration::from_millis(sleep_ms)).await;
         }
     }
 }
@@ -288,6 +506,7 @@ pub struct ProviderHttpRequest {
     pub headers: Vec<(String, String)>,
     pub json_body: Option<Vec<u8>>,
     pub form_body: Vec<(String, String)>,
+    pub operation_policy: ProviderHttpOperationPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -395,23 +614,33 @@ impl ProviderHttpTransport for ReqwestProviderHttpTransport {
                 attempts: 0,
             })?;
         let status = response.status().as_u16();
-        let body = if (200..300).contains(&status) {
-            read_bounded_body(
-                response,
-                request.provider_id,
-                request.operation,
-                _config.response_size_limit_bytes,
-            )
-            .await?
-        } else {
-            read_truncated_body(
+        if !(200..300).contains(&status) {
+            let retry_after_ms = retry_after_ms(response.headers());
+            let body = read_truncated_body(
                 response,
                 request.provider_id,
                 request.operation,
                 HTTP_STATUS_BODY_READ_LIMIT_BYTES,
             )
-            .await?
-        };
+            .await?;
+            return Err(ProviderHttpError::HttpStatus {
+                provider_id: request.provider_id,
+                operation: request.operation,
+                status,
+                retryable: is_retryable_status(status),
+                body_excerpt: safe_excerpt(&body),
+                retry_after_ms,
+                attempts: 0,
+            });
+        }
+
+        let body = read_bounded_body(
+            response,
+            request.provider_id,
+            request.operation,
+            _config.response_size_limit_bytes,
+        )
+        .await?;
 
         Ok(ProviderHttpResponse { status, body })
     }
@@ -510,6 +739,7 @@ pub enum ProviderHttpError {
         status: u16,
         retryable: bool,
         body_excerpt: String,
+        retry_after_ms: Option<u64>,
         attempts: u32,
     },
     #[error("{provider_id} {operation} response exceeded {limit_bytes} bytes")]
@@ -553,6 +783,18 @@ impl ProviderHttpError {
         }
     }
 
+    #[must_use]
+    pub fn retry_after_ms(&self, policy: &ProviderHttpRetryAfterPolicy) -> Option<u64> {
+        match self {
+            Self::HttpStatus { retry_after_ms, .. } => policy.clamp_retry_after_ms(*retry_after_ms),
+            Self::InvalidRequest { .. }
+            | Self::Timeout { .. }
+            | Self::Transport { .. }
+            | Self::ResponseTooLarge { .. }
+            | Self::InvalidJson { .. } => None,
+        }
+    }
+
     fn with_attempts(self, attempts: u32) -> Self {
         match self {
             Self::Timeout {
@@ -583,6 +825,7 @@ impl ProviderHttpError {
                 status,
                 retryable,
                 body_excerpt,
+                retry_after_ms,
                 ..
             } => Self::HttpStatus {
                 provider_id,
@@ -590,6 +833,7 @@ impl ProviderHttpError {
                 status,
                 retryable,
                 body_excerpt,
+                retry_after_ms,
                 attempts,
             },
             Self::ResponseTooLarge {
@@ -637,6 +881,16 @@ fn default_user_agent() -> String {
 
 fn is_retryable_status(status: u16) -> bool {
     status == 408 || status == 429 || (500..600).contains(&status)
+}
+
+fn retry_after_ms(headers: &reqwest::header::HeaderMap) -> Option<u64> {
+    let value = headers
+        .get(reqwest::header::RETRY_AFTER)?
+        .to_str()
+        .ok()?
+        .trim();
+    let seconds = value.parse::<u64>().ok()?;
+    Some(seconds.saturating_mul(1_000))
 }
 
 fn safe_error_message(source: reqwest::Error) -> String {
@@ -717,6 +971,45 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn http_runtime_carries_explicit_operation_policy_to_transport() {
+        let transport = FakeTransport::default();
+        transport.push(Ok(ProviderHttpResponse {
+            status: 200,
+            body: br#"{"ok":true}"#.to_vec(),
+        }));
+        let runtime = ProviderHttpRuntime::with_transport(
+            ProviderHttpRuntimeConfig {
+                retry_backoff_ms: 0,
+                ..ProviderHttpRuntimeConfig::default()
+            },
+            transport.clone(),
+        );
+        let policy = ProviderHttpOperationPolicy::default()
+            .with_cache(ProviderHttpCachePolicy::safe_public(
+                "fixture.search.matrix",
+                60_000,
+            ))
+            .with_throttle(ProviderHttpThrottlePolicy::provider_local(
+                "fixture.search",
+                250,
+            ));
+
+        runtime
+            .get_json_with_policy(
+                "fixture",
+                "search",
+                "https://provider.example/search",
+                Vec::new(),
+                Vec::new(),
+                policy.clone(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(transport.requests()[0].operation_policy, policy);
+    }
+
+    #[tokio::test]
     async fn http_runtime_does_not_retry_non_retryable_status() {
         let transport = FakeTransport::default();
         transport.push(Ok(ProviderHttpResponse {
@@ -756,6 +1049,7 @@ mod tests {
                 status: 404,
                 retryable: false,
                 body_excerpt: "missing".to_owned(),
+                retry_after_ms: None,
                 attempts: 1,
             }
         );
@@ -862,6 +1156,7 @@ mod tests {
                     headers: Vec::new(),
                     json_body: None,
                     form_body: Vec::new(),
+                    operation_policy: ProviderHttpOperationPolicy::default(),
                 },
                 ProviderHttpRuntimeConfig {
                     response_size_limit_bytes: 8,
@@ -936,6 +1231,73 @@ mod tests {
         assert_eq!(response.attempts, 2);
         assert_eq!(response.body["ok"], true);
         assert_eq!(attempts.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn reqwest_transport_reports_retry_after_seconds_on_retryable_status() {
+        let app = Router::new().route(
+            "/limited",
+            get(|| async {
+                (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    [("retry-after", "7")],
+                    "limited",
+                )
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        let transport =
+            ReqwestProviderHttpTransport::new(&ProviderHttpRuntimeConfig::default()).unwrap();
+        let error = transport
+            .send(
+                ProviderHttpRequest {
+                    method: ProviderHttpMethod::Get,
+                    provider_id: "fixture",
+                    operation: "search",
+                    url: format!("http://{addr}/limited"),
+                    query: Vec::new(),
+                    headers: Vec::new(),
+                    json_body: None,
+                    form_body: Vec::new(),
+                    operation_policy: ProviderHttpOperationPolicy::default(),
+                },
+                ProviderHttpRuntimeConfig::default(),
+            )
+            .await
+            .unwrap_err();
+
+        server.abort();
+        assert_eq!(
+            error,
+            ProviderHttpError::HttpStatus {
+                provider_id: "fixture",
+                operation: "search",
+                status: 429,
+                retryable: true,
+                body_excerpt: "limited".to_owned(),
+                retry_after_ms: Some(7_000),
+                attempts: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn retry_after_policy_clamps_or_ignores_retry_after() {
+        let policy = ProviderHttpRetryAfterPolicy {
+            honor_retry_after: true,
+            max_retry_after_ms: 1_000,
+        };
+
+        assert_eq!(policy.clamp_retry_after_ms(Some(7_000)), Some(1_000));
+        assert_eq!(
+            ProviderHttpRetryAfterPolicy::ignored().clamp_retry_after_ms(Some(7_000)),
+            None
+        );
     }
 
     #[tokio::test]

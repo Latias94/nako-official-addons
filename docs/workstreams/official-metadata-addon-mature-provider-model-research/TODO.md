@@ -1,7 +1,7 @@
 # Official Metadata Addon Mature Provider Model Research - TODO
 
 Status: Complete
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## M0 - Research Lane Setup
 
@@ -46,4 +46,7 @@ Last updated: 2026-05-25
   Validation: `cargo fmt --all -- --check`; `git diff --check`; `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`.
   Review: Confirm no production code changed in this research lane unless explicitly justified.
   Evidence: `git diff --name-status fbd8546..HEAD`; `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`; `cargo fmt --all -- --check`; `git diff --check`.
-  Handoff: DONE. Research lane closed; open a follow-on implementation workstream for provider fact resolver plus external ID capability catalog when ready to implement.
+  Handoff: DONE. Research lane closed. The follow-on provider fact resolver and
+  external ID capability catalog workstream was later completed; see
+  `REFACTOR_CANDIDATES.md` for the 2026-05-29 status update and remaining
+  follow-ons.

@@ -1,7 +1,24 @@
 # Official Metadata Addon Mature Provider Model Research - Findings
 
-Status: Draft
-Last updated: 2026-05-25
+Status: Historical Research With 2026-05-29 Status Notes
+Last updated: 2026-05-29
+
+## Status Note
+
+This file preserves the original 2026-05-25 research findings. Several local
+architecture gaps identified below have since been closed:
+
+- `engine::resolver` now clusters provider facts by provider identity and shared
+  external IDs before ranking.
+- Provider catalog entries now expose executable `ProviderExternalIdCapability`
+  descriptors used by query parsing and resolver clustering.
+- `ProviderFieldPolicy` now feeds merged-cluster fusion, with request-level and
+  default AV policy support.
+- `ProviderHttpOperationPolicy` now carries retry-after, safe-cache, and
+  throttle intent as explicit provider operation facts.
+
+Remaining follow-ons are host policy context, artwork source separation,
+matching strategy refinement, and only-if-needed cache/throttle execution state.
 
 ## Reference Inventory
 

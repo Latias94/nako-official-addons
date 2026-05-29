@@ -1,31 +1,25 @@
-use nako_addon_protocol::{
-    ADDON_PROTOCOL_VERSION, ADDON_SUBTITLE_REQUEST_SCHEMA, ADDON_SUBTITLE_RESPONSE_SCHEMA,
-    AddonAuth, AddonConfigurationSchema, AddonEntryPointDeclaration, AddonEntryPointKind,
-    AddonHostedPageDeclaration, AddonManifest, AddonResource, AddonResourceDeclaration, AddonScope,
-};
+use nako_addon_protocol::AddonManifest;
+use nako_official_addon_catalog::subtitle_provider;
 
 use crate::Config;
 
-pub const ADDON_ID: &str = "nako.official.subtitle-provider";
-pub const ADDON_NAME: &str = "Nako Subtitle Provider";
 pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_CONTAINER_BASE_URL: &str = "http://nako-subtitle-provider:9140";
-pub const DESCRIPTION: &str =
-    "Official Nako subtitle provider sidecar for read-only subtitle candidate discovery.";
-pub const CONFIG_SCHEMA_ID: &str = "nako.official.subtitle-provider.config.v1";
-pub const SUBTITLE_RESOURCE_PATH: &str = "/subtitle";
-pub const SUBTITLE_REQUEST_SCHEMA: &str = ADDON_SUBTITLE_REQUEST_SCHEMA;
-pub const SUBTITLE_RESPONSE_SCHEMA: &str = ADDON_SUBTITLE_RESPONSE_SCHEMA;
-pub const DIAGNOSTICS_ENTRY_POINT_ID: &str = "subtitle-provider-diagnostics";
-pub const DIAGNOSTICS_HOSTED_PAGE_ID: &str = "diagnostics";
-pub const DIAGNOSTICS_LABEL: &str = "Subtitle Provider Diagnostics";
-pub const DIAGNOSTICS_PATH: &str = "/ui/diagnostics";
-pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
-pub const DEFAULT_MAX_ATTEMPTS: u32 = 1;
+
+pub(crate) use subtitle_provider::{
+    ADDON_ID, ADDON_NAME, DEFAULT_CONTAINER_BASE_URL, DIAGNOSTICS_PATH, SUBTITLE_REQUEST_SCHEMA,
+    SUBTITLE_RESOURCE_PATH,
+};
 
 #[must_use]
 pub fn addon_manifest(config: &Config) -> AddonManifest {
-    manifest_with_base_url(config.base_url.clone(), config)
+    subtitle_provider::manifest_with_version(
+        ADDON_VERSION,
+        config.base_url.clone(),
+        config.fixture_provider_enabled,
+        config.default_language.clone(),
+        config.default_limit,
+        config.max_limit,
+    )
 }
 
 #[must_use]
@@ -34,92 +28,14 @@ pub fn container_manifest() -> AddonManifest {
         base_url: DEFAULT_CONTAINER_BASE_URL.to_owned(),
         ..Config::default()
     };
-    manifest_with_base_url(DEFAULT_CONTAINER_BASE_URL, &config)
-}
-
-fn manifest_with_base_url(base_url: impl Into<String>, config: &Config) -> AddonManifest {
-    AddonManifest {
-        id: ADDON_ID.to_owned(),
-        name: ADDON_NAME.to_owned(),
-        version: ADDON_VERSION.to_owned(),
-        protocol_version: ADDON_PROTOCOL_VERSION.to_owned(),
-        base_url: base_url.into(),
-        description: Some(DESCRIPTION.to_owned()),
-        resources: vec![AddonResourceDeclaration {
-            kind: AddonResource::Subtitle,
-            path: SUBTITLE_RESOURCE_PATH.to_owned(),
-            input_schema: Some(SUBTITLE_REQUEST_SCHEMA.to_owned()),
-            output_schema: Some(SUBTITLE_RESPONSE_SCHEMA.to_owned()),
-            required_scopes: vec![AddonScope::SubtitleRead],
-            timeout_ms: Some(DEFAULT_TIMEOUT_MS),
-            max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        }],
-        entry_points: vec![AddonEntryPointDeclaration::hosted_page(
-            DIAGNOSTICS_ENTRY_POINT_ID,
-            AddonEntryPointKind::Diagnostics,
-            DIAGNOSTICS_LABEL,
-            DIAGNOSTICS_PATH,
-            DIAGNOSTICS_HOSTED_PAGE_ID,
-            vec![AddonScope::SubtitleRead],
-        )],
-        hosted_pages: vec![AddonHostedPageDeclaration::new(
-            DIAGNOSTICS_HOSTED_PAGE_ID,
-            DIAGNOSTICS_LABEL,
-            DIAGNOSTICS_PATH,
-            vec![AddonScope::SubtitleRead],
-        )],
-        configuration_schema: Some(configuration_schema(config)),
-        secret_reference_fields: Vec::new(),
-        event_subscriptions: Vec::new(),
-        tasks: Vec::new(),
-        auth: AddonAuth::None,
-        default_timeout_ms: Some(DEFAULT_TIMEOUT_MS),
-        default_max_attempts: Some(DEFAULT_MAX_ATTEMPTS),
-        scopes: vec![AddonScope::SubtitleRead],
-    }
-}
-
-fn configuration_schema(config: &Config) -> AddonConfigurationSchema {
-    AddonConfigurationSchema::new(
-        CONFIG_SCHEMA_ID,
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "providers": {
-                    "type": "object",
-                    "properties": {
-                        "fixture": {
-                            "type": "boolean",
-                            "default": config.fixture_provider_enabled
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "default_language": {
-                    "type": "string",
-                    "default": config.default_language
-                },
-                "default_limit": {
-                    "type": "integer",
-                    "default": config.default_limit,
-                    "minimum": 1,
-                    "maximum": config.max_limit
-                },
-                "max_limit": {
-                    "type": "integer",
-                    "default": config.max_limit,
-                    "minimum": 1,
-                    "maximum": 200
-                }
-            },
-            "additionalProperties": false
-        }),
-    )
+    addon_manifest(&config)
 }
 
 #[cfg(test)]
 mod tests {
-    use nako_addon_protocol::{AddonResource, AddonScope, validate_manifest};
+    use nako_addon_protocol::{
+        ADDON_SUBTITLE_RESPONSE_SCHEMA, AddonResource, AddonScope, validate_manifest,
+    };
 
     use super::*;
 
@@ -140,7 +56,7 @@ mod tests {
         );
         assert_eq!(
             manifest.resources[0].output_schema.as_deref(),
-            Some(SUBTITLE_RESPONSE_SCHEMA)
+            Some(ADDON_SUBTITLE_RESPONSE_SCHEMA)
         );
         assert_eq!(manifest.scopes, vec![AddonScope::SubtitleRead]);
         assert_eq!(manifest.hosted_pages.len(), 1);

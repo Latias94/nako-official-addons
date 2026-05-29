@@ -1,12 +1,16 @@
 # Official Metadata Addon Mature Provider Model Research - Handoff
 
 Status: Complete
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## Current State
 
 This research lane is complete. It compared `nako-metadata-scraper` against
 mature metadata provider systems before the next fearless refactor.
+
+Status refresh on 2026-05-29: the original resolver and external ID capability
+follow-on has been completed, and field-policy fusion is now baseline
+architecture. This handoff no longer recommends reopening that P0 lane.
 
 Reference repositories were cloned under ignored `repo-ref/` paths:
 
@@ -25,8 +29,12 @@ No next task in this lane.
 
 Recommended follow-on:
 
-- Open a separate implementation workstream for a sidecar-local provider fact
-  resolver plus external ID capability catalog.
+- Design host policy context with Nako core before coding sidecar filtering for
+  provider order, requested fields, locked-field summaries, or refresh intent.
+- Split an artwork source pipeline only when more artwork kinds, local-first
+  behaviour, or provider-specific artwork priority need it.
+- Add actual cache/throttle execution state only if provider limits make it
+  necessary; provider operation intent is already explicit.
 - Keep host-owned responsibilities out of the sidecar: refresh state, locked
   fields, local metadata, local artwork priority, and final field merge policy.
 
@@ -38,8 +46,8 @@ Recommended follow-on:
   architecture template.
 - Emby is not part of the initial reference set because public source freshness
   is uncertain.
-- The resolver follow-on must preserve provenance; merged candidates must not
-  hide which provider supplied which field or external ID.
+- Resolver/fusion regressions must preserve provenance; merged candidates must
+  not hide which provider supplied which field or external ID.
 
 ## Validation
 

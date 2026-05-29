@@ -1,25 +1,36 @@
 # Official Metadata Addon Mature Provider Model Research - Refactor Candidates
 
-Status: Draft
-Last updated: 2026-05-25
+Status: Historical Recommendations With 2026-05-29 Status Update
+Last updated: 2026-05-29
 
 ## Decision Summary
 
-The next fearless refactor should not copy Jellyfin's full host-side provider
+The core decision still stands: do not copy Jellyfin's full host-side provider
 manager into `nako-metadata-scraper`. Jellyfin's strongest lesson is the
 boundary: providers own external integration, while the host owns library
 policy, refresh state, locked fields, local assets, and final writes.
 
-For the official addon, the highest-leverage next lane is a sidecar-local
-resolver and fact model. It can improve correctness without requiring Nako core
-to adopt Jellyfin semantics immediately.
+The original P0 recommendations from 2026-05-25 are no longer future work.
+They have been implemented by follow-on lanes:
 
-Recommended next implementation lane:
+- `official-metadata-addon-provider-fact-resolver` added resolver-backed
+  orchestration and provider external ID capabilities.
+- `official-metadata-addon-av-provider-policy`,
+  `official-metadata-addon-field-policy-locality-deepening`, and related AV
+  policy lanes added request/default provider field policy and provider-owned
+  default field preferences.
+- `official-addons-architecture-boundary-hardening` added explicit provider
+  HTTP operation policy for retry-after, safe-cache, and throttle intent.
 
-1. Add a resolver that clusters provider facts by external IDs before ranking.
-2. Preserve current `/metadata` response shape while enriching evidence.
-3. Follow with provider external-ID capabilities and provider network/cache
-   policy once the resolver has a stable fact boundary.
+Recommended next implementation lanes now:
+
+1. Design host policy context with Nako core before adding more sidecar policy.
+2. Split internal artwork source handling when more artwork kinds or local-first
+   behaviour become product requirements.
+3. Add matching strategy objects only when year/title fallback behaviour needs
+   shared evidence and scoring.
+4. Add actual cache/throttle execution state only when provider limits make it
+   necessary; the operation policy input boundary already exists.
 
 ## Current Architecture Snapshot
 
@@ -33,8 +44,12 @@ Recommended next implementation lane:
   diagnostics, config loader, and builder.
 - Search flow: provider-local enrichment first tries direct external ID lookup
   and then title-variant search through `search_policy`.
-- Ranking flow: orchestration ranks isolated provider candidates, sorts them,
-  exact-dedupes `(provider, provider_id)`, and truncates.
+- Ranking flow: orchestration resolves provider candidates through
+  `engine::resolver`, clusters exact provider identities and shared external
+  IDs, then ranks resolved clusters while preserving provider provenance.
+- Field-policy flow: request-level/default `ProviderFieldPolicy` can fuse
+  fields inside compatible merged clusters, while host locked-field and final
+  apply policy remain outside the sidecar.
 - Artwork flow: artwork is attached to metadata candidates and selected by
   metadata confidence plus image area.
 - Writeback flow: explicit metadata/artwork writeback payloads go through Nako
@@ -44,8 +59,10 @@ Recommended next implementation lane:
 
 ## Ranking Scale
 
-- P0: Should be the next implementation workstream or a direct prerequisite.
-- P1: Valuable after P0, or useful if the P0 lane naturally exposes the seam.
+- P0: Historical category for the original next implementation work. No open P0
+  remains in this document after the 2026-05-29 status refresh.
+- P1: Valuable after the completed resolver/capability/field-policy baseline,
+  or useful if current product pressure exposes a clear boundary.
 - P2: Correct direction, but should wait for Nako core protocol or product
   pressure.
 - P3: Not recommended now.
@@ -54,29 +71,39 @@ Recommended next implementation lane:
 
 | Rank | Candidate | Recommendation |
 | --- | --- | --- |
-| P0 | Provider fact resolver and cross-provider merge | Do next |
-| P0 | External ID capability catalog | Do with or directly after resolver |
+| Done | Provider fact resolver and cross-provider merge | Implemented; keep as baseline |
+| Done | External ID capability catalog | Implemented; keep descriptors executable by tests |
+| Done | Provider field-policy fusion baseline | Implemented; host locked-field policy remains core-owned |
 | P1 | Host policy context boundary | Design with Nako core before coding |
-| P1 | Provider network/cache/rate policy | Implement after resolver if provider drift or limits become costly |
+| P1 | Provider network/cache/rate policy | Operation intent exists; add execution state only if provider limits require it |
 | P1 | Internal artwork source pipeline | Implement before expanding artwork kinds |
 | P2 | Matching strategy objects | Fold into resolver once baseline merge exists |
 | P2 | Refresh/local metadata boundary | Keep sidecar light; mostly a Nako core workstream |
 | P3 | Full Jellyfin-style provider manager in the addon | Do not do |
 
-## P0 - Provider Fact Resolver And Cross-Provider Merge
+There is no remaining open P0 from this research document.
 
-Problem:
+## Completed - Provider Fact Resolver And Cross-Provider Merge
+
+Status update:
+
+- Implemented in `official-metadata-addon-provider-fact-resolver`.
+- `engine::resolver` clusters provider identities and shared external IDs.
+- `engine::orchestration` now ranks resolved clusters while preserving the
+  `/metadata` response shape.
+- The risks below are now regression concerns, not blockers to start the work.
+
+Original problem:
 
 - `orchestration::suggest_candidates` ranks provider candidates independently
   and deduplicates only exact `(provider, provider_id)` pairs.
 - Mature systems merge search results when provider IDs overlap, so multiple
   providers can contribute facts to one real media candidate.
 
-Proposed change:
+Implemented change:
 
-- Add `engine::resolver`.
-- Introduce an internal `ProviderFactSet` or `ResolvedCandidateCluster` shape
-  that can carry:
+- Added `engine::resolver`.
+- Introduced internal resolver fact and cluster shapes that carry:
   - provider source and provider ID;
   - normalized external IDs;
   - metadata patch proposal;
@@ -108,7 +135,7 @@ Risk controls:
 - Start with exact external ID equality only.
 - Preserve current patch output shape until resolver behaviour is covered.
 
-Suggested gates:
+Original suggested gates:
 
 - Unit test: two provider candidates sharing IMDB ID become one ranked cluster.
 - Unit test: candidates with conflicting provider IDs remain separate.
@@ -116,9 +143,16 @@ Suggested gates:
 - `cargo nextest run -p nako-metadata-scraper --no-fail-fast`
 - `cargo fmt --all -- --check`
 
-## P0 - External ID Capability Catalog
+## Completed - External ID Capability Catalog
 
-Problem:
+Status update:
+
+- Implemented in `official-metadata-addon-provider-fact-resolver`.
+- Provider catalog entries now own `ProviderExternalIdCapability` descriptors.
+- Runtime query parsing and resolver clustering consume those capabilities.
+- Legacy top-level aliases are derived for compatibility.
+
+Original problem:
 
 - Provider catalog entries currently expose top-level aliases for parsing input
   fields, but not a structured description of IDs each provider accepts,
@@ -126,16 +160,16 @@ Problem:
 - Direct lookup support is provider-local code, so the orchestrator cannot use
   provider capabilities to plan lookup or deduplication.
 
-Proposed change:
+Implemented change:
 
-- Extend provider descriptors with `ExternalIdCapability` records:
+- Extended provider descriptors with `ProviderExternalIdCapability` records:
   - provider namespace;
   - value kind: numeric, URL, opaque string;
   - accepted for direct lookup;
   - emitted in facts;
   - translated through provider API;
   - top-level payload aliases.
-- Let `MetadataQuery` parsing continue accepting aliases, but feed the resolver
+- `MetadataQuery` parsing continues accepting aliases, but feeds the resolver
   from capabilities rather than hard-coded assumptions.
 
 Affected modules:
@@ -157,11 +191,26 @@ Risk controls:
 - Use capabilities in query parsing or resolver tests immediately, so the
   descriptor is behaviour, not metadata decoration.
 
-Suggested gates:
+Original suggested gates:
 
 - Unit test: descriptor aliases parse top-level IDs exactly as today.
 - Unit test: resolver can identify shared IDs from provider-emitted facts.
 - Unit test: invalid numeric IDs are rejected by value kind rules.
+
+## Completed - Provider Field Policy Baseline
+
+Status update:
+
+- Request-level `provider_field_policy` exists.
+- Default AV field-policy presets exist.
+- Provider-owned default field preferences now feed the registry, so central
+  provider order tables are no longer the architecture boundary.
+- `engine::fusion` applies provider field policy inside merged clusters.
+
+Remaining boundary:
+
+- Nako core still owns locked fields, local metadata priority, and final merge
+  or writeback application policy.
 
 ## P1 - Host Policy Context Boundary
 
@@ -210,6 +259,15 @@ Suggested gates:
   authority.
 
 ## P1 - Provider Network, Cache, And Rate Policy
+
+Status update:
+
+- `ProviderHttpOperationPolicy` now carries retry-after, safe-cache, and
+  throttle intent through HTTP runtime requests.
+- TMDB detail enrichment declares authenticated safe-cache and provider-local
+  throttle facts.
+- The remaining future work is execution state for cache/throttle, not the
+  policy description boundary.
 
 Problem:
 
