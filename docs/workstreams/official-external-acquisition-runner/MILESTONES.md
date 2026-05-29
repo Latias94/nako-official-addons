@@ -23,6 +23,8 @@ Exit criteria:
 
 ## M2 - Fixture Runner Sidecar
 
+Status: Complete via OEAR-030.
+
 Exit criteria:
 
 - Fixture/no-op runner sidecar validates manifest, health, action submission,

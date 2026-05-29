@@ -26,6 +26,9 @@ as one suite later:
   and `resource_link_check`: fixture-backed search, link classification, result
   fusion, and conservative safe link checks with the read-only
   `acquisition_search_read` / `acquisition_link_check_read` scopes;
+- users can install `nako-external-acquisition-runner` for the fixture/no-op
+  external acquisition action task with host-owned opaque references,
+  idempotency, cancellation, status, progress, and redaction-safe diagnostics;
 - users can install `nako-subtitle-provider` for read-only fixture subtitle
   candidate discovery through the `subtitle` resource and `subtitle_read`
   scope;
@@ -64,6 +67,8 @@ as one suite later:
 - `crates/nako-resource-search`: Rust HTTP sidecar that implements the
   first-class `resource_search` resource for external acquisition candidate
   discovery.
+- `crates/nako-external-acquisition-runner`: Rust HTTP sidecar that implements
+  the fixture/no-op external acquisition action task.
 - `crates/nako-subtitle-provider`: Rust HTTP sidecar that implements a
   read-only `subtitle` resource foundation with fixture candidates.
 
@@ -77,6 +82,7 @@ cargo run -p nako-notification-bridge
 cargo run -p nako-chromecast-renderer
 cargo run -p nako-dlna-renderer
 cargo run -p nako-resource-search
+cargo run -p nako-external-acquisition-runner
 cargo run -p nako-subtitle-provider
 ```
 
@@ -88,6 +94,7 @@ Default listen addresses:
 - resource search: `127.0.0.1:9130`
 - subtitle provider: `127.0.0.1:9140`
 - DLNA renderer: `127.0.0.1:9150`
+- external acquisition runner: `127.0.0.1:9160`
 
 Provider defaults:
 
@@ -159,16 +166,16 @@ Provider defaults:
   `NAKO_RESOURCE_SEARCH_PANSOU_PROVIDER_ENABLED=1` plus
   `NAKO_RESOURCE_SEARCH_PANSOU_BASE_URL` to query an externally managed
   PanSou-compatible `/api/search` service.
+- `external_acquisition_runner.fixture`: enabled by default. It accepts
+  selected-link, intake-candidate, or runner-job opaque references and returns
+  deterministic no-op action state without external downloader network calls.
 - `subtitle_provider.fixture`: enabled by default. It returns deterministic
   inline subtitle candidates for local smoke and never writes subtitle files.
 
-External acquisition execution is not implemented in this repository yet.
-`nako-resource-search` only returns search/link-check facts. A future External
-Acquisition Runner must be a separate action addon that consumes host-owned
-selected-link references, owns idempotency/progress/cancellation/audit, and does
-not make search providers directly executable. Cloud-drive save or transfer is
-also out of scope until Nako defines separate account-secret, consent, and audit
-policy.
+`nako-resource-search` only returns search/link-check facts. External
+acquisition execution is a separate action addon so search providers are not
+directly executable. Cloud-drive save or transfer is out of scope until Nako
+defines separate account-secret, consent, and audit policy.
 
 Bulk Metadata Scrape is tracked in
 `docs/workstreams/official-metadata-addon-bulk-task-design/` and is now
@@ -193,6 +200,9 @@ pwsh -File addons/dlna-renderer/smoke.local.ps1 `
 
 pwsh -File addons/resource-search/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9130
+
+pwsh -File addons/external-acquisition-runner/smoke.local.ps1 `
+  -SidecarBaseUrl http://127.0.0.1:9160
 
 pwsh -File addons/subtitle-provider/smoke.local.ps1 `
   -SidecarBaseUrl http://127.0.0.1:9140

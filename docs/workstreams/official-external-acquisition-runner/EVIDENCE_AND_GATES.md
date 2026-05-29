@@ -25,7 +25,10 @@ Runner sidecar gates, once the crate exists:
 
 ```powershell
 cargo fmt -p nako-external-acquisition-runner -- --check
+cargo check -p nako-external-acquisition-runner --tests
 cargo nextest run -p nako-external-acquisition-runner --no-fail-fast
+cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings
+pwsh -File addons/external-acquisition-runner/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:9160
 ```
 
 Nako host dispatch gates:
@@ -57,6 +60,14 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
 | 2026-05-29 | OEAR-020 | `git diff --check -- crates/nako-addon-protocol/src/lib.rs crates/nako-api/src/extension.rs crates/nako-api/src/admin_contract.rs crates/nako-official-addon-catalog/src/lib.rs crates/nako-server/src/app/addons/catalog.rs crates/nako-server/src/app/addons.rs crates/nako-server/src/http/tests/addons.rs` | Pass |
 | 2026-05-29 | OEAR-020 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
 | 2026-05-29 | OEAR-020 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
+| 2026-05-29 | OEAR-030 | `cargo fmt -p nako-external-acquisition-runner -- --check` | Pass |
+| 2026-05-29 | OEAR-030 | `cargo check -p nako-external-acquisition-runner --tests` | Pass |
+| 2026-05-29 | OEAR-030 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 11 tests cover manifest, health, action envelope, idempotency, status, cancellation, and redaction |
+| 2026-05-29 | OEAR-030 | `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
+| 2026-05-29 | OEAR-030 | `cargo build -p nako-external-acquisition-runner`; start debug sidecar on `127.0.0.1:19160`; `pwsh -File addons/external-acquisition-runner/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:19160` | Pass |
+| 2026-05-29 | OEAR-030 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
+| 2026-05-29 | OEAR-030 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
+| 2026-05-29 | OEAR-030 | `git diff --check -- Cargo.toml Cargo.lock README.md crates/nako-external-acquisition-runner addons/external-acquisition-runner docs/workstreams/official-external-acquisition-runner` | Pass |
 
 ## Known Constraints
 

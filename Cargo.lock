@@ -844,6 +844,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nako-external-acquisition-runner"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "axum",
+ "nako-addon-protocol",
+ "nako-official-addon-catalog",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nako-metadata-scraper"
 version = "0.1.0-alpha.2"
 dependencies = [

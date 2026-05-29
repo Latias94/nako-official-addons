@@ -1,0 +1,16 @@
+services:
+  nako-external-acquisition-runner:
+    build:
+      context: ../..
+      dockerfile: addons/external-acquisition-runner/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
+    image: ghcr.io/latias94/nako-external-acquisition-runner:0.1.0-alpha.2
+    restart: unless-stopped
+    environment:
+      NAKO_EXTERNAL_ACQUISITION_RUNNER_LISTEN_ADDR: "0.0.0.0:9160"
+      NAKO_EXTERNAL_ACQUISITION_RUNNER_BASE_URL: "http://nako-external-acquisition-runner:9160"
+      NAKO_EXTERNAL_ACQUISITION_RUNNER_FIXTURE_PROFILE_ENABLED: "true"
+      NAKO_EXTERNAL_ACQUISITION_RUNNER_DEFAULT_PROFILE_ID: "fixture"
+    ports:
+      - "9160:9160"

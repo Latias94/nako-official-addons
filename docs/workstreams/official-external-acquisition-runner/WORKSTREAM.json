@@ -9,7 +9,7 @@
     "nako-official-addons",
     "../nako"
   ],
-  "current_task": "OEAR-030",
+  "current_task": "OEAR-040",
   "goals": [
     "Define a dedicated external acquisition action contract separate from resource search.",
     "Add a fixture-first official runner sidecar before production downloader adapters.",

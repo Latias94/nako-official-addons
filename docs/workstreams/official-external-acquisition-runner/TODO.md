@@ -31,7 +31,7 @@ Task IDs use the `OEAR` prefix.
 
 ## M2 - Fixture Runner Sidecar
 
-- [ ] OEAR-030 [owner=codex] [deps=OEAR-020] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
+- [x] OEAR-030 [owner=codex] [deps=OEAR-020] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
   Goal: Add a fixture/no-op official sidecar that implements manifest, health,
   action submission, status query, cancellation, and safe diagnostics for the
   new contract.

@@ -1,0 +1,79 @@
+{
+  "id": "nako.official.external-acquisition-runner",
+  "name": "Nako External Acquisition Runner",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-external-acquisition-runner:9160",
+  "description": "Official Nako external acquisition action sidecar for dispatching host-approved selected-link or intake-candidate references to configured runner profiles.",
+  "resources": [],
+  "entry_points": [
+    {
+      "id": "external-acquisition-runner-diagnostics",
+      "kind": "diagnostics",
+      "label": "External Acquisition Runner Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["acquisition_action_run"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "External Acquisition Runner Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["acquisition_action_run"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.external-acquisition-runner.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "default_runner_profile_id": {
+          "type": "string",
+          "default": "fixture"
+        },
+        "profiles": {
+          "type": "object",
+          "properties": {
+            "fixture": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "mode": {
+                  "type": "string",
+                  "default": "noop"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "secret_reference_fields": [],
+  "event_subscriptions": [],
+  "tasks": [
+    {
+      "id": "external-acquisition-action",
+      "name": "External acquisition action",
+      "path": "/tasks/external-acquisition-action",
+      "input_schema": "nako.addon.external_acquisition_action.request.v1",
+      "output_schema": "nako.addon.external_acquisition_action.response.v1",
+      "description": "Dispatches a host-approved external acquisition action to a configured runner profile",
+      "required_scopes": ["acquisition_action_run"],
+      "timeout_ms": 30000,
+      "max_attempts": 1
+    }
+  ],
+  "auth": "none",
+  "default_timeout_ms": 30000,
+  "default_max_attempts": 1,
+  "scopes": ["acquisition_action_run"]
+}
