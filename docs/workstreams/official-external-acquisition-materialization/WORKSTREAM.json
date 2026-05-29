@@ -1,0 +1,46 @@
+{
+  "slug": "official-external-acquisition-materialization",
+  "title": "Official External Acquisition Materialization",
+  "status": "active",
+  "created": "2026-05-29",
+  "last_updated": "2026-05-29",
+  "task_prefix": "OEAM",
+  "repositories": [
+    "nako-official-addons",
+    "../nako"
+  ],
+  "current_task": "OEAM-020",
+  "goals": [
+    "Define the host-to-runner materialization contract for external acquisition actions.",
+    "Keep raw acquisition material out of browser submissions, task input/output, diagnostics, and admin responses.",
+    "Bind materialization to approved action context, audit, idempotency, runner profile, and short-lived host policy.",
+    "Prove the contract through Nako host tests and official fixture runner tests before implementing Transmission."
+  ],
+  "non_goals": [
+    "Transmission adapter implementation",
+    "qBittorrent, aria2, ed2k, or HTTP downloader implementation",
+    "Cloud-drive transfer",
+    "Browser raw URL or password resubmission",
+    "Durable password/code secret storage",
+    "Addon Manager lifecycle",
+    "Product UI route work"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-external-acquisition-materialization/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-external-acquisition-materialization/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-external-acquisition-materialization/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-external-acquisition-materialization/HANDOFF.md"
+    }
+  ]
+}
