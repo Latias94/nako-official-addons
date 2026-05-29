@@ -1,7 +1,7 @@
 {
   "slug": "official-external-acquisition-runner",
   "title": "Official External Acquisition Runner",
-  "status": "active",
+  "status": "complete",
   "created": "2026-05-29",
   "last_updated": "2026-05-29",
   "task_prefix": "OEAR",
@@ -9,7 +9,7 @@
     "nako-official-addons",
     "../nako"
   ],
-  "current_task": "OEAR-060",
+  "current_task": null,
   "goals": [
     "Define a dedicated external acquisition action contract separate from resource search.",
     "Add a fixture-first official runner sidecar before production downloader adapters.",

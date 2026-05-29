@@ -1,6 +1,6 @@
 # Official External Acquisition Runner - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## M0 - Scope And Contract Freeze
@@ -53,6 +53,8 @@ Exit criteria:
   lane.
 
 ## M5 - Closeout
+
+Status: Complete via OEAR-060.
 
 Exit criteria:
 

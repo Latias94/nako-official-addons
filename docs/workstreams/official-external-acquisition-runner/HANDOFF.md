@@ -1,11 +1,11 @@
 # Official External Acquisition Runner - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Current State
 
-OEAR-050 is complete. The protocol now has a dedicated External Acquisition
+The lane is closed. The protocol now has a dedicated External Acquisition
 Action task contract, the official Nako catalog exposes an
 `nako.official.external-acquisition-runner` descriptor, and this repository has
 a fixture/no-op runner sidecar that implements manifest, health, action
@@ -17,14 +17,14 @@ This lane starts contract/fixture-first. It should not begin with qBittorrent,
 Transmission, aria2, or HTTP downloader code until the host-owned action
 envelope and fixture runner semantics are stable.
 
-## Active Task
+## Closed Task
 
 - Task ID: OEAR-060
 - Owner: planner
 - Files: `docs/workstreams/official-external-acquisition-runner`
 - Validation: final focused gates pass or blockers are explicit external
   constraints
-- Status: READY
+- Status: DONE
 
 ## Decisions Since Open
 
@@ -59,17 +59,19 @@ envelope and fixture runner semantics are stable.
   intake-candidate materialization for the sidecar. The current action payload
   deliberately contains only opaque refs.
 
-## Blockers
+## Residual Risks And Follow-Ons
 
-- None for OEAR-060.
+- No blockers remain for this workstream.
 - Product UI may depend on the separate web acquisition intake lane later.
 - `cargo clippy -p nako-server --tests -- -D warnings` is blocked by existing
   unrelated lint debt and was not used as a completion gate for OEAR-040.
-- Real adapter implementation should be split after closeout unless OEAR-060
-  explicitly keeps this lane open for the materialization contract.
+- Split a follow-on lane for host-to-runner selected-link/intake-candidate
+  materialization. This must define authorization, expiry, audit, and redaction
+  before a real adapter can consume approved link material.
+- Split a follow-on lane for `official-external-acquisition-transmission-adapter`
+  after materialization exists.
 
 ## Next Recommended Action
 
-Start OEAR-060 closeout. Verify the lane, record residual risks, and split the
-Transmission adapter plus host-to-runner materialization contract into a
-follow-on lane if this workstream should close.
+Review and push the completed lane. Start the materialization follow-on before
+implementing the Transmission adapter.

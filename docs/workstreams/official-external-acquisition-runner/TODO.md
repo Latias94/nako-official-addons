@@ -1,6 +1,6 @@
 # Official External Acquisition Runner - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 Task IDs use the `OEAR` prefix.
@@ -66,7 +66,7 @@ Task IDs use the `OEAR` prefix.
 
 ## M5 - Closeout
 
-- [ ] OEAR-060 [owner=planner] [deps=OEAR-020,OEAR-030,OEAR-040,OEAR-050] [scope=docs/workstreams/official-external-acquisition-runner]
+- [x] OEAR-060 [owner=planner] [deps=OEAR-020,OEAR-030,OEAR-040,OEAR-050] [scope=docs/workstreams/official-external-acquisition-runner]
   Goal: Verify the lane, record residual risks, and split real runner adapter
   work if it is not completed in this lane.
   Validation: final focused gates pass or blockers are explicit external

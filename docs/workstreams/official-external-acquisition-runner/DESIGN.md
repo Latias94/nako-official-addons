@@ -1,6 +1,6 @@
 # Official External Acquisition Runner - Design
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Problem
@@ -27,6 +27,15 @@ progress, terminal states, and redaction rules.
 - First implementation is contract/fixture-first. Real runner adapters are added
   only after the host/action envelope is stable.
 - The read-only resource-search scope remains read-only.
+
+## Closeout State
+
+The lane is closed with the contract, fixture sidecar, host dispatch guard, and
+adapter decision complete. Real adapter implementation is intentionally split:
+Transmission is the first production adapter candidate, but it requires a
+separate host-to-runner materialization contract so the sidecar can resolve
+approved opaque selected-link or intake-candidate references without accepting
+browser-submitted raw URLs.
 
 ## Scope
 

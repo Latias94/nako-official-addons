@@ -1,6 +1,6 @@
 # Official External Acquisition Runner - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Standing Gates
@@ -81,6 +81,12 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
 | 2026-05-29 | OEAR-050 | Reviewed official qBittorrent WebUI API, Transmission RPC spec, and aria2 manual; recorded adapter decision in `JOURNAL/2026-05-29-oear-050.md`. | Pass |
 | 2026-05-29 | OEAR-050 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
 | 2026-05-29 | OEAR-050 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
+| 2026-05-29 | OEAR-060 | `cargo fmt -p nako-external-acquisition-runner -- --check` | Pass |
+| 2026-05-29 | OEAR-060 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 11 tests |
+| 2026-05-29 | OEAR-060 | `cargo check -p nako-server --tests` | Pass |
+| 2026-05-29 | OEAR-060 | `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast` | Pass: 4 tests |
+| 2026-05-29 | OEAR-060 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
+| 2026-05-29 | OEAR-060 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
 
 ## Known Constraints
 
@@ -91,8 +97,8 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
   over its route tasks.
 - Current repo may still be ahead of origin depending on push state; verify
   before committing.
-- No real runner adapter should be added before the fixture/no-op contract and
-  host dispatch semantics pass focused gates.
+- No real runner adapter should be added before the follow-on host-to-runner
+  materialization contract is defined.
 - `cargo clippy -p nako-server --tests -- -D warnings` and `--no-deps`
   currently fail on pre-existing unrelated lint debt across `nako-server` and
   dependencies, so clippy is not used as an OEAR-040 completion gate.
