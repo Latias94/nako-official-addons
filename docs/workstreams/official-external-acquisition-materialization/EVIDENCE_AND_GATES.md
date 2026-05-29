@@ -83,6 +83,14 @@ complete.
 | 2026-05-29 | OEAM-040 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 16 tests |
 | 2026-05-29 | OEAM-040 | `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 | 2026-05-29 | OEAM-040 | `git diff --check -- Cargo.lock crates/nako-external-acquisition-runner addons/external-acquisition-runner` | Pass with line-ending warning |
+| 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-server addon_external_acquisition_action_materializes_through_fake_sidecar_without_leaks --no-fail-fast` | Pass: 1 test |
+| 2026-05-29 | OEAM-050 | `cargo fmt -p nako-server` | Pass |
+| 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast` | Pass: 5 tests |
+| 2026-05-29 | OEAM-050 | `cargo fmt -p nako-server -- --check` | Pass |
+| 2026-05-29 | OEAM-050 | `git diff --check -- crates/nako-server/src/http/tests/addons.rs` | Pass with line-ending warning |
+| 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-server addon_external_acquisition --no-fail-fast` | Pass: 7 tests |
+| 2026-05-29 | OEAM-050 | `cargo check -p nako-server --tests` | Pass |
+| 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 16 tests |
 
 ## Known Constraints
 

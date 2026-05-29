@@ -67,6 +67,8 @@ Primary gates:
 
 ## M4 - End-To-End Contract Proof
 
+Status: Complete via OEAM-050.
+
 Exit criteria:
 
 - Host dispatch, sidecar materialization, and task output mapping work together.

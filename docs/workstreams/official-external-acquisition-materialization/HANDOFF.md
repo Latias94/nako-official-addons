@@ -5,30 +5,29 @@ Last updated: 2026-05-29
 
 ## Current State
 
-OEAM-040 is complete. OEAR closed with a safe external acquisition action
+OEAM-050 is complete. OEAR closed with a safe external acquisition action
 envelope and fixture runner, but production adapters remained blocked because
 sidecars could only see opaque `selected_link_ref` or `intake_candidate_ref`
 values. ADR 0054 records the materialization boundary, `nako-addon-protocol`
 defines the route and DTOs, `nako-server` exposes the runtime route with
 host-side action-context validation and candidate resolution, and the official
 fixture runner now uses a materialization client abstraction without adding a
-production downloader adapter.
+production downloader adapter. The Nako server suite also proves the full
+direct-dispatch to sidecar materialization loop through an actual runtime HTTP
+callback during a running task.
 
 ## Active Task
 
-- Task ID: OEAM-050
-- Owner: codex
-- Files: `../nako/crates/nako-server/src/http/tests`,
-  `crates/nako-external-acquisition-runner`
-- Validation: `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast`;
-  `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`
+- Task ID: OEAM-060
+- Owner: planner
+- Files: `docs/workstreams/official-external-acquisition-materialization`
+- Validation: fresh focused gates from `EVIDENCE_AND_GATES.md`;
+  `python -m json.tool docs/workstreams/official-external-acquisition-materialization/WORKSTREAM.json`;
+  `git diff --check -- docs/workstreams/official-external-acquisition-materialization`
 - Status: READY
-- Review: Prove the host dispatch, sidecar materialization request, and redacted
-  task completion compose across the fake host/sidecar boundary. Do not add
-  Transmission or external downloader calls.
-- Evidence: integration tests proving raw URI, password, materialization ref,
-  selected-link refs, and idempotency keys do not leak through observed task
-  responses.
+- Review: Run review/verification, record residual risks, and decide whether
+  Transmission adapter work is unblocked or needs one more split.
+- Evidence: closeout note plus fresh verification rows.
 
 ## Decisions Since Open
 
@@ -66,14 +65,19 @@ production downloader adapter.
   `NAKO_EXTERNAL_ACQUISITION_RUNNER_ADDON_TOKEN`.
 - Runner responses expose only safe materialization facts: client kind, link
   type, password presence, and materialization-ref presence.
+- OEAM-050 fake sidecar runs behind direct dispatch, calls the real Nako runtime
+  materialization endpoint with `NakoRuntimeClient`, and returns only safe
+  external acquisition action output.
+- The e2e test asserts the completed host task response does not contain the raw
+  material URI, candidate ref, idempotency key, or materialization ref.
 
 ## Blockers
 
-- No blockers for OEAM-050.
+- No blockers for OEAM-060.
 - Transmission adapter work remains blocked until this lane closes or records a
   concrete remaining materialization blocker.
 
 ## Next Recommended Action
 
-Implement OEAM-050: prove the full approved-action-to-sidecar materialization
-flow across Nako server and official runner test boundaries.
+Implement OEAM-060: close the lane, record residual risks, and recommend the
+Transmission adapter follow-on.

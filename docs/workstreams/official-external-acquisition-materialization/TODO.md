@@ -64,7 +64,7 @@ Task IDs use the `OEAM` prefix.
 
 ## M4 - End-To-End Contract Proof
 
-- [ ] OEAM-050 [owner=codex] [deps=OEAM-030,OEAM-040] [scope=../nako/crates/nako-server/src/http/tests,crates/nako-external-acquisition-runner]
+- [x] OEAM-050 [owner=codex] [deps=OEAM-030,OEAM-040] [scope=../nako/crates/nako-server/src/http/tests,crates/nako-external-acquisition-runner]
   Goal: Prove the full flow from approved action dispatch to sidecar
   materialization and redacted host task completion using a fake host/sidecar
   boundary.
@@ -73,7 +73,9 @@ Task IDs use the `OEAM` prefix.
   Review: Task JSON, diagnostics, and admin-visible responses must remain free
   of raw acquisition material.
   Evidence: integration tests and evidence log entries.
-  Handoff: Continue with OEAM-060.
+  Handoff: Continue with OEAM-060. Nako server now has a fake sidecar e2e test
+  that materializes during direct dispatch through the actual runtime HTTP
+  route, and the official runner regression suite remains green.
 
 ## M5 - Closeout And Adapter Handoff
 
