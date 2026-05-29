@@ -25,12 +25,12 @@ Task IDs use the `OETA` prefix.
 
 ## M2 - Transmission RPC Client Harness
 
-- [ ] OETA-030 [owner=codex] [deps=OETA-020] [scope=crates/nako-external-acquisition-runner/src/transmission.rs]
+- [x] OETA-030 [owner=codex] [deps=OETA-020] [scope=crates/nako-external-acquisition-runner/src/transmission.rs]
   Goal: Add a typed Transmission RPC client boundary with fake transport tests for session-id retry, torrent add, duplicate, get, start, stop, and redacted error behavior.
   Validation: `cargo nextest run -p nako-external-acquisition-runner transmission --no-fail-fast`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings`.
   Review: Keep raw RPC payloads and credentials out of public errors and Debug output.
   Evidence: fake RPC tests and client module.
-  Handoff: Continue with OETA-040.
+  Handoff: DONE. Transmission RPC client and fake transport tests cover session-id retry, add/duplicate, get, start, stop, and redacted errors. Continue with OETA-040.
 
 ## M3 - Enqueue Through Materialization
 

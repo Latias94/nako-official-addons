@@ -12,10 +12,11 @@
     "../nako"
   ],
   "problem": "The official external acquisition runner has a safe host materialization boundary but still lacks a production Transmission adapter.",
-  "current_task": "OETA-030",
+  "current_task": "OETA-040",
   "completed_tasks": [
     "OETA-010",
-    "OETA-020"
+    "OETA-020",
+    "OETA-030"
   ],
   "authoritative_docs": [
     {
@@ -48,7 +49,8 @@
   ],
   "evidence": [
     "OETA-010 opened the lane from OEAM closeout and froze Transmission as the first production adapter without reopening raw action input.",
-    "OETA-020 added opt-in Transmission profile configuration, secret-reference manifest schema, official catalog schema, redaction-safe diagnostics, and config/manifest tests."
+    "OETA-020 added opt-in Transmission profile configuration, secret-reference manifest schema, official catalog schema, redaction-safe diagnostics, and config/manifest tests.",
+    "OETA-030 added a typed Transmission RPC client boundary with fake transport coverage for session-id retry, add/duplicate, get, start, stop, and redacted errors."
   ],
   "adr_refs": [
     "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
@@ -56,7 +58,7 @@
   ],
   "continue_policy": {
     "default_action": "continue_current_task",
-    "next_task": "OETA-030",
-    "notes": "Continue with the Transmission RPC client harness. Do not wire runner enqueue until session-id retry, add/duplicate/get/start/stop, and redacted error behavior are proven through fake RPC tests."
+    "next_task": "OETA-040",
+    "notes": "Continue with enqueue integration through host materialization and Transmission add. Keep status/control mapping for OETA-050."
   }
 }

@@ -3,6 +3,7 @@ pub mod manifest;
 pub mod materialization;
 pub mod routes;
 pub mod runner;
+pub mod transmission;
 
 pub use config::Config;
 pub use routes::router;

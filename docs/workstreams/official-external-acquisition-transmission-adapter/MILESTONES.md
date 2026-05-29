@@ -25,9 +25,9 @@ Exit criteria:
 
 Exit criteria:
 
-- Fake RPC tests cover session-id retry and core methods.
-- Client errors expose safe categories only.
-- The transport boundary is testable without a real daemon.
+- [x] Fake RPC tests cover session-id retry and core methods.
+- [x] Client errors expose safe categories only.
+- [x] The transport boundary is testable without a real daemon.
 
 ## M3 - Enqueue
 
