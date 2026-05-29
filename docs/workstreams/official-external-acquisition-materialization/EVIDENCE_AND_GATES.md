@@ -65,6 +65,12 @@ complete.
 | 2026-05-29 | OEAM-020 | `cargo nextest run -p nako-addon-protocol external_acquisition --no-fail-fast` | Pass: 4 tests |
 | 2026-05-29 | OEAM-020 | `cargo nextest run -p nako-addon-protocol --no-fail-fast` | Pass: 26 tests |
 | 2026-05-29 | OEAM-020 | `git diff --check -- crates/nako-addon-protocol/src/lib.rs docs/adr/0054-external-acquisition-materialization-boundary.md docs/adr/README.md` | Pass with line-ending warnings |
+| 2026-05-29 | OEAM-030 | `cargo nextest run -p nako-server external_acquisition_materialization --no-fail-fast` | Pass: 3 tests cover selected-link materialization, intake-candidate materialization, and cloud-drive link-type rejection |
+| 2026-05-29 | OEAM-030 | `cargo fmt -p nako-server` | Pass |
+| 2026-05-29 | OEAM-030 | `cargo fmt -p nako-server -- --check` | Pass |
+| 2026-05-29 | OEAM-030 | `cargo check -p nako-server --tests` | Pass |
+| 2026-05-29 | OEAM-030 | `cargo nextest run -p nako-server addon_external_acquisition_action --no-fail-fast` | Pass: 4 regression tests |
+| 2026-05-29 | OEAM-030 | `git diff --check -- crates/nako-server/src/app/addons/external_acquisition.rs crates/nako-server/src/app/addons/task_runtime.rs crates/nako-server/src/http/addons.rs crates/nako-server/src/http/tests/addons.rs crates/nako-server/src/http/tests/mod.rs` | Pass with line-ending warnings |
 
 ## Known Constraints
 

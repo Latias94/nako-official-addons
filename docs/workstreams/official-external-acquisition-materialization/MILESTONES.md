@@ -33,6 +33,8 @@ Primary gates:
 
 ## M2 - Host Resolver And Policy Gate
 
+Status: Complete via OEAM-030.
+
 Exit criteria:
 
 - Nako can materialize approved `selected_link_ref` and `intake_candidate_ref`

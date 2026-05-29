@@ -32,7 +32,7 @@ Task IDs use the `OEAM` prefix.
 
 ## M2 - Host Resolver And Policy Gate
 
-- [ ] OEAM-030 [owner=codex] [deps=OEAM-020] [scope=../nako/crates/nako-server/src/app/addons,../nako/crates/nako-server/src/app/acquisition_intake,../nako/crates/nako-server/src/app/resource_search]
+- [x] OEAM-030 [owner=codex] [deps=OEAM-020] [scope=../nako/crates/nako-server/src/app/addons,../nako/crates/nako-server/src/app/acquisition_intake,../nako/crates/nako-server/src/app/resource_search]
   Goal: Implement Nako-side materialization resolution for approved
   `selected_link_ref` and `intake_candidate_ref` targets, including TTL,
   operation checks, audit binding, profile binding, and redaction.
@@ -43,7 +43,8 @@ Task IDs use the `OEAM` prefix.
   `query_status` must not.
   Evidence: server tests proving allowed, expired, mismatched, and redacted
   cases.
-  Handoff: Continue with OEAM-040.
+  Handoff: Continue with OEAM-040. Resolver support landed in `../nako` without
+  modifying resource-search or acquisition-intake storage schemas.
 
 ## M3 - Official Runner Materialization Client
 
