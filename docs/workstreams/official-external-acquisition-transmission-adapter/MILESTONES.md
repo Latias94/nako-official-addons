@@ -52,11 +52,11 @@ Exit criteria:
 
 Exit criteria:
 
-- Route and health diagnostics expose safe profile readiness.
-- Full package tests pass.
-- Local smoke remains fixture-only by default.
-- Optional live Transmission smoke instructions are documented but not required
-  for CI.
+- [x] Route and health diagnostics expose safe profile readiness.
+- [x] Full package tests pass.
+- [x] Local smoke remains fixture-only by default.
+- [x] Optional live Transmission smoke instructions are documented but not
+  required for CI.
 
 ## M6 - Closeout
 

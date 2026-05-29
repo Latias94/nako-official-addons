@@ -52,12 +52,12 @@ Task IDs use the `OETA` prefix.
 
 ## M5 - Route, Smoke, And Redaction Integration
 
-- [ ] OETA-060 [owner=codex] [deps=OETA-050] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
+- [x] OETA-060 [owner=codex] [deps=OETA-050] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
   Goal: Ensure routes, health diagnostics, README, and local smoke behavior clearly distinguish fixture and Transmission profiles.
   Validation: `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`; `pwsh -File addons/external-acquisition-runner/smoke.local.ps1`.
   Review: Default local smoke must remain fixture-only and must not require a live Transmission daemon.
   Evidence: route tests, smoke output notes, and README.
-  Handoff: Continue with OETA-070.
+  Handoff: DONE. Route-level Transmission enqueue is covered with fake materialization/RPC, full runner tests pass, and local smoke remains fixture-only. Continue with OETA-070.
 
 ## M6 - Closeout
 

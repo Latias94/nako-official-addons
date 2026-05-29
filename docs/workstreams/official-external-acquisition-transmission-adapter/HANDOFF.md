@@ -16,6 +16,9 @@ mapped duplicate add to `AlreadyExists`, rejected unsupported material safely,
 and returned only `transmission:<hash_string>` plus safe facts.
 OETA-050 mapped `query_status`, `pause`, `resume`, and `cancel` from
 `transmission:<hash_string>` without rematerializing target links.
+OETA-060 added route-level Transmission enqueue coverage with fake
+materialization/RPC and verified full package tests plus fixture-only local
+smoke.
 
 The adapter should consume `official-external-acquisition-materialization`
 rather than reopening raw action input. The fixture profile remains the default
@@ -23,22 +26,20 @@ for local smoke and contract tests.
 
 ## Active Task
 
-- Task ID: OETA-060
-- Owner: codex
+- Task ID: OETA-070
+- Owner: planner
 - Status: READY
-- Scope: Route, smoke, README, full package regression, and integration
-  documentation.
+- Scope: Workstream closeout.
 
 ## Next Recommended Action
 
-Run OETA-060:
+Run OETA-070:
 
-1. Run the full runner package test suite.
-2. Run local fixture smoke and keep it fixture-only by default.
-3. Update README/smoke notes if they do not clearly describe Transmission as
-   opt-in and fake-RPC-tested.
-4. Record that live Transmission smoke is optional.
-5. Prepare closeout inputs for OETA-070.
+1. Re-run final JSON and diff checks.
+2. Confirm no code-quality or redaction blockers remain.
+3. Add `CLOSEOUT.md`.
+4. Mark the workstream complete.
+5. Commit closeout and proceed to Android ACFH-090.
 
 ## Guardrails
 

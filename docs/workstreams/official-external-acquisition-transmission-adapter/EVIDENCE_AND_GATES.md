@@ -31,6 +31,7 @@ done. Normal CI must not require a live Transmission daemon.
 | 2026-05-29 | OETA-030 | `cargo nextest run -p nako-external-acquisition-runner transmission --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 | 2026-05-29 | OETA-040 | `cargo nextest run -p nako-external-acquisition-runner transmission enqueue materialization --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 | 2026-05-29 | OETA-050 | `cargo nextest run -p nako-external-acquisition-runner transmission status cancel pause resume --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
+| 2026-05-29 | OETA-060 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings`; `pwsh -File addons/external-acquisition-runner/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:19160` | Pass |
 
 ## Live Smoke Policy
 
@@ -40,3 +41,17 @@ record only safe facts: endpoint scheme/host category, profile id, operation,
 hash presence, state category, and redacted error code. Do not record raw
 magnet URIs, HTTP URLs, passwords, credentials, RPC session ids, or full RPC
 payloads.
+
+## OETA-060 Smoke Output
+
+The local smoke on 2026-05-29 used fixture mode on
+`http://127.0.0.1:19160`:
+
+```text
+[sidecar] Manifest OK: nako.official.external-acquisition-runner@0.1.0-alpha.2
+[sidecar] Health status: ok; active_profiles=1
+[sidecar] Enqueue OK: runner_job_ref=fixture-job-1
+[sidecar] Status OK: state=running
+[sidecar] Cancel OK: state=cancelled
+[ok] Local external acquisition runner smoke completed.
+```

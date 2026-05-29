@@ -186,6 +186,9 @@ mod tests {
     use crate::{
         manifest::ACTION_REQUEST_SCHEMA,
         materialization::{ExternalAcquisitionMaterializer, MaterializationError},
+        transmission::{
+            TransmissionAddOutcome, TransmissionAddOutcomeKind, TransmissionRunnerClient,
+        },
     };
 
     #[tokio::test]
@@ -333,6 +336,75 @@ mod tests {
                 selected_link_ref: "selected-link-secret".to_owned()
             }
         );
+    }
+
+    #[tokio::test]
+    async fn action_task_transmission_profile_enqueues_with_redacted_output() {
+        let materializer =
+            RecordingMaterializer::with_response(transmission_materialization_response());
+        let transmission =
+            RecordingTransmissionClient::new(TransmissionAddOutcomeKind::Added, "ABCDEF123456");
+        let mut config = Config::default();
+        config.transmission.enabled = true;
+        let runner = FixtureRunner::with_clients(
+            config.clone(),
+            Arc::new(materializer.clone()),
+            Some(Arc::new(transmission.clone())),
+        );
+        let response = router_with_runner(config, runner)
+            .oneshot(task_request(transmission_action_payload(
+                AddonExternalAcquisitionOperation::Enqueue,
+                serde_json::json!({
+                    "kind": "selected_link",
+                    "selected_link_ref": "selected-link-secret"
+                }),
+                "idem-route-transmission-secret",
+            )))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let response: AddonTaskResponse = serde_json::from_str(&text).unwrap();
+        let output: AddonExternalAcquisitionActionResponse =
+            serde_json::from_value(response.output).unwrap();
+
+        assert_eq!(
+            output.status,
+            AddonExternalAcquisitionActionStatus::Accepted
+        );
+        assert_eq!(
+            output.runner_job_ref.as_deref(),
+            Some("transmission:ABCDEF123456")
+        );
+        assert_eq!(
+            output.safe_facts.get("profile_kind").map(String::as_str),
+            Some("transmission")
+        );
+        assert_eq!(
+            output.safe_facts.get("runner_outcome").map(String::as_str),
+            Some("added")
+        );
+        assert_eq!(
+            transmission.filenames(),
+            vec!["magnet:?xt=urn:btih:route-secret".to_owned()]
+        );
+        assert_eq!(materializer.requests().len(), 1);
+
+        for forbidden in [
+            "magnet:?xt=urn:btih:route-secret",
+            "route-materialization-secret",
+            "selected-link-secret",
+            "idem-route-transmission-secret",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "route Transmission response leaked forbidden term: {forbidden}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -559,6 +631,21 @@ mod tests {
         })
     }
 
+    fn transmission_action_payload(
+        operation: AddonExternalAcquisitionOperation,
+        target_ref: serde_json::Value,
+        idempotency_key: &str,
+    ) -> serde_json::Value {
+        serde_json::json!({
+            "schema": ACTION_REQUEST_SCHEMA,
+            "target_ref": target_ref,
+            "runner_profile_id": "transmission",
+            "idempotency_key": idempotency_key,
+            "operation": operation.as_str(),
+            "audit_ref": "audit-ref"
+        })
+    }
+
     async fn task_output(
         response: axum::response::Response,
     ) -> AddonExternalAcquisitionActionResponse {
@@ -620,6 +707,83 @@ mod tests {
                 password: Some("route-secret-code".to_owned()),
             },
             safe_facts: BTreeMap::new(),
+        }
+    }
+
+    fn transmission_materialization_response() -> AddonExternalAcquisitionMaterializationResponse {
+        AddonExternalAcquisitionMaterializationResponse {
+            schema: nako_addon_protocol::ADDON_EXTERNAL_ACQUISITION_MATERIALIZATION_RESPONSE_SCHEMA
+                .to_owned(),
+            materialization_ref: "route-materialization-secret".to_owned(),
+            target_ref: AddonExternalAcquisitionTargetRef::SelectedLink {
+                selected_link_ref: "selected-link-secret".to_owned(),
+            },
+            expires_at: "2026-05-29T00:01:00.000Z".to_owned(),
+            material: AddonExternalAcquisitionMaterializedLink {
+                link_type: AddonResourceLinkType::Magnet,
+                uri: "magnet:?xt=urn:btih:route-secret".to_owned(),
+                password: None,
+            },
+            safe_facts: BTreeMap::new(),
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct RecordingTransmissionClient {
+        filenames: Arc<StdMutex<Vec<String>>>,
+        outcome_kind: TransmissionAddOutcomeKind,
+        hash_string: String,
+    }
+
+    impl RecordingTransmissionClient {
+        fn new(outcome_kind: TransmissionAddOutcomeKind, hash_string: &str) -> Self {
+            Self {
+                filenames: Arc::default(),
+                outcome_kind,
+                hash_string: hash_string.to_owned(),
+            }
+        }
+
+        fn filenames(&self) -> Vec<String> {
+            self.filenames.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl TransmissionRunnerClient for RecordingTransmissionClient {
+        async fn add_torrent(
+            &self,
+            filename: String,
+        ) -> Result<TransmissionAddOutcome, crate::transmission::TransmissionError> {
+            self.filenames.lock().unwrap().push(filename);
+            Ok(TransmissionAddOutcome {
+                kind: self.outcome_kind,
+                hash_string: self.hash_string.clone(),
+            })
+        }
+
+        async fn get_torrent(
+            &self,
+            _hash_string: &str,
+        ) -> Result<
+            Option<crate::transmission::TransmissionTorrentFacts>,
+            crate::transmission::TransmissionError,
+        > {
+            Ok(None)
+        }
+
+        async fn start_torrent(
+            &self,
+            _hash_string: &str,
+        ) -> Result<(), crate::transmission::TransmissionError> {
+            Ok(())
+        }
+
+        async fn stop_torrent(
+            &self,
+            _hash_string: &str,
+        ) -> Result<(), crate::transmission::TransmissionError> {
+            Ok(())
         }
     }
 }
