@@ -1,6 +1,6 @@
 # Official External Acquisition Transmission Adapter - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## M0 - Lane Open
@@ -62,7 +62,7 @@ Exit criteria:
 
 Exit criteria:
 
-- Evidence gates are fresh.
-- Residual risks and follow-ons are explicit.
-- Workstream status moves to complete/closed.
-- The next goal item can proceed to Android ACFH-090.
+- [x] Evidence gates are fresh.
+- [x] Residual risks and follow-ons are explicit.
+- [x] Workstream status moves to complete/closed.
+- [x] The next goal item can proceed to Android ACFH-090.

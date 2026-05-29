@@ -1,6 +1,6 @@
 # Official External Acquisition Transmission Adapter - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 Task IDs use the `OETA` prefix.
@@ -61,9 +61,9 @@ Task IDs use the `OETA` prefix.
 
 ## M6 - Closeout
 
-- [ ] OETA-070 [owner=planner] [deps=OETA-020,OETA-030,OETA-040,OETA-050,OETA-060] [scope=docs/workstreams/official-external-acquisition-transmission-adapter]
+- [x] OETA-070 [owner=planner] [deps=OETA-020,OETA-030,OETA-040,OETA-050,OETA-060] [scope=docs/workstreams/official-external-acquisition-transmission-adapter]
   Goal: Verify the lane, record residual risks, and split any follow-on adapter breadth.
   Validation: final focused gates from `EVIDENCE_AND_GATES.md`; `git diff --check`; workstream JSON validation.
   Review: No blocking workstream, redaction, or adapter boundary findings remain.
   Evidence: `CLOSEOUT.md`, `EVIDENCE_AND_GATES.md`, `WORKSTREAM.json`, and `HANDOFF.md`.
-  Handoff: Continue to Android ACFH-090 after this lane closes.
+  Handoff: DONE. Lane closed. Continue to Android ACFH-090.

@@ -1,6 +1,6 @@
 # Official External Acquisition Transmission Adapter - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Current State
@@ -18,7 +18,7 @@ OETA-050 mapped `query_status`, `pause`, `resume`, and `cancel` from
 `transmission:<hash_string>` without rematerializing target links.
 OETA-060 added route-level Transmission enqueue coverage with fake
 materialization/RPC and verified full package tests plus fixture-only local
-smoke.
+smoke. OETA-070 closed the lane with residual risks and follow-ons explicit.
 
 The adapter should consume `official-external-acquisition-materialization`
 rather than reopening raw action input. The fixture profile remains the default
@@ -26,20 +26,27 @@ for local smoke and contract tests.
 
 ## Active Task
 
-- Task ID: OETA-070
+- Task ID: none
 - Owner: planner
-- Status: READY
-- Scope: Workstream closeout.
+- Status: DONE
+- Scope: none
 
 ## Next Recommended Action
 
-Run OETA-070:
+No active task remains.
 
-1. Re-run final JSON and diff checks.
-2. Confirm no code-quality or redaction blockers remain.
-3. Add `CLOSEOUT.md`.
-4. Mark the workstream complete.
-5. Commit closeout and proceed to Android ACFH-090.
+Next goal item: continue to `../nako` Android ACFH-090 closeout.
+
+## Residual Risks
+
+- Live Transmission daemon smoke was not required or run; fake RPC tests are the
+  completion gate.
+- `cancel` currently stops the Transmission torrent but does not remove torrent
+  metadata or data. Deletion/removal policy should be a separate lane.
+- Password-bearing material is rejected for Transmission until a policy for
+  adapter-safe password/code use exists.
+- qBittorrent, aria2, HTTP downloader, Usenet, and cloud-drive behavior remain
+  separate follow-ons.
 
 ## Guardrails
 

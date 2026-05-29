@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "official-external-acquisition-transmission-adapter",
   "title": "Official External Acquisition Transmission Adapter",
-  "status": "active",
+  "status": "complete",
   "created": "2026-05-29",
   "last_updated": "2026-05-29",
   "scope_kind": "execution",
@@ -12,14 +12,15 @@
     "../nako"
   ],
   "problem": "The official external acquisition runner has a safe host materialization boundary but still lacks a production Transmission adapter.",
-  "current_task": "OETA-070",
+  "current_task": null,
   "completed_tasks": [
     "OETA-010",
     "OETA-020",
     "OETA-030",
     "OETA-040",
     "OETA-050",
-    "OETA-060"
+    "OETA-060",
+    "OETA-070"
   ],
   "authoritative_docs": [
     {
@@ -41,6 +42,10 @@
     {
       "role": "handoff",
       "path": "docs/workstreams/official-external-acquisition-transmission-adapter/HANDOFF.md"
+    },
+    {
+      "role": "closeout",
+      "path": "docs/workstreams/official-external-acquisition-transmission-adapter/CLOSEOUT.md"
     }
   ],
   "gates": [
@@ -56,15 +61,16 @@
     "OETA-030 added a typed Transmission RPC client boundary with fake transport coverage for session-id retry, add/duplicate, get, start, stop, and redacted errors.",
     "OETA-040 routed Transmission enqueue through host materialization and Transmission add, rejected unsupported material safely, and returned only redaction-safe facts plus transmission hash refs.",
     "OETA-050 mapped Transmission status and control operations from runner job refs without rematerializing target links.",
-    "OETA-060 added route-level Transmission enqueue coverage, full runner regression, clippy/fmt evidence, and fixture-only local smoke evidence."
+    "OETA-060 added route-level Transmission enqueue coverage, full runner regression, clippy/fmt evidence, and fixture-only local smoke evidence.",
+    "OETA-070 closed the lane after final JSON and diff checks, with residual risks and follow-ons recorded."
   ],
   "adr_refs": [
     "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
     "../nako/docs/adr/0054-external-acquisition-materialization-boundary.md"
   ],
   "continue_policy": {
-    "default_action": "continue_current_task",
-    "next_task": "OETA-070",
-    "notes": "Close the lane after final JSON and diff checks. Live Transmission daemon smoke remains optional, not a blocking gate."
+    "default_action": "closed",
+    "next_task": null,
+    "notes": "This lane is complete. Continue the overall goal with ../nako android-client-follow-on-hardening ACFH-090."
   }
 }

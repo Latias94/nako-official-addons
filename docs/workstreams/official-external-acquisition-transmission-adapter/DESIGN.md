@@ -1,6 +1,6 @@
 # Official External Acquisition Transmission Adapter - Design
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Why This Lane Exists

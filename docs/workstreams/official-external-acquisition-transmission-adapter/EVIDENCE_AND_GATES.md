@@ -1,6 +1,6 @@
 # Official External Acquisition Transmission Adapter - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Gate Policy
@@ -32,6 +32,7 @@ done. Normal CI must not require a live Transmission daemon.
 | 2026-05-29 | OETA-040 | `cargo nextest run -p nako-external-acquisition-runner transmission enqueue materialization --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 | 2026-05-29 | OETA-050 | `cargo nextest run -p nako-external-acquisition-runner transmission status cancel pause resume --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings` | Pass |
 | 2026-05-29 | OETA-060 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`; `cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings`; `pwsh -File addons/external-acquisition-runner/smoke.local.ps1 -SidecarBaseUrl http://127.0.0.1:19160` | Pass |
+| 2026-05-29 | OETA-070 | `python -m json.tool docs/workstreams/official-external-acquisition-transmission-adapter/WORKSTREAM.json`; `git diff --check -- docs/workstreams/official-external-acquisition-transmission-adapter` | Pass |
 
 ## Live Smoke Policy
 
