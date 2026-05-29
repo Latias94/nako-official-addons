@@ -1,0 +1,19 @@
+services:
+  nako-chromecast-renderer:
+    build:
+      context: ../..
+      dockerfile: addons/chromecast-renderer/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
+    image: ghcr.io/latias94/nako-chromecast-renderer:0.1.0-alpha.2
+    restart: unless-stopped
+    environment:
+      NAKO_CHROMECAST_RENDERER_LISTEN_ADDR: "0.0.0.0:9120"
+      NAKO_CHROMECAST_RENDERER_BASE_URL: "http://nako-chromecast-renderer:9120"
+      NAKO_CHROMECAST_RENDERER_RECEIVER_APP_ID: "CC1AD845"
+      NAKO_CHROMECAST_RENDERER_LIVE_DISCOVERY_ENABLED: "false"
+      NAKO_CHROMECAST_RENDERER_LIVE_CONTROL_ENABLED: "false"
+      # Optional manual devices. Inject through operator config tooling.
+      # NAKO_CHROMECAST_RENDERER_MANUAL_DEVICES_JSON: '[{"stable_device_id":"living-room","display_name":"Living Room TV","host":"192.168.1.50","port":8009}]'
+    ports:
+      - "9120:9120"

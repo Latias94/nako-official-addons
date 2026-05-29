@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-side-effect-writer",
+  "title": "Official Metadata Addon Side Effect Writer",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The official metadata Addon returns suggestions, but it does not yet prove explicit Addon Token backed metadata_write and artwork_write side effects through Nako-owned runtime routes.",
+  "task_prefix": "OMASE",
+  "current_task": null,
+  "completed_tasks": [
+    "OMASE-010",
+    "OMASE-020",
+    "OMASE-030",
+    "OMASE-040",
+    "OMASE-050",
+    "OMASE-060"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-side-effect-writer/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-side-effect-writer/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-side-effect-writer/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-side-effect-writer/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-side-effect-writer/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/config.rs",
+    "crates/nako-metadata-scraper/src/engine",
+    "crates/nako-metadata-scraper/src/providers",
+    "../nako/docs/workstreams/addon-protected-writes",
+    "../nako/docs/workstreams/addon-managed-artwork-artifacts",
+    "../nako/docs/workstreams/managed-artwork-ingest-selection"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md",
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "This lane is complete. Bulk Metadata Scrape / Addon Task follow-on work lives in docs/workstreams/official-metadata-addon-bulk-task-design."
+  }
+}

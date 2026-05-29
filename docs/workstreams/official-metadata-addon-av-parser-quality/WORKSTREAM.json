@@ -1,0 +1,48 @@
+{
+  "id": "official-metadata-addon-av-parser-quality",
+  "title": "Official Metadata Addon AV Parser Quality",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "APQ",
+  "closed_at": "2026-05-26",
+  "current_task": null,
+  "completed_tasks": [
+    "APQ-010",
+    "APQ-020",
+    "APQ-030",
+    "APQ-040"
+  ],
+  "scope": [
+    "crates/nako-metadata-scraper/src/providers/rendered_av.rs",
+    "crates/nako-metadata-scraper/src/providers",
+    "crates/nako-metadata-scraper/README.md",
+    "addons/metadata-scraper/README.md",
+    "docs/workstreams/official-metadata-addon-av-parser-quality"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper rendered_av official_uncensored fc2ppvdb --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper dmm mgstage javbus javlibrary javdb fc2 rendered_av --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-parser-quality/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking internal parser helper APIs are allowed. Public provider IDs and response fields must remain documented.",
+  "top_recommendation": "Parser-quality lane is complete. Future AV provider work should reuse rendered_av structured label helpers with provider-local row selectors and keep live drift checks manual unless adult payloads stay out of CI.",
+  "closeout_summary": "All existing AV provider families now use shared structured label parsing for row-like metadata fields. Full metadata-scraper, fmt, JSON, and diff hygiene gates passed on 2026-05-26.",
+  "references": [
+    "docs/workstreams/official-metadata-addon-av-provider-wave3/",
+    "docs/workstreams/official-metadata-addon-av-mdcx-parity/",
+    "repo-ref/mdcx/"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only. Do not copy source, selectors, regex tables, comments, fixtures, or structure."
+}

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-fact-resolver",
+  "title": "Official Metadata Addon Provider Fact Resolver",
+  "status": "complete",
+  "updated": "2026-05-25",
+  "scope_kind": "execution",
+  "problem": "nako-metadata-scraper ranks isolated provider candidates and only exact-dedupes provider/provider_id pairs, so shared external IDs cannot merge provider facts before final ranking.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-fact-resolver/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-010",
+      "summary": "Provider fact resolver implementation lane opened with license guardrails."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-020",
+      "summary": "Internal resolver model added for provider facts, exact provider identity clustering, shared external ID clustering, and redaction-safe cluster evidence."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-030",
+      "summary": "Metadata orchestration now resolves provider candidates into clusters before final ranking while preserving response compatibility."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-040",
+      "summary": "Provider catalog now owns external ID capabilities for query parsing, legacy alias compatibility, and emitted-ID resolver clustering."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-050",
+      "summary": "Full package gate passed and README docs now describe capability-derived aliases plus shared external-ID candidate resolution."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPFR-060",
+      "summary": "Workstream reviewed, verified, and closed with no immediate follow-on split from this lane."
+    }
+  ],
+  "research_refs": [
+    "docs/workstreams/official-metadata-addon-mature-provider-model-research/FINDINGS.md",
+    "docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Provider fact resolver and external ID capability catalog workstream is complete. Host-owned refresh, locked fields, local metadata, local artwork priority, and final merge/apply policy remain outside this sidecar lane."
+  }
+}

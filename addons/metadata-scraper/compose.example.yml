@@ -1,20 +1,37 @@
 services:
   nako-metadata-scraper:
     build:
-      # Local path dependency mode expects `nako-official-addons/` and `nako/`
-      # to be sibling directories under the build context parent.
-      context: ../../..
-      dockerfile: nako-official-addons/addons/metadata-scraper/Dockerfile
-    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0
+      context: ../..
+      dockerfile: addons/metadata-scraper/Dockerfile
+      additional_contexts:
+        nako: ../../../nako
+    image: ghcr.io/latias94/nako-metadata-scraper:0.1.0-alpha.2
     restart: unless-stopped
     environment:
       NAKO_METADATA_SCRAPER_LISTEN_ADDR: "0.0.0.0:9100"
       NAKO_METADATA_SCRAPER_BASE_URL: "http://nako-metadata-scraper:9100"
       NAKO_METADATA_SCRAPER_LANGUAGE: "en-US"
+      NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED: "true"
+      NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_PROVIDER_BROWSER_WORKER_ENABLED: "true"
+      NAKO_METADATA_SCRAPER_PROVIDER_DOUBAN_ENABLED: "false"
+      NAKO_METADATA_SCRAPER_BROWSER_WORKER_BASE_URL: "http://nako-browser-worker:3000"
+      NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT: "Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.2 (https://github.com/Latias94/nako-official-addons)"
+      # Set only when enabling TMDB. Keep real tokens in your secret manager.
+      # NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN}"
+      # Optional when enabling Bangumi authenticated visibility.
+      # NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN: "${BANGUMI_ACCESS_TOKEN}"
     ports:
       - "9100:9100"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9100/manifest.json >/dev/null"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+
+  nako-browser-worker:
+    build:
+      context: ../browser-worker
+    image: ghcr.io/latias94/nako-browser-worker:0.1.0-alpha.2
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3000"
+    expose:
+      - "3000"

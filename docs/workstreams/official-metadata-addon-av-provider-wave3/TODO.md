@@ -1,0 +1,69 @@
+# Task Ledger
+
+Prefix: OMAV3
+
+## Active
+
+- None.
+
+## Pending
+
+- None.
+
+## Completed
+
+- [x] OMAV3-010 [owner=codex] [deps=-] [scope=docs/workstreams/official-metadata-addon-av-provider-wave3]
+  Goal: Open the durable AV Provider Wave 3 lane with harness, provider breadth, and real-use protection tasks.
+  Validation: `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
+  Review: Confirmed the lane covers all three user-approved streams and keeps MDCx as reference-only.
+  Evidence: PASS on 2026-05-26.
+  Handoff: DONE. OMAV3-020 is active.
+
+- [x] OMAV3-020 [owner=codex] [deps=OMAV3-010] [scope=crates/nako-metadata-scraper/src/providers/rendered_av.rs,crates/nako-metadata-scraper/src/providers/*,crates/nako-metadata-scraper/src/engine]
+  Goal: Build a reusable rendered AV provider fixture harness for parser/mapper/search/direct lookup contracts.
+  Validation: `cargo nextest run -p nako-metadata-scraper rendered_av provider_fixture av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: JavBus, JavLibrary, MGStage, DMM, FC2, and JavDB rendered AV tests now share `RenderedAvFixtureTransport`; provider-local fake transports were removed for those AV providers.
+  Evidence: PASS on 2026-05-26: 33 rendered AV/provider-fixture/AV tests; fmt and diff hygiene passed.
+  Handoff: DONE. OMAV3-030 is active.
+
+- [x] OMAV3-030 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/engine,crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add explicit provider execution protection: request/config-visible budgets, bounded cache/cooldown policy, and redaction-safe reporting.
+  Validation: `cargo nextest run -p nako-metadata-scraper provider_guard bulk runtime provider_execution --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Provider execution policy is explicit in request/config/output; bulk cache/cooldown state is bounded in task output/resume state; browser render proxy/session diagnostics are boolean-only.
+  Evidence: PASS on 2026-05-26: 44 provider_guard/bulk/runtime/provider_execution tests and 207 full package tests; fmt and diff hygiene passed.
+  Handoff: DONE. OMAV3-040 is active.
+
+- [x] OMAV3-040 [owner=codex] [deps=OMAV3-020] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add the first wave 3 provider, preferring Prestige if synthetic fixture mapping proves stable.
+  Validation: `cargo nextest run -p nako-metadata-scraper prestige config registry manifest av --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Prestige is disabled by default, exposes `prestige_id`/`prestige_url` aliases, emits `prestige`, `prestige_url`, and `av_number` external IDs, supports censored-route AV search only, and uses independent JSON API fixtures.
+  Evidence: PASS on 2026-05-26: 62 prestige/config/registry/manifest/AV tests; dedicated Prestige provider fixture tests covered search, direct ID lookup, URL lookup, route skip, official field mapping, artwork, trailer, and proxy runtime config.
+  Handoff: DONE. OMAV3-050 is active.
+
+- [x] OMAV3-050 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add one FC2 long-tail provider after evaluating FC2PPVDB, FC2Hub, and FC2Club for testable value.
+  Validation: `cargo nextest run -p nako-metadata-scraper fc2 av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: FC2PPVDB was selected because it has deterministic article URLs and richer release/runtime/actor/tag/seller/trailer fallback coverage than FC2Hub/FC2Club for this slice; it does not replace the official FC2 provider.
+  Evidence: PASS on 2026-05-26: 68 fc2/AV/config/registry/manifest tests; dedicated FC2PPVDB provider fixture tests covered FC2 route search, explicit ID lookup, explicit URL lookup, route skip, long-tail field mapping, artwork, and trailer separation.
+  Handoff: DONE. OMAV3-060 is active.
+
+- [x] OMAV3-060 [owner=codex] [deps=OMAV3-020,OMAV3-030] [scope=crates/nako-metadata-scraper/src/providers,crates/nako-metadata-scraper/src/config.rs,crates/nako-metadata-scraper/src/manifest.rs,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md]
+  Goal: Add the official uncensored provider trio path for Caribbeancom, 1Pondo, and 10Musume, or split if one site needs a separate lane.
+  Validation: `cargo nextest run -p nako-metadata-scraper caribbean 1pondo 10musume av config registry manifest --no-fail-fast`; `cargo fmt -p nako-metadata-scraper -- --check`
+  Review: Caribbean, 1Pondo, and 10Musume share a deep official-uncensored implementation with independent site descriptors and synthetic rendered HTML fixtures; each is disabled by default, route-gated to uncensored date-style IDs, exposes ID/URL aliases, emits provider URL and `av_number` external IDs, and participates in field quality descriptors.
+  Evidence: PASS on 2026-05-26: 63 caribbean/1pondo/10musume/AV/config/registry/manifest tests; fmt, workstream JSON, and diff hygiene passed.
+  Handoff: DONE. OMAV3-070 is active.
+
+- [x] OMAV3-070 [owner=codex] [deps=OMAV3-040,OMAV3-050,OMAV3-060] [scope=crates/nako-metadata-scraper/src/providers,addons/metadata-scraper/README.md,crates/nako-metadata-scraper/README.md,docs/workstreams/official-metadata-addon-av-provider-wave3]
+  Goal: Run full gates, document provider wave 3 behavior, and close or split remaining provider candidates.
+  Validation: `cargo nextest run -p nako-metadata-scraper --no-fail-fast`; `npm --prefix addons/browser-worker test`; `python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json`; `git diff --check`
+  Review: No provider or protection work remains hidden in handoff notes. ThePornDB, Jav321, region-specific fallbacks, and additional FC2 sources remain explicit follow-up candidates rather than blockers.
+  Evidence: PASS on 2026-05-26: full metadata-scraper package gate passed with 220 tests; browser-worker gate passed with 4 tests; workstream JSON, fmt, and diff hygiene passed.
+  Handoff: DONE. Workstream complete.
+
+## Follow-Up Candidates
+
+- ThePornDB, Jav321, region-specific fallbacks, or additional FC2 sources not
+  selected in this lane.
+- Nako core refresh/locked-field/local metadata/local artwork priority.
+- User-facing review UI, NFO/rename, and actor-image workflows.

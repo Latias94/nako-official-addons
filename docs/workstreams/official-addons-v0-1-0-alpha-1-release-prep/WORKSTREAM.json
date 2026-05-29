@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "slug": "official-addons-v0-1-0-alpha-1-release-prep",
+  "title": "Official Addons v0.1.0-alpha.1 Release Prep",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The metadata addon is functionally ready for an alpha release, but Cargo metadata, license files, examples, manifest versioning, and Docker build caching are not yet release-shaped.",
+  "task_prefix": "OAREL",
+  "current_task": null,
+  "completed_tasks": [
+    "OAREL-010",
+    "OAREL-020",
+    "OAREL-030",
+    "OAREL-040",
+    "OAREL-050"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo metadata --format-version 1 --no-deps",
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "../nako/Cargo.toml",
+    "nako-addon-protocol 0.1.0-alpha.1 on crates.io",
+    "../nako/repo-ref/cargo-chef",
+    "Cargo.toml",
+    "addons/metadata-scraper/Dockerfile"
+  ],
+  "continue_policy": {
+    "default_action": "prepare_release_after_review",
+    "next_task": null,
+    "notes": "Release prep is complete. Next actions are review, commit, tag, and optional image push after user approval."
+  }
+}

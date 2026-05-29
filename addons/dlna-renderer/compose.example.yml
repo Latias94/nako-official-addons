@@ -1,0 +1,15 @@
+services:
+  nako-dlna-renderer:
+    build:
+      context: ../..
+      dockerfile: addons/dlna-renderer/Dockerfile
+    environment:
+      NAKO_DLNA_RENDERER_LISTEN_ADDR: 0.0.0.0:9150
+      NAKO_DLNA_RENDERER_BASE_URL: http://nako-dlna-renderer:9150
+    ports:
+      - "9150:9150"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9150/manifest.json >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5

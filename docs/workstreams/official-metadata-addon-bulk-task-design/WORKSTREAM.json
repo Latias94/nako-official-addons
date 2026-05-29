@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-bulk-task-design",
+  "title": "Official Metadata Addon Bulk Task Design",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "Bulk Metadata Scrape now has a host-owned Addon Task runtime in Nako, so the official addon needs to declare `bulk-metadata-scrape`, implement the task path, and keep the batch planner bounded and redaction-safe.",
+  "task_prefix": "OMAB",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAB-010",
+    "OMAB-020",
+    "OMAB-030",
+    "OMAB-040",
+    "OMAB-050",
+    "OMAB-060",
+    "OMAB-070"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-bulk-task-design/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper manifest bulk --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo clippy -p nako-metadata-scraper --all-targets -- -D warnings",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/engine/bulk.rs",
+    "crates/nako-metadata-scraper/src/routes.rs",
+    "crates/nako-metadata-scraper/src/manifest.rs",
+    "addons/metadata-scraper/manifest.example.json",
+    "README.md",
+    "addons/metadata-scraper/README.md",
+    "docs/workstreams/official-metadata-addon-bulk-task-design/JOURNAL/2026-05-24-omab-060-070-closeout.md"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md",
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "next_task": null,
+    "notes": "Lane complete. Keep any future bulk progress reporting, partial-result warnings, or scheduler-adjacent work in a fresh follow-on lane."
+  }
+}

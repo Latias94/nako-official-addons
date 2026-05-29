@@ -1,0 +1,47 @@
+{
+  "id": "official-metadata-addon-av-theporndb-hash-lookup",
+  "title": "Official Metadata Addon AV ThePornDB Hash Lookup",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "AVTPDBH",
+  "current_task": null,
+  "completed_tasks": [
+    "AVTPDBH-010",
+    "AVTPDBH-020",
+    "AVTPDBH-030"
+  ],
+  "scope": [
+    "crates/nako-metadata-scraper/src/providers/theporndb.rs",
+    "crates/nako-metadata-scraper/src/providers/registry.rs",
+    "crates/nako-metadata-scraper/README.md",
+    "addons/metadata-scraper/README.md",
+    "docs/workstreams/official-metadata-addon-av-theporndb-hash-lookup"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper theporndb registry_exposes_provider_external_id_capabilities registry_derives_legacy_external_id_aliases_from_capabilities --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-theporndb-hash-lookup/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking internal architecture is allowed, but new public hash alias names must be documented.",
+  "references": [
+    "https://api.theporndb.net/specs",
+    "docs/workstreams/official-metadata-addon-av-theporndb-provider/"
+  ],
+  "decision": "Use provider-owned external-id aliases file_oshash and file_phash for this slice; defer MetadataQuery.file_hashes until multi-hash arrays are needed.",
+  "closeout_summary": "Added ThePornDB scene hash lookup through file_oshash/file_phash aliases, calling /scenes/hash/{hash} with OSHASH/PHASH, mapping returned hash rows, documenting usage, and verifying with targeted/full package gates.",
+  "follow_ups": [
+    "Add MetadataQuery.file_hashes for provider-neutral multi-hash arrays.",
+    "Add ThePornDB movie hash lookup once scene/movie intent is explicit."
+  ]
+}

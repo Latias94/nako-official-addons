@@ -1,0 +1,15 @@
+services:
+  nako-subtitle-provider:
+    build:
+      context: ../..
+      dockerfile: addons/subtitle-provider/Dockerfile
+    environment:
+      NAKO_SUBTITLE_PROVIDER_LISTEN_ADDR: 0.0.0.0:9140
+      NAKO_SUBTITLE_PROVIDER_BASE_URL: http://nako-subtitle-provider:9140
+    ports:
+      - "9140:9140"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9140/manifest.json >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5

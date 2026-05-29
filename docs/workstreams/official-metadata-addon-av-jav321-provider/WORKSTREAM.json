@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-av-jav321-provider",
+  "title": "Official Metadata Addon AV Jav321 Provider",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "task_prefix": "OMJ321",
+  "current_task": null,
+  "completed_tasks": [
+    "OMJ321-010",
+    "OMJ321-020",
+    "OMJ321-030",
+    "OMJ321-040"
+  ],
+  "problem": "Jav321 is missing, and adding it without a field-level parser contract risks a provider that returns weak or mismatched AV metadata.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-av-jav321-provider/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-av-jav321-provider/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-av-jav321-provider/EVIDENCE_AND_GATES.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper jav321 http_runtime --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper config registry manifest jav321 --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "python -m json.tool docs/workstreams/official-metadata-addon-av-jav321-provider/WORKSTREAM.json",
+    "git diff --check"
+  ],
+  "evidence": [
+    "docs/workstreams/official-metadata-addon-av-jav321-provider/DESIGN.md",
+    "repo-ref/mdcx/mdcx/crawlers/jav321.py",
+    "repo-ref/mdcx/mdcx/config/v1.py",
+    "cargo nextest run -p nako-metadata-scraper jav321 http_runtime --no-fail-fast: 14 passed, 241 skipped",
+    "cargo nextest run -p nako-metadata-scraper config registry manifest jav321 --no-fail-fast: 40 passed, 215 skipped",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast: 252 passed, 3 skipped",
+    "cargo fmt -p nako-metadata-scraper -- --check: passed",
+    "python -m json.tool docs/workstreams/official-metadata-addon-av-jav321-provider/WORKSTREAM.json: passed",
+    "python -m json.tool addons/metadata-scraper/manifest.example.json: passed",
+    "git diff --check: passed",
+    "live drift jav321=SNOS-212 through http://127.0.0.1:10809: passed with required fields present"
+  ],
+  "references": [
+    "repo-ref/mdcx/mdcx/crawlers/jav321.py",
+    "repo-ref/mdcx/mdcx/config/v1.py"
+  ],
+  "adr_refs": [],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, regex tables, or structure.",
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Closed on 2026-05-27. Continue provider breadth or finer field-policy granularity in a follow-up lane."
+  }
+}

@@ -1,10 +1,10 @@
 {
   "id": "nako.official.metadata-scraper",
   "name": "Nako Metadata Scraper",
-  "version": "0.1.0",
-  "protocol_version": "2026-05-15",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
   "base_url": "http://nako-metadata-scraper:9100",
-  "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and does not write media libraries directly.",
+  "description": "Official Nako metadata scraper sidecar. It returns metadata suggestions and can submit explicit Nako-owned metadata/artwork side effects when configured.",
   "resources": [
     {
       "kind": "metadata",
@@ -40,14 +40,53 @@
       "type": "object",
       "properties": {
         "preferred_language": { "type": "string", "default": "en-US" },
+        "av_provider_preset": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "fast_safe",
+            "official_only",
+            "community_first",
+            "fc2_enhanced",
+            "uncensored_official"
+          ],
+          "default": "manual"
+        },
+        "av_field_policy_preset": {
+          "type": "string",
+          "enum": [
+            "default",
+            "quality_scores",
+            "none"
+          ],
+          "default": "default"
+        },
         "providers": {
           "type": "object",
-          "properties": {
-            "fixture": { "type": "boolean", "default": true },
-            "tmdb": { "type": "boolean", "default": false },
-            "bangumi": { "type": "boolean", "default": false },
-            "douban": { "type": "boolean", "default": false }
-          },
+        "properties": {
+          "fixture": { "type": "boolean", "default": true },
+          "tmdb": { "type": "boolean", "default": false },
+          "bangumi": { "type": "boolean", "default": false },
+          "browser_worker": { "type": "boolean", "default": false },
+          "douban": { "type": "boolean", "default": false },
+          "javdb": { "type": "boolean", "default": false },
+          "dmm": { "type": "boolean", "default": false },
+          "xcity": { "type": "boolean", "default": false },
+          "fc2": { "type": "boolean", "default": false },
+          "fc2ppvdb": { "type": "boolean", "default": false },
+          "caribbean": { "type": "boolean", "default": false },
+          "1pondo": { "type": "boolean", "default": false },
+          "10musume": { "type": "boolean", "default": false },
+          "jav321": { "type": "boolean", "default": false },
+          "javbus": { "type": "boolean", "default": false },
+          "javlibrary": { "type": "boolean", "default": false },
+          "airav": { "type": "boolean", "default": false },
+          "avsox": { "type": "boolean", "default": false },
+          "mgstage": { "type": "boolean", "default": false },
+          "prestige": { "type": "boolean", "default": false },
+          "theporndb": { "type": "boolean", "default": false },
+          "anilist": { "type": "boolean", "default": false }
+        },
           "additionalProperties": false
         }
       },
@@ -55,10 +94,28 @@
     }
   },
   "secret_reference_fields": [],
-  "event_subscriptions": [],
-  "tasks": [],
+  "event_subscriptions": [
+    {
+      "id": "library-scanned",
+      "event_kind": "library.scanned",
+      "path": "/events/library-scanned",
+      "required_scopes": ["webhook_event_read"],
+      "filters": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "bulk-metadata-scrape",
+      "name": "Bulk metadata scrape",
+      "path": "/tasks/bulk-metadata-scrape",
+      "description": "Runs metadata suggestions for a bounded batch of items",
+      "required_scopes": ["automation_run"],
+      "timeout_ms": 30000,
+      "max_attempts": 2
+    }
+  ],
   "auth": "none",
   "default_timeout_ms": 10000,
   "default_max_attempts": 2,
-  "scopes": ["item_metadata_read", "item_metadata_suggest"]
+  "scopes": ["item_metadata_read", "item_metadata_suggest", "automation_run", "webhook_event_read"]
 }

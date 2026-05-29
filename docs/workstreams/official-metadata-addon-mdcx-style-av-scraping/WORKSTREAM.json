@@ -1,0 +1,49 @@
+{
+  "id": "official-metadata-addon-mdcx-style-av-scraping",
+  "title": "Official Metadata Addon MDCx-Style AV Scraping",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "OMAV",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAV-010",
+    "OMAV-020",
+    "OMAV-030",
+    "OMAV-040",
+    "OMAV-060",
+    "OMAV-070",
+    "OMAV-090",
+    "OMAV-100",
+    "OMAV-110",
+    "OMAV-080",
+    "OMAV-050"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper av --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper javdb --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper config --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper registry --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper routes --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "rustfmt --edition 2024 --check <modified nako-metadata-scraper rust files>"
+    ],
+    "diff": [
+      "git diff --check"
+    ]
+  },
+  "references": [
+    "repo-ref/mdcx/mdcx/number.py",
+    "repo-ref/mdcx/mdcx/core/file_crawler.py",
+    "repo-ref/mdcx/mdcx/core/scraper.py",
+    "repo-ref/mdcx/mdcx/crawlers/javdb_new.py"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, or structure.",
+  "follow_up_candidates": []
+}

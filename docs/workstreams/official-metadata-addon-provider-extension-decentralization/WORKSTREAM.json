@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-extension-decentralization",
+  "title": "Official Metadata Addon Provider Extension Decentralization",
+  "status": "complete",
+  "updated": "2026-05-25",
+  "scope_kind": "execution",
+  "problem": "Provider extension still leaks provider-specific config, external ID alias, and rendered-page support facts through central modules.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-extension-decentralization/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-010",
+      "summary": "Workstream opened from user-approved follow-on provider extension refactor Goal."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-020",
+      "summary": "ProviderConfig now uses typed provider config variants and provider-local config structs live in provider modules while public env and manifest compatibility is preserved."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-030",
+      "summary": "Provider catalog entries now own top-level external ID alias and numeric validation descriptors consumed by MetadataScrapeRuntime query parsing."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-040",
+      "summary": "Browser_worker and Douban now share explicit RenderedPageSupportConfig while preserving existing browser-worker env vars and metadata provider semantics."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-050",
+      "summary": "Full nako-metadata-scraper package validation passed and README docs now mention explicit external IDs plus provider-owned top-level aliases."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPED-060",
+      "summary": "Closeout review found no blocking findings; final package, format, JSON, and diff hygiene gates passed with no follow-ons split."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Provider config decentralization, provider-owned external ID aliases, rendered-page support semantics, cleanup, integration, and closeout are complete. No follow-on was split; live smoke and release work remain intentionally out of scope."
+  }
+}

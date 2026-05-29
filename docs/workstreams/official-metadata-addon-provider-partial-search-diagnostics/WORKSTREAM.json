@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-provider-partial-search-diagnostics",
+  "title": "Official Metadata Addon Provider Partial Search Diagnostics",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "execution",
+  "problem": "TMDB and Bangumi preserve usable candidates after partial title-variant search failure, but the surviving candidates do not expose that partial-search state in payload evidence.",
+  "task_prefix": "OMPSD",
+  "current_task": null,
+  "completed_tasks": [
+    "OMPSD-010",
+    "OMPSD-020",
+    "OMPSD-030",
+    "OMPSD-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-provider-partial-search-diagnostics/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-provider-partial-search-diagnostics/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-provider-partial-search-diagnostics/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-provider-partial-search-diagnostics/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-provider-partial-search-diagnostics/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper tmdb bangumi ranking title --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "crates/nako-metadata-scraper/src/providers/bangumi.rs",
+    "crates/nako-metadata-scraper/src/engine/ranking.rs"
+  ],
+  "adr_refs": [
+    "docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on_when_prioritized",
+    "next_task": null,
+    "notes": "Lane complete. Remaining provider-quality follow-ons should be opened separately, especially live provider drift checks or deeper localized alias handling."
+  }
+}

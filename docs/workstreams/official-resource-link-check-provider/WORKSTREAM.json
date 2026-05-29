@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "slug": "official-resource-link-check-provider",
+  "title": "Official Resource Link Check Provider",
+  "status": "closed",
+  "updated": "2026-05-28",
+  "closed_at": "2026-05-28",
+  "scope_kind": "addon-feature",
+  "problem": "The official resource-search addon does not yet implement the first-class resource_link_check contract used by Nako host.",
+  "task_prefix": "ORLCP",
+  "current_task": null,
+  "completed_tasks": [
+    "ORLCP-010",
+    "ORLCP-020",
+    "ORLCP-030",
+    "ORLCP-040",
+    "ORLCP-050"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-resource-link-check-provider/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-resource-link-check-provider/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-resource-link-check-provider/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-resource-link-check-provider/HANDOFF.md"
+    },
+    {
+      "role": "closeout",
+      "path": "docs/workstreams/official-resource-link-check-provider/CLOSEOUT.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-resource-search resource_link_check --no-fail-fast",
+    "cargo nextest run -p nako-resource-search manifest --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "cargo check -p nako-resource-search --tests",
+    "git diff --check"
+  ],
+  "evidence": [
+    "Declared resource_link_check in the official resource-search manifest.",
+    "Added /resource-link-check route and protocol mapping.",
+    "Added conservative ResourceLinkCheckProvider boundary.",
+    "Updated local smoke and docs.",
+    "Verified focused nextest, fmt, check, and diff gates."
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Lane closed. Split Admin UI, downloader, cloud-drive transfer, password persistence, and site-specific authenticated providers."
+  }
+}

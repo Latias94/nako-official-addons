@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "slug": "official-addons-cross-repo-fearless-refactor",
+  "title": "Official Addons Cross-Repo Fearless Refactor",
+  "status": "complete",
+  "updated": "2026-05-24",
+  "scope_kind": "architecture_execution",
+  "problem": "The official metadata addon has reached a point where the next risks are protected-write client drift, broad provider adapters, and missing host-dispatched Addon Task path smoke coverage.",
+  "task_prefix": "OACR",
+  "current_task": "OACR-060",
+  "completed_tasks": [
+    "OACR-010",
+    "OACR-020",
+    "OACR-030",
+    "OACR-040",
+    "OACR-050",
+    "OACR-060"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-addons-cross-repo-fearless-refactor/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-addons-cross-repo-fearless-refactor/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-addons-cross-repo-fearless-refactor/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-addons-cross-repo-fearless-refactor/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-addons-cross-repo-fearless-refactor/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "git status --short --branch",
+    "cargo fmt --all -- --check",
+    "git diff --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "focused ../nako addon-client/protocol gates when OACR-020 touches public client/protocol",
+    "official addon task-path smoke when OACR-050 is implemented"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-24",
+      "task": "OACR-010",
+      "summary": "Architecture review recorded three concrete issues: private protected-write client duplication, broad Bangumi/Douban provider adapters, and missing official Addon Task path smoke."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACR-030",
+      "summary": "Bangumi provider split into facade plus client/enrichment/search/parser/mapper/test_support modules; focused nextest, fmt, and path-scoped diff gates passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACR-040",
+      "summary": "Douban provider split into facade plus client/enrichment/parser/mapper/test_support modules; focused nextest, fmt, and path-scoped diff gates passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACR-020",
+      "summary": "Protected-write runtime DTOs and client helpers moved into public Nako addon protocol/client crates; metadata scraper runtime facade now delegates to shared contracts; focused tests and diff gates passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACR-050",
+      "summary": "Official smoke scripts now support host-dispatched bulk metadata task path checks; parser checks, addon task tests, and Nako server direct-dispatch tests passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OACR-060",
+      "summary": "Workstream closed with final evidence. Live Docker/server smoke remains a documented follow-up because no running server/admin token was owned by this session."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0003-http-addons-before-in-process-plugins.md",
+    "../nako/docs/adr/0015-capability-scoped-http-addons-and-automation-providers.md",
+    "../nako/docs/adr/0020-jellyfin-like-sidecar-addons-with-scoped-api-access.md",
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "depends_on": [
+    "../nako/docs/workstreams/addon-outbound-task-dispatch-credentials",
+    "../nako/docs/workstreams/cross-repo-fearless-boundary-alignment",
+    "docs/workstreams/official-metadata-addon-fearless-refactor",
+    "docs/workstreams/official-metadata-addon-bulk-task-design"
+  ],
+  "non_goals": [
+    "copying reference scraper implementation code",
+    "new provider count for its own sake",
+    "all-in-one media organizer addon",
+    "sidecar process supervision",
+    "package signing or marketplace work",
+    "new official subtitle/NFO/artwork addon implementation"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "next_task": null,
+    "notes": "Core target is complete. Future work should open separate lanes for live smoke execution, crate release/versioning, or new official addon families."
+  }
+}

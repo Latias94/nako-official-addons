@@ -2,33 +2,64 @@ use async_trait::async_trait;
 use nako_addon_protocol::AddonMetadataPatch;
 
 use crate::{
-    engine::{MetadataCandidate, MetadataQuery},
-    providers::{MetadataProvider, evidence},
+    Config,
+    config::{ProviderConfig, ProviderId},
+    engine::{MetadataQuery, ProviderCandidateFacts, ProviderMetadataCandidate, ProviderOutcome},
+    providers::{MetadataProvider, ProviderBuildStatus, ProviderCatalogEntry, ProviderConfigInput},
 };
 
 pub struct FixtureProvider;
 
+#[must_use]
+pub(crate) fn catalog_entry() -> ProviderCatalogEntry {
+    ProviderCatalogEntry {
+        id: ProviderId::Fixture,
+        default_enabled: true,
+        enabled_env_var: "NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED",
+        capabilities: &["metadata_suggestion"],
+        field_quality: Default::default(),
+        default_field_preferences: &[],
+        secret_reference: None,
+        external_id_capabilities: &[],
+        load_config: load_config,
+        proxy_configured: |_| false,
+        network_policy_key: None,
+        rendered_page_support: None,
+        render_drift_case: None,
+        build: build_provider,
+    }
+}
+
+fn load_config(input: ProviderConfigInput<'_>) -> ProviderConfig {
+    ProviderConfig::fixture(input.enabled)
+}
+
+fn build_provider(_config: &Config) -> ProviderBuildStatus {
+    ProviderBuildStatus::Ready(Box::new(FixtureProvider))
+}
+
 #[async_trait]
 impl MetadataProvider for FixtureProvider {
-    fn id(&self) -> &'static str {
-        "fixture"
+    fn id(&self) -> ProviderId {
+        ProviderId::Fixture
     }
 
-    async fn suggest(&self, query: &MetadataQuery) -> anyhow::Result<Vec<MetadataCandidate>> {
-        let title = normalize_title(&query.title);
+    async fn suggest(
+        &self,
+        query: &MetadataQuery,
+    ) -> anyhow::Result<Vec<ProviderMetadataCandidate>> {
         let year_suffix = query
             .year
             .map(|year| format!(" ({year})"))
             .unwrap_or_default();
 
-        Ok(vec![MetadataCandidate {
-            provider: self.id().to_owned(),
-            provider_id: format!("fixture:{}", title.to_lowercase().replace(' ', "-")),
-            confidence_milli: if query.year.is_some() { 760 } else { 640 },
+        Ok(vec![ProviderMetadataCandidate {
+            provider: self.id().as_str().to_owned(),
+            provider_id: format!("fixture:{}", query.title.to_lowercase().replace(' ', "-")),
             patch: AddonMetadataPatch {
-                title: Some(format!("{title}{year_suffix}")),
-                original_title: Some(title.clone()),
-                sort_title: Some(title.clone()),
+                title: Some(format!("{}{year_suffix}", query.title)),
+                original_title: Some(query.title.clone()),
+                sort_title: Some(query.title.clone()),
                 overview: Some(
                     "Fixture metadata suggestion from the Nako Metadata Scraper skeleton."
                         .to_owned(),
@@ -41,18 +72,23 @@ impl MetadataProvider for FixtureProvider {
                     "nako-metadata-scraper".to_owned(),
                     "fixture".to_owned(),
                 ]),
-                ..Default::default()
+                ..AddonMetadataPatch::default()
             },
-            evidence: evidence(
-                "Fixture provider echoes normalized title for smoke testing.",
-                query.year.is_some(),
-            ),
+            facts: ProviderCandidateFacts {
+                title: Some(query.title.clone()),
+                alternate_titles: Vec::new(),
+                release_year: query.year,
+                language: Some(query.language.clone()),
+                av: None,
+                community_score_milli: None,
+                community_vote_count: None,
+                external_ids: Vec::new(),
+                provider_outcomes: vec![ProviderOutcome::FixtureStaticCandidate],
+                provider_note: None,
+            },
+            artwork_candidates: Vec::new(),
         }])
     }
-}
-
-fn normalize_title(title: &str) -> String {
-    title.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 #[cfg(test)]
@@ -63,9 +99,10 @@ mod tests {
     async fn fixture_provider_returns_metadata_candidate() {
         let candidates = FixtureProvider
             .suggest(&MetadataQuery {
-                title: "  The   Matrix  ".to_owned(),
+                title: "The Matrix".to_owned(),
                 year: Some(1999),
                 language: "en-US".to_owned(),
+                external_ids: Vec::new(),
             })
             .await
             .unwrap();
@@ -74,6 +111,6 @@ mod tests {
             candidates[0].patch.title.as_deref(),
             Some("The Matrix (1999)")
         );
-        assert_eq!(candidates[0].confidence_milli, 760);
+        assert_eq!(candidates[0].facts.release_year, Some(1999));
     }
 }

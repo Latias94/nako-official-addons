@@ -1,0 +1,33 @@
+# Official Metadata Addon Mature Provider Model Research - Evidence And Gates
+
+Status: Complete
+Last updated: 2026-05-25
+
+## Gate Plan
+
+| Gate | Command | When |
+| --- | --- | --- |
+| Workstream JSON | `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json` | OMAPMR-010 and closeout |
+| Reference status | `git -C <repo-ref path> rev-parse --short HEAD` | OMAPMR-010 |
+| Research anchors | `rg <pattern> repo-ref/<repo>` | OMAPMR-020 and OMAPMR-030 |
+| Format | `cargo fmt --all -- --check` | Before commits and closeout |
+| Diff hygiene | `git diff --check` | Before commits and closeout |
+
+## Evidence Log
+
+| Date | Task | Evidence | Result |
+| --- | --- | --- | --- |
+| 2026-05-25 | OMAPMR-010 setup | Added `repo-ref/` to `.gitignore`; cloned Jellyfin core sparse reference, Jellyfin TVDB/AniDB/AniList plugin references, and Kodi TMDB Python scraper reference. GitHub API search was rate-limited, so known official repository URLs were validated with `git ls-remote`. Validated `WORKSTREAM.json`, confirmed reference HEADs (`jellyfin` 498d265, `jellyfin-plugin-tvdb` 5c4592f, `jellyfin-plugin-anidb` 456ded6, `jellyfin-plugin-anilist` 0d973c4, `kodi-metadata-themoviedb-python` 285bc75), confirmed `repo-ref/` is ignored, and ran `git diff --check`. | Pass |
+| 2026-05-25 | OMAPMR-020 Jellyfin core provider model | Inspected Jellyfin core provider interfaces, provider ordering, refresh state, remote search deduplication, metadata merge, locked field handling, and image pipeline. Recorded source anchors and Nako implications in `FINDINGS.md`. | Pass |
+| 2026-05-25 | OMAPMR-030 plugin and scraper model | Inspected Jellyfin TVDB/AniDB/AniList plugin provider code, cache/rate-limit/API client policy, external ID lookup, image providers, and Kodi TMDB Python scraper matching/artwork/result-shaping heuristics. Recorded source anchors and Nako implications in `FINDINGS.md`. | Pass |
+| 2026-05-25 | OMAPMR-040 local comparison | Inspected current `nako-metadata-scraper` provider registry, provider trait, HTTP/runtime policy, query parsing, search policy, orchestration, ranking, artwork, writeback, and bulk task modules. Added local architecture findings to `FINDINGS.md` and ranked next refactor candidates in `REFACTOR_CANDIDATES.md`. Verified `REFACTOR_CANDIDATES.md` contains P0 resolver/external-ID recommendations plus affected modules, risks, and suggested gates with `rg -n "Affected modules:|Risks:|Suggested gates:|Provider fact resolver|External ID capability" docs/workstreams/official-metadata-addon-mature-provider-model-research/REFACTOR_CANDIDATES.md`; validated `WORKSTREAM.json`; ran `git diff --check`; ran `cargo fmt --all -- --check`. Broader `cargo nextest` was skipped because this task changed research docs only and no Rust code or public API changed. | Pass |
+| 2026-05-25 | OMAPMR-050 closeout | Closeout review confirmed the lane touched `.gitignore` and workstream docs only with `git diff --name-status fbd8546..HEAD`; no production crate files changed. Final closeout gates: `python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json`; `cargo fmt --all -- --check`; `git diff --check`. Follow-on implementation deferred to a new provider fact resolver and external ID capability workstream. | Pass |
+
+## Notes
+
+- Reference repositories are ignored and must stay read-only.
+- Emby is intentionally not cloned in the initial set because public source
+  quality and freshness are uncertain compared with Jellyfin.
+- No release or live provider smoke gates are required for this research lane.
+- Broader package tests were intentionally not rerun at closeout because this
+  lane changed research documentation and `.gitignore` only.

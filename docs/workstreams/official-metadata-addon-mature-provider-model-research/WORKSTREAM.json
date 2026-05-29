@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-mature-provider-model-research",
+  "title": "Official Metadata Addon Mature Provider Model Research",
+  "status": "complete",
+  "updated": "2026-05-25",
+  "scope_kind": "research",
+  "problem": "The metadata scraper provider architecture is now extensible, but the next fearless refactor should be informed by mature metadata provider systems instead of local intuition alone.",
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-mature-provider-model-research/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-mature-provider-model-research/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-mature-provider-model-research/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-mature-provider-model-research/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "python -m json.tool docs/workstreams/official-metadata-addon-mature-provider-model-research/WORKSTREAM.json",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-25",
+      "task": "OMAPMR-010",
+      "summary": "Research lane opened, repo-ref ignored, and selected mature metadata reference repositories cloned for read-only study."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPMR-040",
+      "summary": "Current nako-metadata-scraper architecture compared against mature provider findings; resolver-first refactor candidates ranked."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OMAPMR-050",
+      "summary": "Research lane closed with no production code changes; follow-on resolver and external ID capability workstream deferred."
+    }
+  ],
+  "reference_repos": [
+    "repo-ref/jellyfin",
+    "repo-ref/jellyfin-plugin-tvdb",
+    "repo-ref/jellyfin-plugin-anidb",
+    "repo-ref/jellyfin-plugin-anilist",
+    "repo-ref/kodi-metadata-themoviedb-python"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Research is complete. Recommended follow-on is a new implementation workstream for the sidecar provider fact resolver and external ID capability catalog; host-owned refresh, local metadata, locked fields, and final merge policy stay out of this sidecar lane."
+  }
+}

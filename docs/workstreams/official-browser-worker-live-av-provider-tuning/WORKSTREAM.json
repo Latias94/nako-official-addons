@@ -1,0 +1,39 @@
+{
+  "id": "official-browser-worker-live-av-provider-tuning",
+  "status": "completed",
+  "created": "2026-05-27",
+  "updated": "2026-05-27",
+  "phase": "closed",
+  "current_task": null,
+  "summary": "Tune provider-owned live AV render drift presets, safe cookie references, and Browser Worker scrape wait semantics after real live sampling.",
+  "upstream_workstreams": [
+    "official-browser-worker-live-av-drift-sampling"
+  ],
+  "tasks": [
+    {
+      "id": "OBWLAPT-010",
+      "status": "completed",
+      "summary": "Open workstream and connect it to live sampling evidence."
+    },
+    {
+      "id": "OBWLAPT-020",
+      "status": "completed",
+      "summary": "Add selector wait budgets, safe header env references, and slower render budgets for slow AV providers."
+    },
+    {
+      "id": "OBWLAPT-030",
+      "status": "completed",
+      "summary": "Re-run live AV drift with local proxy and classify the result."
+    },
+    {
+      "id": "OBWLAPT-040",
+      "status": "completed",
+      "summary": "Document operator-bound access, proxy, and cookie guidance."
+    },
+    {
+      "id": "OBWLAPT-050",
+      "status": "completed",
+      "summary": "Run final hygiene and commit."
+    }
+  ]
+}

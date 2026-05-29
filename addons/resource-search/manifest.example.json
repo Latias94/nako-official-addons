@@ -1,0 +1,126 @@
+{
+  "id": "nako.official.resource-search",
+  "name": "Nako Resource Search",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-resource-search:9130",
+  "description": "Official Nako resource search sidecar for external resource discovery, link classification, and result fusion.",
+  "resources": [
+    {
+      "kind": "resource_search",
+      "path": "/resource-search",
+      "input_schema": "nako.addon.resource_search.request.v1",
+      "output_schema": "nako.addon.resource_search.response.v1",
+      "required_scopes": ["acquisition_search_read"],
+      "timeout_ms": 10000,
+      "max_attempts": 1
+    },
+    {
+      "kind": "resource_link_check",
+      "path": "/resource-link-check",
+      "input_schema": "nako.addon.resource_link_check.request.v1",
+      "output_schema": "nako.addon.resource_link_check.response.v1",
+      "required_scopes": ["acquisition_link_check_read"],
+      "timeout_ms": 10000,
+      "max_attempts": 1
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "resource-search-diagnostics",
+      "kind": "diagnostics",
+      "label": "Resource Search Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["acquisition_search_read"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "Resource Search Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["acquisition_search_read"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.resource-search.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "providers": {
+          "type": "object",
+          "properties": {
+            "fixture": {
+              "type": "boolean",
+              "default": true
+            },
+            "pansou_compatible": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "pansou": {
+          "type": "object",
+          "properties": {
+            "base_url": {
+              "type": "string",
+              "default": ""
+            },
+            "source_type": {
+              "type": "string",
+              "default": "all"
+            },
+            "plugins": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "cloud_types": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": []
+            },
+            "concurrency": {
+              "type": ["integer", "null"],
+              "default": null,
+              "minimum": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "default": 10000,
+              "minimum": 250,
+              "maximum": 60000
+            }
+          },
+          "additionalProperties": false
+        },
+        "default_limit": {
+          "type": "integer",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max_limit": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "search_timeout_ms": {
+          "type": "integer",
+          "default": 10000,
+          "minimum": 250,
+          "maximum": 60000
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 1,
+  "scopes": ["acquisition_search_read", "acquisition_link_check_read"]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "official-metadata-addon-scraper-architecture-deepening",
+  "title": "Official Metadata Addon Scraper Architecture Deepening",
+  "status": "closed",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "closed_at": "2026-05-26",
+  "task_prefix": "OMSAD",
+  "current_task": null,
+  "completed_tasks": [
+    "OMSAD-010",
+    "OMSAD-020",
+    "OMSAD-030",
+    "OMSAD-040",
+    "OMSAD-050",
+    "OMSAD-060",
+    "OMSAD-070",
+    "OMSAD-080"
+  ],
+  "scope": [
+    "crates/nako-metadata-scraper/src/engine",
+    "crates/nako-metadata-scraper/src/providers",
+    "addons/browser-worker",
+    "addons/metadata-scraper",
+    "docs/workstreams/official-metadata-addon-scraper-architecture-deepening"
+  ],
+  "validation": {
+    "official_addons": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+      "cargo fmt -p nako-metadata-scraper -- --check",
+      "npm --prefix addons/browser-worker test"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-scraper-architecture-deepening/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking changes are allowed when they produce cleaner internal Interfaces or explicit schema-versioned task/output contracts.",
+  "continue_policy": "Keep this lane closed. Open a new workstream for additional provider waves, Nako core refresh/locked-field policy, local metadata/artwork priority, persistent provider cache/rate-limit policy, or release packaging.",
+  "closeout_summary": "All six architecture-review candidates are implemented: typed scrape outcome, render intent, rendered AV flow, provider quality descriptors, resolver/fusion split, and shared side-effect writeback state machine. Full metadata-scraper package, browser-worker, format, JSON, and diff hygiene gates passed on 2026-05-26.",
+  "top_recommendation": "Start with a typed ScrapeOutcome so bulk scrape stops using public response JSON as an internal Interface.",
+  "architecture_candidates": [
+    "typed_scrape_outcome",
+    "render_intent",
+    "rendered_av_flow",
+    "provider_quality_descriptor",
+    "resolver_candidate_fusion_split",
+    "side_effect_writeback_state_machine"
+  ],
+  "references": [
+    "docs/workstreams/official-metadata-addon-provider-architecture-deepening/",
+    "docs/workstreams/official-metadata-addon-provider-fact-resolver/",
+    "docs/workstreams/official-metadata-browser-worker/",
+    "docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2/"
+  ]
+}

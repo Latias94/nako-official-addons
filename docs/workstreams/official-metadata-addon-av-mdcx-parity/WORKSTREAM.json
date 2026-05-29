@@ -1,0 +1,47 @@
+{
+  "id": "official-metadata-addon-av-mdcx-parity",
+  "title": "Official Metadata Addon AV MDCx Parity",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "OMAVM",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAVM-010",
+    "OMAVM-020",
+    "OMAVM-030",
+    "OMAVM-040",
+    "OMAVM-050"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper av field_policy resolver javdb dmm fc2 --no-fail-fast",
+      "npm --prefix addons/browser-worker test",
+      "cargo nextest run -p nako-metadata-scraper rendered browser_worker javdb dmm fc2 --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper config registry manifest av --no-fail-fast"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-mdcx-parity/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "references": [
+    "repo-ref/mdcx/mdcx/config/models.py",
+    "repo-ref/mdcx/mdcx/models/types.py",
+    "repo-ref/mdcx/mdcx/crawlers/__init__.py",
+    "repo-ref/mdcx/mdcx/crawlers/javbus.py",
+    "repo-ref/mdcx/mdcx/crawlers/javlibrary.py"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, regex tables, or structure.",
+  "follow_up_candidates": [
+    "Nako protocol/server companion lane for addon writeback of credits, studios, collections, ratings, external IDs, and thumbnail images",
+    "additional AV provider waves after the shared field/proxy foundation"
+  ],
+  "continue_policy": "Closed. Start a follow-up workstream for Nako protocol persistence or additional AV provider waves."
+}

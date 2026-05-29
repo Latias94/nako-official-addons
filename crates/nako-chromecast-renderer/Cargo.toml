@@ -1,0 +1,29 @@
+[package]
+name = "nako-chromecast-renderer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Official Nako Chromecast renderer adapter Addon Sidecar."
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nako", "addon", "chromecast", "renderer", "media"]
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+nako-addon-protocol.workspace = true
+nako-official-addon-catalog.workspace = true
+oxicast.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tower = { version = "0.5.2", features = ["util"] }

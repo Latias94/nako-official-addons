@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-execution-locality-deepening",
+  "title": "Official Metadata Addon Execution Locality Deepening",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "execution",
+  "problem": "Residual shallow Seams still tunnel provider execution, provider catalog, and render drift facts through central Modules after earlier architecture lanes.",
+  "task_prefix": "OMAELD",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAELD-010",
+    "OMAELD-020",
+    "OMAELD-030",
+    "OMAELD-040",
+    "OMAELD-050"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-execution-locality-deepening/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-execution-locality-deepening/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-execution-locality-deepening/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-execution-locality-deepening/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper bulk provider_execution --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper provider registry config --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper render_drift --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-27",
+      "task": "OMAELD-010",
+      "summary": "Workstream opened from architecture review and user-approved fearless refactor goal."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAELD-020",
+      "summary": "Bulk Metadata Scrape now overlays provider execution facts through typed ProviderRunPolicy and no longer mutates request JSON with provider_execution_policy."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAELD-030",
+      "summary": "Rendered-page proxy/session configuration facts moved into provider catalog entries, so Config delegates those checks to ProviderRegistry instead of matching every rendered provider kind."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAELD-040",
+      "summary": "Render drift case generation now uses provider catalog descriptors for sample env, fallback, order, and builder facts instead of central per-provider branching."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAELD-050",
+      "summary": "Package, format, JSON, and diff hygiene gates passed; closeout review found no blocking findings for the three target locality refactors."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md",
+    "../nako/docs/adr/0042-external-casting-protocol-adapters.md"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Lane complete. Split notification, Chromecast, or default field-provider preference ownership into separate lanes if prioritized."
+  }
+}

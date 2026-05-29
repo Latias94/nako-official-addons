@@ -1,0 +1,81 @@
+{
+  "id": "nako.official.chromecast-renderer",
+  "name": "Nako Chromecast Renderer",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-chromecast-renderer:9120",
+  "description": "Official Nako Chromecast renderer adapter sidecar. It discovers local Cast receivers and translates host-owned renderer command envelopes into Chromecast protocol actions.",
+  "resources": [
+    {
+      "kind": "renderer_adapter",
+      "path": "/renderer-adapter",
+      "input_schema": "nako.renderer-adapter.request.v1",
+      "output_schema": "nako.renderer-adapter.response.v1",
+      "required_scopes": ["renderer_adapter_read", "renderer_adapter_control"],
+      "timeout_ms": 10000,
+      "max_attempts": 2
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "chromecast-renderer-diagnostics",
+      "kind": "diagnostics",
+      "label": "Chromecast Renderer Diagnostics",
+      "path": "/ui/diagnostics",
+      "hosted_page_id": "diagnostics",
+      "required_scopes": ["renderer_adapter_read"]
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "Chromecast Renderer Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["renderer_adapter_read"]
+    }
+  ],
+  "configuration_schema": {
+    "schema_id": "nako.official.chromecast-renderer.config.v1",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "receiver_app_id": {
+          "type": "string",
+          "default": "CC1AD845",
+          "description": "Google Cast receiver application id. Defaults to the Cast Default Media Receiver."
+        },
+        "discovery_timeout_ms": {
+          "type": "integer",
+          "default": 3000,
+          "minimum": 250,
+          "maximum": 30000
+        },
+        "manual_devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stable_device_id", "display_name", "host"],
+            "properties": {
+              "stable_device_id": { "type": "string" },
+              "display_name": { "type": "string" },
+              "host": { "type": "string" },
+              "port": {
+                "type": "integer",
+                "default": 8009,
+                "minimum": 1,
+                "maximum": 65535
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 2,
+  "scopes": ["renderer_adapter_read", "renderer_adapter_control"]
+}

@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "slug": "official-addons-v0-1-0-alpha-2-release-readiness",
+  "title": "Official Addons v0.1.0-alpha.2 Release Readiness",
+  "status": "complete",
+  "updated": "2026-05-28",
+  "scope_kind": "release_readiness",
+  "problem": "Post-alpha.1 refactors added public SDK API and additional official addon packages. The SDK/catalog crates and official addon crates are published at alpha.2, and hosted Docker/server smoke has passed.",
+  "task_prefix": "OAR2",
+  "current_task": "none",
+  "completed_tasks": [
+    "OAR2-010",
+    "OAR2-020",
+    "OAR2-030",
+    "OAR2-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-2-release-readiness/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-2-release-readiness/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-2-release-readiness/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-2-release-readiness/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-addons-v0-1-0-alpha-2-release-readiness/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo metadata --format-version 1 --no-deps",
+    "cargo nextest run -p nako-metadata-scraper manifest routes task bulk nako_runtime writeback artwork --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "cargo publish -p nako-metadata-scraper --locked --dry-run --allow-dirty",
+    "cargo publish -p nako-notification-bridge --locked --dry-run --allow-dirty",
+    "cargo publish -p nako-chromecast-renderer --locked --dry-run --allow-dirty",
+    "python scripts/publish_crates.py --mode dry-run --allow-dirty in ../nako",
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\\SourceCodes\\Rust\\nako-official-addons -AddonBinarySource workspace -PreflightOnly",
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File ../nako/scripts/official-addon-e2e-smoke.ps1 -AddonRepo F:\\SourceCodes\\Rust\\nako-official-addons -AddonBinarySource workspace",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-24",
+      "task": "OAR2-010",
+      "summary": "Opened this lane after E2E smoke found Docker daemon unavailable and metadata scraper package dry-run failed against already published alpha.1 SDK crates."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OAR2-020",
+      "summary": "Advanced public SDK crate package versions and official addon package version to 0.1.0-alpha.2 while preserving runtime Addon Protocol compatibility 0.1.0-alpha.1. Focused/full tests, metadata checks, browser-worker test, fmt, and diff checks passed."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OAR2-030",
+      "summary": "nako-addon-protocol 0.1.0-alpha.2 publish dry-run passed. Downstream package dry-runs are blocked until upstream alpha.2 crates are actually published to crates.io."
+    },
+    {
+      "date": "2026-05-24",
+      "task": "OAR2-040",
+      "summary": "E2E smoke preflight now fails early when Docker daemon is unreachable. Full live Docker/server smoke remains blocked by local Docker daemon availability."
+    },
+    {
+      "date": "2026-05-25",
+      "task": "OAR2-030",
+      "summary": "Refreshed release-readiness evidence after notification bridge provider work. Workspace metadata, fmt, diff, and nextest passed; metadata scraper and notification bridge dry-runs remain blocked until alpha.2 SDK crates are actually published. Publish order now includes nako-official-addon-catalog."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OAR2-030",
+      "summary": "Refreshed release-readiness docs after the Chromecast renderer package joined the official addon crate set. Publish and dry-run lists now include nako-chromecast-renderer."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OAR2-030",
+      "summary": "Published nako-official-addon-catalog 0.1.0-alpha.2 from the main repo after protocol/client/nako were already available on crates.io. Main repo publish script dry-run verifies protocol/client/catalog/nako. Notification bridge, metadata scraper, and Chromecast renderer dry-runs now pass."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OAR2-030",
+      "summary": "Published nako-notification-bridge, nako-metadata-scraper, and nako-chromecast-renderer 0.1.0-alpha.2 to crates.io after user approval. cargo search reports all three at 0.1.0-alpha.2."
+    },
+    {
+      "date": "2026-05-28",
+      "task": "OAR2-040",
+      "summary": "Docker daemon server version 25.0.3 was reachable. Official addon E2E preflight and full hosted smoke passed against ghcr.io/latias94/nako-server:0.1.0-alpha.2 with the workspace metadata scraper sidecar."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0033-version-addon-protocol-independently-from-addon-and-crate-releases.md"
+  ],
+  "depends_on": [
+    "docs/workstreams/official-addons-cross-repo-fearless-refactor",
+    "docs/workstreams/official-addon-contract-smoke-provider-hardening",
+    "docs/workstreams/official-addons-v0-1-0-alpha-1-release-prep"
+  ],
+  "non_goals": [
+    "pushing container images",
+    "changing Addon Protocol runtime compatibility version",
+    "splitting official addons into multiple installable sidecars"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "next_task": "none",
+    "notes": "All alpha.2 Rust crates in this release line are published and visible on crates.io. Hosted live E2E smoke passed on 2026-05-28."
+  }
+}

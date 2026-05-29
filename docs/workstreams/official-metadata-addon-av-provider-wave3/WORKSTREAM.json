@@ -1,0 +1,54 @@
+{
+  "id": "official-metadata-addon-av-provider-wave3",
+  "title": "Official Metadata Addon AV Provider Wave 3",
+  "status": "complete",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "task_prefix": "OMAV3",
+  "closed_at": "2026-05-26",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAV3-010",
+    "OMAV3-020",
+    "OMAV3-030",
+    "OMAV3-040",
+    "OMAV3-050",
+    "OMAV3-060",
+    "OMAV3-070"
+  ],
+  "scope": [
+    "crates/nako-metadata-scraper/src/providers",
+    "crates/nako-metadata-scraper/src/engine",
+    "crates/nako-metadata-scraper/src/config.rs",
+    "crates/nako-metadata-scraper/src/manifest.rs",
+    "addons/metadata-scraper",
+    "addons/browser-worker",
+    "docs/workstreams/official-metadata-addon-av-provider-wave3"
+  ],
+  "validation": {
+    "official_addons": [
+      "cargo nextest run -p nako-metadata-scraper av registry manifest provider_guard rendered_av --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+      "npm --prefix addons/browser-worker test",
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-provider-wave3/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking internal provider/config/test harness changes are allowed. Public provider IDs and task output changes must be documented.",
+  "top_recommendation": "Provider wave 3 is complete. Future AV breadth should start from the shared rendered AV fixture harness, keep new providers disabled by default, and treat live drift checks as manual unless adult payloads can stay out of CI.",
+  "closeout_summary": "Completed shared rendered AV fixture harness, explicit provider execution protection, Prestige, FC2PPVDB, Caribbean, 1Pondo, and 10Musume. Full metadata-scraper, browser-worker, fmt, JSON, and diff hygiene gates passed on 2026-05-26.",
+  "references": [
+    "repo-ref/mdcx/mdcx/config/models.py",
+    "repo-ref/mdcx/mdcx/models/types.py",
+    "repo-ref/mdcx/mdcx/crawlers/__init__.py",
+    "repo-ref/mdcx/mdcx/crawlers/javbus.py",
+    "repo-ref/mdcx/mdcx/crawlers/mgstage.py",
+    "docs/workstreams/official-metadata-addon-av-mdcx-parity/",
+    "docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2/",
+    "docs/workstreams/official-metadata-addon-scraper-architecture-deepening/"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only. Do not copy source, selectors, regex tables, comments, fixtures, or structure."
+}

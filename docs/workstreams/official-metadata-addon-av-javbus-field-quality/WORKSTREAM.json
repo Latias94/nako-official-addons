@@ -1,0 +1,43 @@
+{
+  "id": "official-metadata-addon-av-javbus-field-quality",
+  "title": "Official Metadata Addon AV JavBus Field Quality",
+  "status": "complete",
+  "created_at": "2026-05-27",
+  "updated_at": "2026-05-27",
+  "task_prefix": "JBFQ",
+  "current_task": null,
+  "completed_tasks": [
+    "JBFQ-010",
+    "JBFQ-020",
+    "JBFQ-030",
+    "JBFQ-040"
+  ],
+  "validation": {
+    "targeted": [
+      "cargo nextest run -p nako-metadata-scraper javbus rendered_av --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper javbus rendered_page manifest --no-fail-fast",
+      "npm --prefix addons/browser-worker test",
+      "cargo test -p nako-metadata-scraper --test live_provider_drift -- --ignored av_live_provider_field_health_smoke --nocapture"
+    ],
+    "package": [
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast"
+    ],
+    "format": [
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "diff": [
+      "git diff --check"
+    ]
+  },
+  "references": [
+    "repo-ref/mdcx/mdcx/crawlers/javbus.py",
+    "repo-ref/mdcx/mdcx/config/v1.py",
+    "repo-ref/mdcx/mdcx/core/scraper.py",
+    "docs/workstreams/official-metadata-addon-mdcx-style-av-scraping/HANDOFF.md"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; use behavioral findings only and do not copy source, comments, fixtures, selectors, or structure.",
+  "follow_up_candidates": [
+    "Add configurable per-field AV provider preference presets derived from provider quality descriptors.",
+    "Expand live drift cases for JavBus uncensored and western routes once redaction-safe cookie-backed samples are available."
+  ]
+}

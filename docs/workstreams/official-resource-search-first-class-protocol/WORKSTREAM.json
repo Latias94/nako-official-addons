@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "slug": "official-resource-search-first-class-protocol",
+  "title": "Official Resource Search First-Class Protocol",
+  "status": "complete",
+  "updated": "2026-05-28",
+  "scope_kind": "execution",
+  "problem": "The official resource-search addon still exposes a temporary automation alpha contract even though Nako has first-class resource_search support.",
+  "current_task": null,
+  "completed_tasks": [
+    "ORSFP-010",
+    "ORSFP-020",
+    "ORSFP-030",
+    "ORSFP-040"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/HANDOFF.md"
+    },
+    {
+      "role": "follow_ons",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/FOLLOW_ON_CONTRACTS.md"
+    },
+    {
+      "role": "closeout",
+      "path": "docs/workstreams/official-resource-search-first-class-protocol/CLOSEOUT.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-resource-search resource_search --no-fail-fast",
+    "cargo nextest run -p nako-resource-search --no-fail-fast",
+    "cargo fmt --all -- --check",
+    "cargo check -p nako-resource-search --tests",
+    "git diff --check"
+  ],
+  "evidence": [
+    "docs/workstreams/official-resource-search-first-class-protocol/DESIGN.md",
+    "crates/nako-resource-search/src/routes/resource_protocol.rs",
+    "docs/workstreams/official-resource-search-first-class-protocol/FOLLOW_ON_CONTRACTS.md",
+    "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Lane complete. Open separate follow-ons for Admin UI, link checking, downloader/external runner, cloud-drive transfer, or password/code references."
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "id": "official-metadata-addon-av-native-writeback-and-provider-wave2",
+  "title": "Official Metadata Addon AV Native Writeback And Provider Wave 2",
+  "status": "closed",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "closed_at": "2026-05-26",
+  "task_prefix": "OMAV2",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAV2-010",
+    "OMAV2-020",
+    "OMAV2-030",
+    "OMAV2-040",
+    "OMAV2-050",
+    "OMAV2-060"
+  ],
+  "cross_repo_scope": [
+    "F:/SourceCodes/Rust/nako-official-addons",
+    "F:/SourceCodes/Rust/nako"
+  ],
+  "validation": {
+    "nako": [
+      "cargo nextest run -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon --no-fail-fast",
+      "cargo nextest run -p nako-server addon_side_effect_metadata_write --no-fail-fast",
+      "cargo fmt -p nako-addon-protocol -p nako-addon-client -p nako-reference-addon -p nako-server -- --check"
+    ],
+    "official_addons": [
+      "cargo nextest run -p nako-metadata-scraper av field_policy resolver writeback javdb dmm fc2 javbus --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper bulk --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper config registry manifest av javlibrary --no-fail-fast",
+      "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+      "npm --prefix addons/browser-worker test",
+      "cargo fmt -p nako-metadata-scraper -- --check"
+    ],
+    "docs": [
+      "python -m json.tool docs/workstreams/official-metadata-addon-av-native-writeback-and-provider-wave2/WORKSTREAM.json",
+      "git diff --check"
+    ]
+  },
+  "compatibility_policy": "Breaking changes are allowed. Prefer a clean canonical metadata writeback contract over compatibility shims for the older narrow AddonMetadataPatch payload.",
+  "continue_policy": "Keep this lane closed. Open a new workstream for additional AV provider waves, review UI, NFO/rename, actor-image workflows, or real-site fixture refresh tooling.",
+  "dirty_worktree_guardrail": "../nako currently has unrelated workstream/admin-web changes. Do not revert or stage those files; stage only files changed by this lane.",
+  "references": [
+    "repo-ref/mdcx/mdcx/config/models.py",
+    "repo-ref/mdcx/mdcx/models/types.py",
+    "repo-ref/mdcx/mdcx/crawlers/__init__.py",
+    "repo-ref/mdcx/mdcx/crawlers/javlibrary.py",
+    "repo-ref/mdcx/mdcx/crawlers/javbus.py",
+    "repo-ref/mdcx/mdcx/crawlers/mgstage.py"
+  ],
+  "license_guardrail": "repo-ref/mdcx is GPLv3/reference-only; do not copy source, comments, fixtures, selector implementations, regex tables, or structure."
+}

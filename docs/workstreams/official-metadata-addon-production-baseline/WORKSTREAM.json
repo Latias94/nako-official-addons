@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-production-baseline",
+  "title": "Official Metadata Addon Production Baseline",
+  "status": "complete",
+  "updated": "2026-05-23",
+  "scope_kind": "execution",
+  "problem": "The official metadata Addon architecture is in place, but live Nako Admin-mediated smoke, provider-neutral ranking/evidence, and TMDB production baseline are not complete.",
+  "task_prefix": "OMAPB",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAPB-010",
+    "OMAPB-020",
+    "OMAPB-030",
+    "OMAPB-040",
+    "OMAPB-050",
+    "OMAPB-060"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-production-baseline/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-production-baseline/TODO.md"
+    },
+    {
+      "role": "milestones",
+      "path": "docs/workstreams/official-metadata-addon-production-baseline/MILESTONES.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-production-baseline/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-production-baseline/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo fmt --all -- --check",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo nextest run --workspace --no-fail-fast",
+    "git diff --check"
+  ],
+  "evidence": [
+    "addons/metadata-scraper/smoke.local.ps1",
+    "crates/nako-metadata-scraper/src/engine/mod.rs",
+    "crates/nako-metadata-scraper/src/providers/tmdb.rs",
+    "docs/workstreams/official-metadata-addon-fearless-refactor"
+  ],
+  "continue_policy": {
+    "default_action": "open_follow_on",
+    "next_task": null,
+    "notes": "Workstream closed. Recommended follow-ons: live Nako Admin-mediated smoke evidence, Bangumi/Douban adapters, artwork/subtitle lanes, rename/NFO workflows, and bulk scrape/scoring hardening."
+  }
+}

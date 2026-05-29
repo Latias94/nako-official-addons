@@ -1,0 +1,40 @@
+{
+  "id": "nako.official.notification-bridge",
+  "name": "Nako Notification Bridge",
+  "version": "0.1.0-alpha.2",
+  "protocol_version": "0.1.0-alpha.1",
+  "base_url": "http://nako-notification-bridge:9110",
+  "description": "Official Nako notification bridge sidecar. The first proof acknowledges scheduled Addon Events without provider fan-out.",
+  "resources": [
+    {
+      "kind": "webhook",
+      "path": "/events/library-scanned",
+      "input_schema": "nako.addon.event.library-scanned.request.v1",
+      "output_schema": "nako.official.notification-bridge.library-scanned.event.v1",
+      "required_scopes": ["webhook_event_read"],
+      "timeout_ms": 10000,
+      "max_attempts": 2
+    }
+  ],
+  "hosted_pages": [
+    {
+      "id": "diagnostics",
+      "title": "Notification Bridge Diagnostics",
+      "path": "/ui/diagnostics",
+      "required_scopes": ["webhook_event_read"]
+    }
+  ],
+  "event_subscriptions": [
+    {
+      "id": "library-scanned-notification",
+      "event_kind": "library.scanned",
+      "path": "/events/library-scanned",
+      "required_scopes": ["webhook_event_read"],
+      "filters": null
+    }
+  ],
+  "auth": "none",
+  "default_timeout_ms": 10000,
+  "default_max_attempts": 2,
+  "scopes": ["webhook_event_read"]
+}

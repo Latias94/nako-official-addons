@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "slug": "official-metadata-addon-field-policy-locality-deepening",
+  "title": "Official Metadata Addon Field Policy Locality Deepening",
+  "status": "complete",
+  "updated": "2026-05-27",
+  "scope_kind": "field_policy",
+  "problem": "Default AV field provider preferences are still encoded as central provider order arrays in ProviderRegistry.",
+  "task_prefix": "OMAFPL",
+  "current_task": null,
+  "completed_tasks": [
+    "OMAFPL-010",
+    "OMAFPL-020",
+    "OMAFPL-030"
+  ],
+  "authoritative_docs": [
+    {
+      "role": "design",
+      "path": "docs/workstreams/official-metadata-addon-field-policy-locality-deepening/DESIGN.md"
+    },
+    {
+      "role": "execution",
+      "path": "docs/workstreams/official-metadata-addon-field-policy-locality-deepening/TODO.md"
+    },
+    {
+      "role": "gates",
+      "path": "docs/workstreams/official-metadata-addon-field-policy-locality-deepening/EVIDENCE_AND_GATES.md"
+    },
+    {
+      "role": "handoff",
+      "path": "docs/workstreams/official-metadata-addon-field-policy-locality-deepening/HANDOFF.md"
+    }
+  ],
+  "gates": [
+    "cargo nextest run -p nako-metadata-scraper provider_field_policy registry default_av_provider_field_policy --no-fail-fast",
+    "cargo nextest run -p nako-metadata-scraper --no-fail-fast",
+    "cargo fmt -p nako-metadata-scraper -- --check",
+    "git diff --check"
+  ],
+  "evidence": [
+    {
+      "date": "2026-05-27",
+      "task": "OMAFPL-010",
+      "summary": "Workstream opened for provider-owned default AV field preference descriptors."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAFPL-020",
+      "summary": "Provider-owned ProviderDefaultFieldPreference descriptors now replace central default provider order arrays while preserving default preset behavior."
+    },
+    {
+      "date": "2026-05-27",
+      "task": "OMAFPL-030",
+      "summary": "Package, format, JSON, and diff hygiene gates passed; closeout review found no blocking findings."
+    }
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0034-package-addon-capabilities-into-sidecar-suites.md",
+    "../nako/docs/adr/0042-external-casting-protocol-adapters.md"
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "notes": "Lane complete. Open a separate lane for any future provider preference rebalancing."
+  }
+}

@@ -1,0 +1,179 @@
+name: release-gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_VERSION: "1.95"
+  METADATA_IMAGE: nako-metadata-scraper:ci
+  NOTIFICATION_IMAGE: nako-notification-bridge:ci
+  CHROMECAST_IMAGE: nako-chromecast-renderer:ci
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  rust:
+    name: rust release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout official addons
+        uses: actions/checkout@v6
+        with:
+          path: nako-official-addons
+
+      - name: Checkout Nako mainline
+        uses: actions/checkout@v6
+        with:
+          repository: Latias94/nako
+          path: nako
+          token: ${{ secrets.NAKO_REPO_TOKEN || github.token }}
+
+      - name: Check sibling Nako checkout
+        working-directory: nako-official-addons
+        run: test -f ../nako/crates/nako-addon-protocol/Cargo.toml
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nako-official-addons -> target
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Check Cargo metadata
+        working-directory: nako-official-addons
+        run: cargo metadata --format-version 1 --no-deps
+
+      - name: Check formatting
+        working-directory: nako-official-addons
+        run: cargo fmt --all -- --check
+
+      - name: Run official sidecar package tests
+        working-directory: nako-official-addons
+        run: cargo nextest run -p nako-metadata-scraper -p nako-notification-bridge -p nako-chromecast-renderer --no-fail-fast
+
+      - name: Run workspace tests
+        working-directory: nako-official-addons
+        run: cargo nextest run --workspace --no-fail-fast
+
+      - name: Check diff hygiene
+        working-directory: nako-official-addons
+        run: git diff --check
+
+  container:
+    name: container release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout official addons
+        uses: actions/checkout@v6
+        with:
+          path: nako-official-addons
+
+      - name: Checkout Nako mainline
+        uses: actions/checkout@v6
+        with:
+          repository: Latias94/nako
+          path: nako
+          token: ${{ secrets.NAKO_REPO_TOKEN || github.token }}
+
+      - name: Resolve expected addon contract versions
+        id: versions
+        working-directory: nako-official-addons
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import pathlib
+          import re
+          import tomllib
+
+          workspace = tomllib.loads(pathlib.Path("Cargo.toml").read_text())
+          print(f"addon_version={workspace['workspace']['package']['version']}")
+
+          protocol = pathlib.Path("../nako/crates/nako-addon-protocol/src/lib.rs").read_text()
+          match = re.search(r'ADDON_PROTOCOL_VERSION:\s*&str\s*=\s*"([^"]+)"', protocol)
+          if not match:
+              raise SystemExit("ADDON_PROTOCOL_VERSION not found")
+          print(f"protocol_version={match.group(1)}")
+          PY
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build metadata scraper image
+        working-directory: nako-official-addons
+        run: |
+          docker buildx build \
+            --build-context nako=../nako \
+            -f addons/metadata-scraper/Dockerfile \
+            -t "$METADATA_IMAGE" \
+            --load .
+
+      - name: Build notification bridge image
+        working-directory: nako-official-addons
+        run: |
+          docker buildx build \
+            --build-context nako=../nako \
+            -f addons/notification-bridge/Dockerfile \
+            -t "$NOTIFICATION_IMAGE" \
+            --load .
+
+      - name: Build Chromecast renderer image
+        working-directory: nako-official-addons
+        run: |
+          docker buildx build \
+            --build-context nako=../nako \
+            -f addons/chromecast-renderer/Dockerfile \
+            -t "$CHROMECAST_IMAGE" \
+            --load .
+
+      - name: Smoke test official sidecar images
+        working-directory: nako-official-addons
+        env:
+          EXPECTED_ADDON_VERSION: ${{ steps.versions.outputs.addon_version }}
+          EXPECTED_PROTOCOL_VERSION: ${{ steps.versions.outputs.protocol_version }}
+        run: |
+          set -euo pipefail
+
+          run_smoke() {
+            local image="$1"
+            local host_port="$2"
+            local container_port="$3"
+            local kind="$4"
+            local manifest_id="$5"
+            local container_id
+
+            container_id="$(docker run -d --rm -p "127.0.0.1:${host_port}:${container_port}" "$image")"
+
+            set +e
+            python scripts/smoke_official_addon_container.py \
+              --kind "$kind" \
+              --base-url "http://127.0.0.1:${host_port}" \
+              --manifest-id "$manifest_id" \
+              --addon-version "$EXPECTED_ADDON_VERSION" \
+              --protocol-version "$EXPECTED_PROTOCOL_VERSION"
+            local status="$?"
+            set -e
+
+            if [ "$status" -ne 0 ]; then
+              docker logs "$container_id" >&2 || true
+            fi
+
+            docker stop "$container_id" >/dev/null || true
+            return "$status"
+          }
+
+          run_smoke "$METADATA_IMAGE" 19101 9100 metadata nako.official.metadata-scraper
+          run_smoke "$NOTIFICATION_IMAGE" 19110 9110 notification nako.official.notification-bridge
+          run_smoke "$CHROMECAST_IMAGE" 19120 9120 chromecast nako.official.chromecast-renderer

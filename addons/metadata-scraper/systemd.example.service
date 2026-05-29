@@ -8,6 +8,14 @@ Type=simple
 Environment="NAKO_METADATA_SCRAPER_LISTEN_ADDR=0.0.0.0:9100"
 Environment="NAKO_METADATA_SCRAPER_BASE_URL=http://127.0.0.1:9100"
 Environment="NAKO_METADATA_SCRAPER_LANGUAGE=en-US"
+Environment="NAKO_METADATA_SCRAPER_PROVIDER_FIXTURE_ENABLED=true"
+Environment="NAKO_METADATA_SCRAPER_PROVIDER_TMDB_ENABLED=false"
+Environment="NAKO_METADATA_SCRAPER_PROVIDER_BANGUMI_ENABLED=false"
+Environment="NAKO_METADATA_SCRAPER_BANGUMI_USER_AGENT=Latias94/nako-official-addons/nako-metadata-scraper/0.1.0-alpha.2 (https://github.com/Latias94/nako-official-addons)"
+# Set only when enabling providers that need secrets. Keep real tokens outside this sample unit.
+# EnvironmentFile=/etc/nako-metadata-scraper/secrets.env
+# secrets.env may define NAKO_METADATA_SCRAPER_TMDB_READ_ACCESS_TOKEN and
+# NAKO_METADATA_SCRAPER_BANGUMI_ACCESS_TOKEN.
 ExecStart=/usr/local/bin/nako-metadata-scraper
 Restart=on-failure
 RestartSec=5s
