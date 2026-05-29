@@ -1,11 +1,11 @@
 # Official External Acquisition Materialization - Handoff
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Current State
 
-OEAM-050 is complete. OEAR closed with a safe external acquisition action
+OEAM-060 is complete. OEAR closed with a safe external acquisition action
 envelope and fixture runner, but production adapters remained blocked because
 sidecars could only see opaque `selected_link_ref` or `intake_candidate_ref`
 values. ADR 0054 records the materialization boundary, `nako-addon-protocol`
@@ -18,16 +18,7 @@ callback during a running task.
 
 ## Active Task
 
-- Task ID: OEAM-060
-- Owner: planner
-- Files: `docs/workstreams/official-external-acquisition-materialization`
-- Validation: fresh focused gates from `EVIDENCE_AND_GATES.md`;
-  `python -m json.tool docs/workstreams/official-external-acquisition-materialization/WORKSTREAM.json`;
-  `git diff --check -- docs/workstreams/official-external-acquisition-materialization`
-- Status: READY
-- Review: Run review/verification, record residual risks, and decide whether
-  Transmission adapter work is unblocked or needs one more split.
-- Evidence: closeout note plus fresh verification rows.
+No active task. This lane is closed.
 
 ## Decisions Since Open
 
@@ -73,11 +64,22 @@ callback during a running task.
 
 ## Blockers
 
-- No blockers for OEAM-060.
-- Transmission adapter work remains blocked until this lane closes or records a
-  concrete remaining materialization blocker.
+- No blockers remain for this lane.
 
-## Next Recommended Action
+## Follow-Ons
 
-Implement OEAM-060: close the lane, record residual risks, and recommend the
-Transmission adapter follow-on.
+- Open `official-external-acquisition-transmission-adapter`.
+- Keep cloud-drive transfer and cloud-save provider flows out of that first
+  adapter lane unless a separate materialization policy is opened.
+- If production policy needs stricter replay control, add bounded-use or
+  single-use materialization semantics before enabling broad adapter retries.
+
+## Residual Risks
+
+- Materialization is bounded by the running task context and short response TTL,
+  but it is not yet a persisted single-use token.
+- The first materialized payload shape covers magnet, ed2k, and web links; cloud
+  drive links are intentionally rejected.
+- The current intake candidate model does not carry a separate password field
+  into materialization. Password/code handling should be designed with the
+  production adapter that first requires it.

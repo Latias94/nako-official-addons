@@ -1,6 +1,6 @@
 # Official External Acquisition Materialization - Milestones
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## M0 - Scope And Contract Freeze
@@ -82,6 +82,8 @@ Primary gates:
 - `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast`
 
 ## M5 - Closeout And Adapter Handoff
+
+Status: Complete via OEAM-060.
 
 Exit criteria:
 

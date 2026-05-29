@@ -1,6 +1,6 @@
 # Official External Acquisition Materialization - TODO
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 Task IDs use the `OEAM` prefix.
@@ -79,7 +79,7 @@ Task IDs use the `OEAM` prefix.
 
 ## M5 - Closeout And Adapter Handoff
 
-- [ ] OEAM-060 [owner=planner] [deps=OEAM-020,OEAM-030,OEAM-040,OEAM-050] [scope=docs/workstreams/official-external-acquisition-materialization]
+- [x] OEAM-060 [owner=planner] [deps=OEAM-020,OEAM-030,OEAM-040,OEAM-050] [scope=docs/workstreams/official-external-acquisition-materialization]
   Goal: Verify the lane, record residual risks, and open or recommend the
   Transmission adapter lane.
   Validation: fresh focused gates from `EVIDENCE_AND_GATES.md`.
@@ -87,5 +87,6 @@ Task IDs use the `OEAM` prefix.
   `verify-rust-workstream` for final evidence.
   Evidence: `EVIDENCE_AND_GATES.md`, `HANDOFF.md`, `WORKSTREAM.json`, and
   closeout journal.
-  Handoff: Start `official-external-acquisition-transmission-adapter` only
-  after this lane closes or explicitly records the remaining blocker.
+  Handoff: Lane closed. Start
+  `official-external-acquisition-transmission-adapter` as the next separate
+  implementation lane.

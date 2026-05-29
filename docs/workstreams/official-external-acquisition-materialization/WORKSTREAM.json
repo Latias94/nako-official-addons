@@ -1,7 +1,7 @@
 {
   "slug": "official-external-acquisition-materialization",
   "title": "Official External Acquisition Materialization",
-  "status": "active",
+  "status": "complete",
   "created": "2026-05-29",
   "last_updated": "2026-05-29",
   "task_prefix": "OEAM",
@@ -9,7 +9,15 @@
     "nako-official-addons",
     "../nako"
   ],
-  "current_task": "OEAM-060",
+  "current_task": null,
+  "completed_tasks": [
+    "OEAM-010",
+    "OEAM-020",
+    "OEAM-030",
+    "OEAM-040",
+    "OEAM-050",
+    "OEAM-060"
+  ],
   "goals": [
     "Define the host-to-runner materialization contract for external acquisition actions.",
     "Keep raw acquisition material out of browser submissions, task input/output, diagnostics, and admin responses.",
@@ -46,5 +54,10 @@
       "role": "handoff",
       "path": "docs/workstreams/official-external-acquisition-materialization/HANDOFF.md"
     }
-  ]
+  ],
+  "continue_policy": {
+    "default_action": "closed",
+    "next_task": null,
+    "notes": "Open a separate official-external-acquisition-transmission-adapter lane for production adapter work."
+  }
 }

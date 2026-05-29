@@ -1,6 +1,6 @@
 # Official External Acquisition Materialization - Evidence And Gates
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Standing Gates
@@ -91,6 +91,10 @@ complete.
 | 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-server addon_external_acquisition --no-fail-fast` | Pass: 7 tests |
 | 2026-05-29 | OEAM-050 | `cargo check -p nako-server --tests` | Pass |
 | 2026-05-29 | OEAM-050 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 16 tests |
+| 2026-05-29 | OEAM-060 | Closeout review against `DESIGN.md`, `TODO.md`, `MILESTONES.md`, `EVIDENCE_AND_GATES.md`, `WORKSTREAM.json`, `HANDOFF.md`, ADR 0050, and ADR 0054. | Pass: no blocking findings |
+| 2026-05-29 | OEAM-060 | `cargo nextest run -p nako-server addon_external_acquisition --no-fail-fast` | Pass: 7 tests |
+| 2026-05-29 | OEAM-060 | `cargo check -p nako-server --tests` | Pass |
+| 2026-05-29 | OEAM-060 | `cargo nextest run -p nako-external-acquisition-runner --no-fail-fast` | Pass: 16 tests |
 
 ## Known Constraints
 
@@ -105,3 +109,7 @@ complete.
 - `F:` was temporarily full during OEAM-020. The regenerated
   `../nako/target/debug/incremental` cache was removed after verifying it was
   inside `../nako/target`.
+- Full workspace nextest was not run at closeout because this lane changed only
+  `nako-addon-protocol`, `nako-addon-client`, `nako-server`, and
+  `nako-external-acquisition-runner`; focused package gates cover the changed
+  contract and implementation surface.

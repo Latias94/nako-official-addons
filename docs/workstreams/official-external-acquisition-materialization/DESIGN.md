@@ -1,6 +1,6 @@
 # Official External Acquisition Materialization - Design
 
-Status: Active
+Status: Complete
 Last updated: 2026-05-29
 
 ## Why This Lane Exists
@@ -24,9 +24,11 @@ addons resubmit raw URLs, passwords, provider tokens, or local paths.
 - Media extension follow-on contracts:
   `docs/workstreams/official-media-extension-addons/FOLLOW_ON_CONTRACTS.md`
 
-This lane changes a hard-to-change host/runner contract. OEAM-020 added ADR
-0054 and the protocol-level DTOs; the server-side runtime implementation still
-has to validate the contract before it is production-ready.
+This lane changed a hard-to-change host/runner contract. ADR 0054 records the
+boundary, Nako server validates and resolves materialization requests, the
+official runner has a materialization client boundary, and the fake
+host/sidecar e2e test proves the redaction contract before production adapter
+work starts.
 
 ## Problem
 
