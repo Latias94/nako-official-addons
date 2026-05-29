@@ -9,7 +9,7 @@
     "nako-official-addons",
     "../nako"
   ],
-  "current_task": "OEAM-020",
+  "current_task": "OEAM-030",
   "goals": [
     "Define the host-to-runner materialization contract for external acquisition actions.",
     "Keep raw acquisition material out of browser submissions, task input/output, diagnostics, and admin responses.",
@@ -24,6 +24,10 @@
     "Durable password/code secret storage",
     "Addon Manager lifecycle",
     "Product UI route work"
+  ],
+  "adr_refs": [
+    "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
+    "../nako/docs/adr/0054-external-acquisition-materialization-boundary.md"
   ],
   "authoritative_docs": [
     {

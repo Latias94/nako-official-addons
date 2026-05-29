@@ -16,6 +16,7 @@ addons resubmit raw URLs, passwords, provider tokens, or local paths.
 ## Relevant Authority
 
 - ADR: `../nako/docs/adr/0050-acquisition-resource-action-boundaries.md`
+- ADR: `../nako/docs/adr/0054-external-acquisition-materialization-boundary.md`
 - Closed runner lane:
   `docs/workstreams/official-external-acquisition-runner`
 - First-class resource-search follow-on contracts:
@@ -23,9 +24,9 @@ addons resubmit raw URLs, passwords, provider tokens, or local paths.
 - Media extension follow-on contracts:
   `docs/workstreams/official-media-extension-addons/FOLLOW_ON_CONTRACTS.md`
 
-This lane changes a hard-to-change host/runner contract. OEAM-020 must either
-add a focused ADR or update the existing acquisition-boundary ADR before the
-runtime endpoint is treated as stable.
+This lane changes a hard-to-change host/runner contract. OEAM-020 added ADR
+0054 and the protocol-level DTOs; the server-side runtime implementation still
+has to validate the contract before it is production-ready.
 
 ## Problem
 

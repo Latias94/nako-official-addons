@@ -17,6 +17,8 @@ Exit criteria:
 
 ## M1 - Materialization Contract And ADR
 
+Status: Complete via OEAM-020.
+
 Exit criteria:
 
 - The stable request/response vocabulary is explicit.

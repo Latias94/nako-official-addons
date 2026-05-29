@@ -5,25 +5,29 @@ Last updated: 2026-05-29
 
 ## Current State
 
-The lane is open. OEAR closed with a safe external acquisition action envelope
-and fixture runner, but production adapters remain blocked because sidecars can
-only see opaque `selected_link_ref` or `intake_candidate_ref` values. This lane
-defines how Nako materializes those references for an approved runner action
-without putting raw URLs, passwords, provider tokens, or local paths into
-browser APIs or task JSON.
+OEAM-020 is complete. OEAR closed with a safe external acquisition action
+envelope and fixture runner, but production adapters remained blocked because
+sidecars could only see opaque `selected_link_ref` or `intake_candidate_ref`
+values. ADR 0054 now records the materialization boundary, and
+`nako-addon-protocol` defines the route, schema constants, request/response
+DTOs, operation helper, and redaction tests.
 
 ## Active Task
 
-- Task ID: OEAM-020
+- Task ID: OEAM-030
 - Owner: codex
-- Files: `../nako/docs/adr`, `../nako/crates/nako-addon-protocol`,
-  `../nako/crates/nako-api`
-- Validation: `cargo nextest run -p nako-addon-protocol external_acquisition --no-fail-fast`;
-  focused `nako-api` serialization tests if DTOs are added
+- Files: `../nako/crates/nako-server/src/app/addons`,
+  `../nako/crates/nako-server/src/app/acquisition_intake`,
+  `../nako/crates/nako-server/src/app/resource_search`
+- Validation: `cargo nextest run -p nako-server external_acquisition_materialization --no-fail-fast`;
+  `cargo nextest run -p nako-server acquisition_intake --no-fail-fast` if
+  intake resolver behavior changes
 - Status: READY
-- Review: Contract must not expose raw acquisition material through task
-  input/output, debug output, browser-visible DTOs, or diagnostics.
-- Evidence: ADR or contract note plus protocol/API tests.
+- Review: `enqueue` may resolve selected-link or intake-candidate material;
+  status/control operations must not. Raw material must stay out of persisted
+  task JSON and browser-visible responses.
+- Evidence: server tests proving allowed, expired, mismatched, and redacted
+  cases.
 
 ## Decisions Since Open
 
@@ -34,14 +38,20 @@ browser APIs or task JSON.
   materialize link data.
 - The official sidecar remains fixture-only until the host materialization
   contract is implemented and verified.
+- ADR 0054 defines materialization as `POST /addon/v1/acquisition/materialize`.
+- Protocol schema IDs are
+  `nako.addon.external_acquisition_materialization.request.v1` and
+  `nako.addon.external_acquisition_materialization.response.v1`.
+- `AddonExternalAcquisitionOperation::can_materialize_target()` is true only
+  for `enqueue`.
 
 ## Blockers
 
-- No blockers for OEAM-020.
+- No blockers for OEAM-030.
 - Transmission adapter work remains blocked until this lane closes or records a
   concrete remaining materialization blocker.
 
 ## Next Recommended Action
 
-Implement OEAM-020: add or update an ADR for the materialization contract, then
-define the stable protocol/API DTOs and redaction tests in `../nako`.
+Implement OEAM-030: add the Nako-side runtime resolver and policy gate for
+materialization requests.

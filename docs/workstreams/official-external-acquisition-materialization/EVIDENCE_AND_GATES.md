@@ -59,6 +59,12 @@ complete.
 | 2026-05-29 | OEAM-010 | Opened the workstream from OEAR closeout and ADR 0050 follow-on boundaries. | Pass |
 | 2026-05-29 | OEAM-010 | `python -m json.tool docs/workstreams/official-external-acquisition-materialization/WORKSTREAM.json` | Pass |
 | 2026-05-29 | OEAM-010 | `git diff --check -- docs/workstreams/official-external-acquisition-materialization` | Pass |
+| 2026-05-29 | OEAM-020 | `cargo nextest run -p nako-addon-protocol external_acquisition_materialization_contract_round_trips_and_redacts_debug --no-fail-fast` | Pass |
+| 2026-05-29 | OEAM-020 | `cargo fmt -p nako-addon-protocol` | Pass |
+| 2026-05-29 | OEAM-020 | `cargo fmt -p nako-addon-protocol -- --check` | Pass |
+| 2026-05-29 | OEAM-020 | `cargo nextest run -p nako-addon-protocol external_acquisition --no-fail-fast` | Pass: 4 tests |
+| 2026-05-29 | OEAM-020 | `cargo nextest run -p nako-addon-protocol --no-fail-fast` | Pass: 26 tests |
+| 2026-05-29 | OEAM-020 | `git diff --check -- crates/nako-addon-protocol/src/lib.rs docs/adr/0054-external-acquisition-materialization-boundary.md docs/adr/README.md` | Pass with line-ending warnings |
 
 ## Known Constraints
 
@@ -70,3 +76,6 @@ complete.
   and verified.
 - `cargo clippy -p nako-server --tests -- -D warnings` is not a standing gate
   because OEAR recorded existing unrelated lint debt in `nako-server`.
+- `F:` was temporarily full during OEAM-020. The regenerated
+  `../nako/target/debug/incremental` cache was removed after verifying it was
+  inside `../nako/target`.

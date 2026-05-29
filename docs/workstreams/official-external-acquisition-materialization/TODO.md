@@ -19,7 +19,7 @@ Task IDs use the `OEAM` prefix.
 
 ## M1 - Materialization Contract And ADR
 
-- [ ] OEAM-020 [owner=codex] [deps=OEAM-010] [scope=../nako/docs/adr,../nako/crates/nako-addon-protocol,../nako/crates/nako-api]
+- [x] OEAM-020 [owner=codex] [deps=OEAM-010] [scope=../nako/docs/adr,../nako/crates/nako-addon-protocol,../nako/crates/nako-api]
   Goal: Define the host runtime materialization request/response contract,
   schema IDs, authorization context, redaction semantics, and stable wire names.
   Validation: `cargo nextest run -p nako-addon-protocol external_acquisition --no-fail-fast`;
@@ -27,7 +27,8 @@ Task IDs use the `OEAM` prefix.
   Review: The contract must not add raw URLs, passwords, or provider tokens to
   browser-visible request payloads or task input/output.
   Evidence: ADR or contract note plus protocol/API tests.
-  Handoff: Continue with OEAM-030 after the contract is stable.
+  Handoff: Continue with OEAM-030. `nako-api` DTOs were not added in this task;
+  the contract currently lives in `nako-addon-protocol` plus ADR 0054.
 
 ## M2 - Host Resolver And Policy Gate
 
