@@ -55,7 +55,7 @@ Task IDs use the `OEAR` prefix.
 
 ## M4 - First Real Runner Adapter Decision
 
-- [ ] OEAR-050 [owner=planner] [deps=OEAR-040] [scope=docs/workstreams/official-external-acquisition-runner]
+- [x] OEAR-050 [owner=planner] [deps=OEAR-040] [scope=docs/workstreams/official-external-acquisition-runner]
   Goal: Decide whether the first real adapter is qBittorrent, Transmission,
   aria2, or HTTP downloader, based on config/security surface and testability.
   Validation: decision note and adapter-specific follow-on task or lane.

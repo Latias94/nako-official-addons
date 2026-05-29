@@ -5,7 +5,7 @@ Last updated: 2026-05-29
 
 ## Current State
 
-OEAR-040 is complete. The protocol now has a dedicated External Acquisition
+OEAR-050 is complete. The protocol now has a dedicated External Acquisition
 Action task contract, the official Nako catalog exposes an
 `nako.official.external-acquisition-runner` descriptor, and this repository has
 a fixture/no-op runner sidecar that implements manifest, health, action
@@ -19,10 +19,11 @@ envelope and fixture runner semantics are stable.
 
 ## Active Task
 
-- Task ID: OEAR-050
+- Task ID: OEAR-060
 - Owner: planner
 - Files: `docs/workstreams/official-external-acquisition-runner`
-- Validation: decision note and adapter-specific follow-on task or lane
+- Validation: final focused gates pass or blockers are explicit external
+  constraints
 - Status: READY
 
 ## Decisions Since Open
@@ -47,16 +48,28 @@ envelope and fixture runner semantics are stable.
   runner idempotency keys, requires audit refs for mutating operations, and
   maps runner `rejected`/`failed`/`not_found` responses to failed host task
   records with safe error codes.
+- The first production adapter candidate is Transmission, not qBittorrent,
+  aria2, or a plain HTTP downloader. Transmission has the cleanest first
+  idempotency/status/cancellation shape because add and duplicate outcomes can
+  be keyed by `hash_string`; qBittorrent remains a likely second adapter once
+  hash discovery/version policy is designed, aria2 is broader but higher
+  security/logging risk, and HTTP downloader crosses storage ownership
+  boundaries.
+- A real adapter must not start until Nako defines host-owned selected-link or
+  intake-candidate materialization for the sidecar. The current action payload
+  deliberately contains only opaque refs.
 
 ## Blockers
 
-- None for OEAR-050.
+- None for OEAR-060.
 - Product UI may depend on the separate web acquisition intake lane later.
 - `cargo clippy -p nako-server --tests -- -D warnings` is blocked by existing
   unrelated lint debt and was not used as a completion gate for OEAR-040.
+- Real adapter implementation should be split after closeout unless OEAR-060
+  explicitly keeps this lane open for the materialization contract.
 
 ## Next Recommended Action
 
-Start OEAR-050 by deciding the first real runner adapter. Compare qBittorrent,
-Transmission, aria2, and a plain HTTP downloader against config surface,
-secret handling, cancellation/status APIs, testability, and deployment risk.
+Start OEAR-060 closeout. Verify the lane, record residual risks, and split the
+Transmission adapter plus host-to-runner materialization contract into a
+follow-on lane if this workstream should close.

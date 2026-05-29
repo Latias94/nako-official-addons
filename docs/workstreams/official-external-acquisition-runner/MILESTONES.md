@@ -44,6 +44,8 @@ Exit criteria:
 
 ## M4 - Real Adapter Decision
 
+Status: Complete via OEAR-050.
+
 Exit criteria:
 
 - First production adapter choice is explicit.

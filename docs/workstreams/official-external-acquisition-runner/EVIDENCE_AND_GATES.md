@@ -78,6 +78,9 @@ cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast
 | 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server official_external_acquisition --no-fail-fast` | Pass |
 | 2026-05-29 | OEAR-040 | `cargo nextest run -p nako-server admin_addon_source_catalog --no-fail-fast` | Pass |
 | 2026-05-29 | OEAR-040 | `git diff --check -- crates/nako-server/src/app/addons.rs crates/nako-server/src/app/addons/task_runtime.rs crates/nako-server/src/app/addons/external_acquisition.rs crates/nako-server/src/http/tests/addons.rs` | Pass |
+| 2026-05-29 | OEAR-050 | Reviewed official qBittorrent WebUI API, Transmission RPC spec, and aria2 manual; recorded adapter decision in `JOURNAL/2026-05-29-oear-050.md`. | Pass |
+| 2026-05-29 | OEAR-050 | `python -m json.tool docs/workstreams/official-external-acquisition-runner/WORKSTREAM.json` | Pass |
+| 2026-05-29 | OEAR-050 | `git diff --check -- docs/workstreams/official-external-acquisition-runner` | Pass |
 
 ## Known Constraints
 
