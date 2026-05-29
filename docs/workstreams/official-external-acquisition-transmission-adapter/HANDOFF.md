@@ -6,7 +6,9 @@ Last updated: 2026-05-29
 ## Current State
 
 This lane is open. OETA-010 defines the first production adapter work after
-the materialization boundary closed.
+the materialization boundary closed. OETA-020 added opt-in Transmission profile
+configuration, redaction-safe debug/diagnostics, manifest example updates, and
+the matching official catalog configuration/secret schema in `../nako`.
 
 The adapter should consume `official-external-acquisition-materialization`
 rather than reopening raw action input. The fixture profile remains the default
@@ -14,22 +16,22 @@ for local smoke and contract tests.
 
 ## Active Task
 
-- Task ID: OETA-020
+- Task ID: OETA-030
 - Owner: codex
 - Status: READY
-- Scope: Transmission profile configuration, secret policy, manifest/config
-  schema, and redaction-safe diagnostics.
+- Scope: Transmission RPC client boundary and fake RPC harness.
 
 ## Next Recommended Action
 
-Run OETA-020:
+Run OETA-030:
 
-1. Inspect existing config and manifest schema.
-2. Add opt-in Transmission profile configuration.
-3. Add redacted Debug and environment parsing tests.
-4. Update the checked-in manifest example only after runtime manifest tests
-   agree.
-5. Keep fixture mode as the default.
+1. Read the current Transmission RPC spec for method names and session-id
+   retry behavior.
+2. Add a typed client boundary with a fake transport.
+3. Cover add, duplicate, get, start, stop, session-id retry, and redacted
+   error behavior.
+4. Keep raw RPC payloads and credentials out of public errors and Debug output.
+5. Do not wire runner enqueue until the client harness is independently green.
 
 ## Guardrails
 

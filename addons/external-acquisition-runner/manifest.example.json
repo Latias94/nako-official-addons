@@ -49,6 +49,41 @@
                 }
               },
               "additionalProperties": false
+            },
+            "transmission": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "mode": {
+                  "type": "string",
+                  "default": "rpc"
+                },
+                "rpc_url": {
+                  "type": "string",
+                  "default": "http://127.0.0.1:9091/transmission/rpc"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "password_secret_ref": {
+                  "type": "string",
+                  "description": "Secret reference for the optional Transmission RPC password."
+                },
+                "timeout_ms": {
+                  "type": "integer",
+                  "default": 10000,
+                  "minimum": 250,
+                  "maximum": 60000
+                },
+                "allow_invalid_tls_certificates": {
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": true
@@ -57,7 +92,14 @@
       "additionalProperties": false
     }
   },
-  "secret_reference_fields": [],
+  "secret_reference_fields": [
+    {
+      "id": "transmission_password",
+      "label": "Transmission password",
+      "description": "Optional Transmission RPC password resolved by the runner runtime; never place the raw password in task payloads.",
+      "required": false
+    }
+  ],
   "event_subscriptions": [],
   "tasks": [
     {

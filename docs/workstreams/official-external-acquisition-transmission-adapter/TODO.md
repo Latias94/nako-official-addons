@@ -16,12 +16,12 @@ Task IDs use the `OETA` prefix.
 
 ## M1 - Transmission Profile And Secret Policy
 
-- [ ] OETA-020 [owner=codex] [deps=OETA-010] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner]
+- [x] OETA-020 [owner=codex] [deps=OETA-010] [scope=crates/nako-external-acquisition-runner,addons/external-acquisition-runner,../nako/crates/nako-official-addon-catalog]
   Goal: Add opt-in Transmission profile configuration, redacted debug behavior, manifest/config schema representation, and diagnostics that show profile readiness without exposing credentials.
-  Validation: `cargo nextest run -p nako-external-acquisition-runner config manifest transmission --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`.
+  Validation: `cargo nextest run -p nako-external-acquisition-runner config manifest diagnostics --no-fail-fast`; `cargo fmt -p nako-external-acquisition-runner -- --check`.
   Review: Credentials, bearer tokens, endpoint auth, and RPC session ids must not appear in Debug, diagnostics, task output, checked-in manifests, or smoke output.
   Evidence: config/manifest tests and documentation updates.
-  Handoff: Continue with OETA-030.
+  Handoff: DONE. Transmission config, secret reference schema, manifest example, official catalog schema, and redaction-safe diagnostics are in place. Continue with OETA-030.
 
 ## M2 - Transmission RPC Client Harness
 

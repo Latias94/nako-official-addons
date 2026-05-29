@@ -23,6 +23,19 @@ $env:NAKO_EXTERNAL_ACQUISITION_RUNNER_NAKO_BASE_URL = 'http://127.0.0.1:3000'
 $env:NAKO_EXTERNAL_ACQUISITION_RUNNER_ADDON_TOKEN = '<addon runtime token>'
 ```
 
+Transmission profile configuration is opt-in. The checked-in manifest declares
+the optional `transmission_password` secret field; do not put raw RPC passwords
+in task payloads, logs, or diagnostics.
+
+```powershell
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_ENABLED = 'true'
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PROFILE_ID = 'transmission'
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_RPC_URL = 'http://127.0.0.1:9091/transmission/rpc'
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_USERNAME = '<optional rpc user>'
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PASSWORD = '<optional rpc password>'
+$env:NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_TIMEOUT_MS = '10000'
+```
+
 Run locally:
 
 ```powershell

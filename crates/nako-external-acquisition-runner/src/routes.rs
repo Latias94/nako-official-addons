@@ -107,13 +107,15 @@ async fn diagnostics(State(state): State<AppState>) -> Html<String> {
   <p>Task path: {ACTION_TASK_PATH}</p>
   <p>Default runner profile: {}</p>
   <p>Fixture profile enabled: {}</p>
-  <p>External network calls: no</p>
+  <p>Transmission profile configured: {}</p>
+  <p>External network calls: fixture no-op by default; production profiles only after host materialization.</p>
   <p>This fixture accepts only host-owned opaque target references.</p>
 </body>
 </html>"#,
         state.config.base_url,
         state.config.default_runner_profile_id,
-        yes_no_label(state.config.fixture_profile_enabled)
+        yes_no_label(state.config.fixture_profile_enabled),
+        yes_no_label(state.config.transmission.enabled)
     ))
 }
 
@@ -453,6 +455,14 @@ mod tests {
             health.diagnostics["profile_registry"][0]["runner_profile_id"],
             "fixture"
         );
+        assert_eq!(
+            health.diagnostics["profile_registry"][1]["runner_profile_id"],
+            "transmission"
+        );
+        assert_eq!(
+            health.diagnostics["profile_registry"][1]["implementation_status"],
+            "configuration_ready"
+        );
 
         let response = router(Config::default())
             .oneshot(
@@ -468,12 +478,46 @@ mod tests {
             .await
             .unwrap();
         let text = String::from_utf8(body.to_vec()).unwrap();
-        assert!(text.contains("External network calls: no"));
+        assert!(text.contains("External network calls: fixture no-op by default"));
         assert!(text.contains("opaque target references"));
         for forbidden in ["raw_url", "password", "Bearer ", "nako_at_", "magnet:"] {
             assert!(
                 !text.contains(forbidden),
                 "diagnostics leaked forbidden term: {forbidden}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn diagnostics_reports_transmission_profile_without_secrets() {
+        let mut config = Config::default();
+        config.transmission.enabled = true;
+        config.transmission.rpc_url = "http://runner:secret@transmission.local/rpc".to_owned();
+        config.transmission.username = Some("runner".to_owned());
+        config.transmission.password = Some("transmission-password-secret".to_owned());
+
+        let diagnostics = FixtureRunner::new(config).diagnostics();
+        assert_eq!(diagnostics["external_network"], true);
+        assert_eq!(
+            diagnostics["profile_registry"][1]["runner_profile_id"],
+            "transmission"
+        );
+        assert_eq!(diagnostics["profile_registry"][1]["auth_configured"], true);
+        assert_eq!(
+            diagnostics["profile_registry"][1]["endpoint_configured"],
+            true
+        );
+
+        let text = serde_json::to_string(&diagnostics).unwrap();
+        for forbidden in [
+            "transmission-password-secret",
+            "runner:secret",
+            "transmission.local",
+            "http://runner",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "diagnostics leaked forbidden Transmission config term: {forbidden}"
             );
         }
     }

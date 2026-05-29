@@ -9,6 +9,7 @@ pub struct Config {
     pub fixture_profile_enabled: bool,
     pub default_runner_profile_id: String,
     pub nako_materialization: NakoMaterializationConfig,
+    pub transmission: TransmissionConfig,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -17,6 +18,17 @@ pub struct NakoMaterializationConfig {
     pub base_url: Option<String>,
     pub addon_token: Option<String>,
     pub timeout_ms: u64,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct TransmissionConfig {
+    pub enabled: bool,
+    pub profile_id: String,
+    pub rpc_url: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub timeout_ms: u64,
+    pub allow_invalid_tls_certificates: bool,
 }
 
 impl Config {
@@ -48,6 +60,7 @@ impl Config {
             .and_then(non_empty_trimmed)
             .unwrap_or_else(|| external_acquisition_runner::DEFAULT_RUNNER_PROFILE_ID.to_owned()),
             nako_materialization: NakoMaterializationConfig::from_env_lookup(|name| lookup(name)),
+            transmission: TransmissionConfig::from_env_lookup(|name| lookup(name)),
         }
     }
 
@@ -66,6 +79,7 @@ impl Default for Config {
             default_runner_profile_id: external_acquisition_runner::DEFAULT_RUNNER_PROFILE_ID
                 .to_owned(),
             nako_materialization: NakoMaterializationConfig::disabled(),
+            transmission: TransmissionConfig::disabled(),
         }
     }
 }
@@ -132,6 +146,76 @@ impl fmt::Debug for NakoMaterializationConfig {
     }
 }
 
+impl TransmissionConfig {
+    pub const DEFAULT_PROFILE_ID: &'static str = "transmission";
+    pub const DEFAULT_RPC_URL: &'static str = "http://127.0.0.1:9091/transmission/rpc";
+    pub const DEFAULT_TIMEOUT_MS: u64 = 10_000;
+
+    #[must_use]
+    pub fn from_env_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            enabled: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_ENABLED")
+                .and_then(|value| parse_bool(&value))
+                .unwrap_or(false),
+            profile_id: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PROFILE_ID")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| Self::DEFAULT_PROFILE_ID.to_owned()),
+            rpc_url: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_RPC_URL")
+                .and_then(non_empty_trimmed)
+                .unwrap_or_else(|| Self::DEFAULT_RPC_URL.to_owned()),
+            username: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_USERNAME")
+                .and_then(non_empty_trimmed),
+            password: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PASSWORD")
+                .and_then(non_empty_trimmed),
+            timeout_ms: lookup("NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_TIMEOUT_MS")
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(Self::DEFAULT_TIMEOUT_MS),
+            allow_invalid_tls_certificates: lookup(
+                "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_ALLOW_INVALID_TLS_CERTIFICATES",
+            )
+            .and_then(|value| parse_bool(&value))
+            .unwrap_or(false),
+        }
+    }
+
+    #[must_use]
+    pub fn disabled() -> Self {
+        Self {
+            enabled: false,
+            profile_id: Self::DEFAULT_PROFILE_ID.to_owned(),
+            rpc_url: Self::DEFAULT_RPC_URL.to_owned(),
+            username: None,
+            password: None,
+            timeout_ms: Self::DEFAULT_TIMEOUT_MS,
+            allow_invalid_tls_certificates: false,
+        }
+    }
+
+    #[must_use]
+    pub fn auth_configured(&self) -> bool {
+        self.username.is_some() || self.password.is_some()
+    }
+}
+
+impl fmt::Debug for TransmissionConfig {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("TransmissionConfig")
+            .field("enabled", &self.enabled)
+            .field("profile_id", &self.profile_id)
+            .field("rpc_url", &"<configured>")
+            .field("username", &self.username.as_ref().map(|_| "<redacted>"))
+            .field("password", &self.password.as_ref().map(|_| "<redacted>"))
+            .field("timeout_ms", &self.timeout_ms)
+            .field(
+                "allow_invalid_tls_certificates",
+                &self.allow_invalid_tls_certificates,
+            )
+            .finish()
+    }
+}
+
 fn non_empty_trimmed(value: String) -> Option<String> {
     let value = value.trim();
     if value.is_empty() {
@@ -166,6 +250,7 @@ mod tests {
             config.nako_materialization,
             NakoMaterializationConfig::disabled()
         );
+        assert_eq!(config.transmission, TransmissionConfig::disabled());
     }
 
     #[test]
@@ -185,6 +270,21 @@ mod tests {
                 Some(" addon-token-secret ".to_owned())
             }
             "NAKO_EXTERNAL_ACQUISITION_RUNNER_NAKO_TIMEOUT_MS" => Some("2500".to_owned()),
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_ENABLED" => Some("true".to_owned()),
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PROFILE_ID" => {
+                Some(" transmission-main ".to_owned())
+            }
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_RPC_URL" => {
+                Some(" http://transmission.local/transmission/rpc ".to_owned())
+            }
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_USERNAME" => Some(" runner ".to_owned()),
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_PASSWORD" => {
+                Some(" transmission-password-secret ".to_owned())
+            }
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_TIMEOUT_MS" => Some("3500".to_owned()),
+            "NAKO_EXTERNAL_ACQUISITION_RUNNER_TRANSMISSION_ALLOW_INVALID_TLS_CERTIFICATES" => {
+                Some("true".to_owned())
+            }
             _ => None,
         });
 
@@ -208,6 +308,22 @@ mod tests {
                 .runtime_client_config()
                 .is_some()
         );
-        assert!(!format!("{config:?}").contains("addon-token-secret"));
+        assert_eq!(
+            config.transmission,
+            TransmissionConfig {
+                enabled: true,
+                profile_id: "transmission-main".to_owned(),
+                rpc_url: "http://transmission.local/transmission/rpc".to_owned(),
+                username: Some("runner".to_owned()),
+                password: Some("transmission-password-secret".to_owned()),
+                timeout_ms: 3500,
+                allow_invalid_tls_certificates: true,
+            }
+        );
+        let debug = format!("{config:?}");
+        assert!(!debug.contains("addon-token-secret"));
+        assert!(!debug.contains("transmission-password-secret"));
+        assert!(!debug.contains("http://transmission.local"));
+        assert!(debug.contains("<redacted>"));
     }
 }

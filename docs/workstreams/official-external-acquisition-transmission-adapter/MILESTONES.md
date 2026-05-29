@@ -16,10 +16,10 @@ Exit criteria:
 
 Exit criteria:
 
-- Transmission profile config is opt-in.
-- Debug output and diagnostics redact credentials and session details.
-- Checked-in manifest/config schema advertises shape without embedding secrets.
-- Fixture remains the default local profile.
+- [x] Transmission profile config is opt-in.
+- [x] Debug output and diagnostics redact credentials and session details.
+- [x] Checked-in manifest/config schema advertises shape without embedding secrets.
+- [x] Fixture remains the default local profile.
 
 ## M2 - RPC Client Harness
 

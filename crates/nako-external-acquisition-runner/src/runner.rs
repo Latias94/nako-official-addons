@@ -114,16 +114,37 @@ impl FixtureRunner {
     pub fn diagnostics(&self) -> serde_json::Value {
         serde_json::json!({
             "safe_note": "external acquisition fixture runner is reachable",
-            "external_network": false,
-            "profile_registry": [{
-                "runner_profile_id": self.config.default_runner_profile_id,
-                "active": self.config.fixture_profile_enabled,
-                "mode": "noop"
-            }],
+            "external_network": self.config.transmission.enabled,
+            "profile_registry": self.safe_profile_registry(),
             "active_profile_count": self.config.active_profile_count(),
             "materialization_client": self.materializer.safe_client_kind(),
             "supported_operations": ["enqueue", "cancel", "pause", "resume", "query_status"]
         })
+    }
+
+    #[must_use]
+    fn safe_profile_registry(&self) -> serde_json::Value {
+        let mut profiles = vec![serde_json::json!({
+            "runner_profile_id": self.config.default_runner_profile_id,
+            "active": self.config.fixture_profile_enabled,
+            "mode": "noop",
+            "kind": "fixture"
+        })];
+
+        profiles.push(serde_json::json!({
+            "runner_profile_id": self.config.transmission.profile_id,
+            "active": false,
+            "enabled": self.config.transmission.enabled,
+            "mode": "rpc",
+            "kind": "transmission",
+            "implementation_status": "configuration_ready",
+            "endpoint_configured": !self.config.transmission.rpc_url.trim().is_empty(),
+            "auth_configured": self.config.transmission.auth_configured(),
+            "timeout_ms": self.config.transmission.timeout_ms,
+            "allow_invalid_tls_certificates": self.config.transmission.allow_invalid_tls_certificates
+        }));
+
+        serde_json::Value::Array(profiles)
     }
 
     pub async fn handle_action(

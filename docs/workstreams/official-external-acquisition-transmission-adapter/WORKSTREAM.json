@@ -12,9 +12,10 @@
     "../nako"
   ],
   "problem": "The official external acquisition runner has a safe host materialization boundary but still lacks a production Transmission adapter.",
-  "current_task": "OETA-020",
+  "current_task": "OETA-030",
   "completed_tasks": [
-    "OETA-010"
+    "OETA-010",
+    "OETA-020"
   ],
   "authoritative_docs": [
     {
@@ -46,7 +47,8 @@
     "cargo clippy -p nako-external-acquisition-runner --tests -- -D warnings"
   ],
   "evidence": [
-    "OETA-010 opened the lane from OEAM closeout and froze Transmission as the first production adapter without reopening raw action input."
+    "OETA-010 opened the lane from OEAM closeout and froze Transmission as the first production adapter without reopening raw action input.",
+    "OETA-020 added opt-in Transmission profile configuration, secret-reference manifest schema, official catalog schema, redaction-safe diagnostics, and config/manifest tests."
   ],
   "adr_refs": [
     "../nako/docs/adr/0050-acquisition-resource-action-boundaries.md",
@@ -54,7 +56,7 @@
   ],
   "continue_policy": {
     "default_action": "continue_current_task",
-    "next_task": "OETA-020",
-    "notes": "Continue with Transmission profile configuration and secret policy. Do not implement RPC calls until profile redaction and fixture-default behavior are proven."
+    "next_task": "OETA-030",
+    "notes": "Continue with the Transmission RPC client harness. Do not wire runner enqueue until session-id retry, add/duplicate/get/start/stop, and redacted error behavior are proven through fake RPC tests."
   }
 }

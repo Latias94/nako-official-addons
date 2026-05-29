@@ -8,6 +8,7 @@ pub const ADDON_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub use external_acquisition_runner::{
     ACTION_REQUEST_SCHEMA, ACTION_RESPONSE_SCHEMA, ACTION_TASK_ID, ACTION_TASK_PATH, ADDON_ID,
     ADDON_NAME, DEFAULT_CONTAINER_BASE_URL, DEFAULT_RUNNER_PROFILE_ID, DIAGNOSTICS_PATH,
+    TRANSMISSION_PASSWORD_SECRET_FIELD_ID,
 };
 
 #[must_use]
@@ -64,7 +65,11 @@ mod tests {
         assert_eq!(manifest.hosted_pages.len(), 1);
         assert_eq!(manifest.entry_points.len(), 1);
         assert!(manifest.event_subscriptions.is_empty());
-        assert!(manifest.secret_reference_fields.is_empty());
+        assert_eq!(manifest.secret_reference_fields.len(), 1);
+        assert_eq!(
+            manifest.secret_reference_fields[0].id,
+            TRANSMISSION_PASSWORD_SECRET_FIELD_ID
+        );
     }
 
     #[test]
