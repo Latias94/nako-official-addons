@@ -13,7 +13,9 @@ keywords = ["nako", "addon", "acquisition", "runner", "fixture"]
 
 [dependencies]
 anyhow.workspace = true
+async-trait.workspace = true
 axum.workspace = true
+nako-addon-client.workspace = true
 nako-addon-protocol.workspace = true
 nako-official-addon-catalog.workspace = true
 serde.workspace = true

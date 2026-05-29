@@ -18,6 +18,7 @@ use crate::{
         ACTION_TASK_ID, ACTION_TASK_PATH, ADDON_ID, ADDON_NAME, ADDON_VERSION, DIAGNOSTICS_PATH,
         addon_manifest, container_manifest,
     },
+    materialization::FixtureActionContext,
     runner::FixtureRunner,
 };
 
@@ -29,7 +30,10 @@ pub struct AppState {
 
 pub fn router(config: Config) -> Router {
     let runner = FixtureRunner::new(config.clone());
+    router_with_runner(config, runner)
+}
 
+fn router_with_runner(config: Config, runner: FixtureRunner) -> Router {
     Router::new()
         .route("/manifest.json", get(manifest))
         .route("/health", post(health))
@@ -75,7 +79,8 @@ async fn external_acquisition_action(
 ) -> Result<Json<AddonTaskResponse>, (StatusCode, Json<serde_json::Value>)> {
     validate_task_envelope(&request)?;
     let payload = decode_action_payload(request.payload.clone())?;
-    let output = match state.runner.handle_action(payload).await {
+    let action_context = FixtureActionContext::new(request.job_id.clone(), request.task_id.clone());
+    let output = match state.runner.handle_action(action_context, payload).await {
         Ok(response) => response,
         Err(error) => error.to_response(),
     };
@@ -156,19 +161,30 @@ const fn yes_no_label(value: bool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        collections::BTreeMap,
+        sync::{Arc, Mutex as StdMutex},
+    };
+
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
     use nako_addon_protocol::{
         AddonExternalAcquisitionActionResponse, AddonExternalAcquisitionActionStatus,
+        AddonExternalAcquisitionMaterializationRequest,
+        AddonExternalAcquisitionMaterializationResponse, AddonExternalAcquisitionMaterializedLink,
         AddonExternalAcquisitionOperation, AddonExternalAcquisitionRunnerState,
-        AddonHealthCheckRequest, AddonManifest, AddonScope, validate_manifest,
+        AddonExternalAcquisitionTargetRef, AddonHealthCheckRequest, AddonManifest,
+        AddonResourceLinkType, AddonScope, validate_manifest,
     };
     use tower::ServiceExt;
 
     use super::*;
-    use crate::manifest::ACTION_REQUEST_SCHEMA;
+    use crate::{
+        manifest::ACTION_REQUEST_SCHEMA,
+        materialization::{ExternalAcquisitionMaterializer, MaterializationError},
+    };
 
     #[tokio::test]
     async fn manifest_endpoint_returns_valid_external_acquisition_runner_manifest() {
@@ -242,6 +258,78 @@ mod tests {
                 .get("idempotent_replay")
                 .map(String::as_str),
             Some("true")
+        );
+    }
+
+    #[tokio::test]
+    async fn action_task_materialization_uses_job_context_and_redacts_output() {
+        let materializer = RecordingMaterializer::with_response(materialization_response());
+        let runner =
+            FixtureRunner::with_materializer(Config::default(), Arc::new(materializer.clone()));
+        let response = router_with_runner(Config::default(), runner)
+            .oneshot(task_request(action_payload(
+                AddonExternalAcquisitionOperation::Enqueue,
+                serde_json::json!({
+                    "kind": "selected_link",
+                    "selected_link_ref": "selected-link-secret"
+                }),
+                "idem-route-materialization",
+            )))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        let response: AddonTaskResponse = serde_json::from_str(&text).unwrap();
+        let output: AddonExternalAcquisitionActionResponse =
+            serde_json::from_value(response.output).unwrap();
+
+        assert_eq!(
+            output.status,
+            AddonExternalAcquisitionActionStatus::Accepted
+        );
+        assert_eq!(
+            output
+                .safe_facts
+                .get("materialization_client")
+                .map(String::as_str),
+            Some("recording")
+        );
+        assert_eq!(
+            output
+                .safe_facts
+                .get("materialized_link_type")
+                .map(String::as_str),
+            Some("ed2k")
+        );
+
+        for forbidden in [
+            "ed2k://|file|secret",
+            "route-secret-code",
+            "route-materialization-secret",
+            "selected-link-secret",
+            "idem-route-materialization",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "task response leaked forbidden term: {forbidden}"
+            );
+        }
+
+        let requests = materializer.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].job_id, "job-1");
+        assert_eq!(requests[0].declaration_id, ACTION_TASK_ID);
+        assert_eq!(requests[0].idempotency_key, "idem-route-materialization");
+        assert_eq!(requests[0].audit_ref, "audit-ref");
+        assert_eq!(
+            requests[0].target_ref,
+            AddonExternalAcquisitionTargetRef::SelectedLink {
+                selected_link_ref: "selected-link-secret".to_owned()
+            }
         );
     }
 
@@ -437,5 +525,57 @@ mod tests {
         assert_eq!(response.addon_id, ADDON_ID);
         assert_eq!(response.task_id, ACTION_TASK_ID);
         serde_json::from_value(response.output).unwrap()
+    }
+
+    #[derive(Clone, Debug)]
+    struct RecordingMaterializer {
+        requests: Arc<StdMutex<Vec<AddonExternalAcquisitionMaterializationRequest>>>,
+        response: Result<AddonExternalAcquisitionMaterializationResponse, MaterializationError>,
+    }
+
+    impl RecordingMaterializer {
+        fn with_response(response: AddonExternalAcquisitionMaterializationResponse) -> Self {
+            Self {
+                requests: Arc::default(),
+                response: Ok(response),
+            }
+        }
+
+        fn requests(&self) -> Vec<AddonExternalAcquisitionMaterializationRequest> {
+            self.requests.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl ExternalAcquisitionMaterializer for RecordingMaterializer {
+        fn safe_client_kind(&self) -> &'static str {
+            "recording"
+        }
+
+        async fn materialize(
+            &self,
+            request: AddonExternalAcquisitionMaterializationRequest,
+        ) -> Result<AddonExternalAcquisitionMaterializationResponse, MaterializationError> {
+            self.requests.lock().unwrap().push(request);
+            self.response.clone()
+        }
+    }
+
+    fn materialization_response() -> AddonExternalAcquisitionMaterializationResponse {
+        AddonExternalAcquisitionMaterializationResponse {
+            schema: nako_addon_protocol::ADDON_EXTERNAL_ACQUISITION_MATERIALIZATION_RESPONSE_SCHEMA
+                .to_owned(),
+            materialization_ref: "route-materialization-secret".to_owned(),
+            target_ref: AddonExternalAcquisitionTargetRef::SelectedLink {
+                selected_link_ref: "selected-link-secret".to_owned(),
+            },
+            expires_at: "2026-05-29T00:01:00.000Z".to_owned(),
+            material: AddonExternalAcquisitionMaterializedLink {
+                link_type: AddonResourceLinkType::Ed2k,
+                uri: "ed2k://|file|secret|1|abcdef|/".to_owned(),
+                password: Some("route-secret-code".to_owned()),
+            },
+            safe_facts: BTreeMap::new(),
+        }
     }
 }

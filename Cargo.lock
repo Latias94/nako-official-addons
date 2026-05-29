@@ -848,7 +848,9 @@ name = "nako-external-acquisition-runner"
 version = "0.1.0-alpha.2"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
+ "nako-addon-client",
  "nako-addon-protocol",
  "nako-official-addon-catalog",
  "serde",
